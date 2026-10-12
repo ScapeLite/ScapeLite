@@ -1,0 +1,35 @@
+name: Plugin submission
+description: Ask for your ScapeLite plugin to be listed in the marketplace's Community section
+title: "[Plugin] <name>"
+labels: ["plugin-submission"]
+body:
+  - type: input
+    id: repo
+    attributes:
+      label: GitHub repository link
+      description: Where plugin.json lives (a folder link is fine).
+      placeholder: https://github.com/you/my-plugin
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What does it do?
+      description: One or two sentences, and what game data it reads.
+    validations: { required: true }
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Checklist
+      options:
+        - label: It is display-only and never clicks, selects or acts in the game.
+          required: true
+        - label: It makes no network requests (or I explain exactly which and why below).
+          required: true
+        - label: It cleans up completely when removed, and the code is readable (not obfuscated).
+          required: true
+        - label: I tested Install from GitHub, Add and Remove.
+          required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else (network use, permissions, screenshots)

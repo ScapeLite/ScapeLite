@@ -1,0 +1,11 @@
+{
+  "authors": {
+    "Wulf": {
+      "discord": "yourname",
+      "links": [
+        { "label": "Report a bug", "url": "https://example.com/issues" },
+        { "label": "Suggest a feature", "url": "https://example.com/ideas" }
+      ]
+    }
+  }
+}

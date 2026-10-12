@@ -1,0 +1,498 @@
+{
+  "version": 1,
+  "categories": [
+    "Interface",
+    "Planning",
+    "Info",
+    "Notifications",
+    "Social",
+    "Core"
+  ],
+  "plugins": [
+    {
+      "id": "core",
+      "name": "ScapeLite Core",
+      "category": "Core",
+      "core": true,
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "includes": [
+        "ws-hook",
+        "plugins-settings-ui",
+        "status-indicator",
+        "welcome-tour",
+        "settings-nav",
+        "hover-info",
+        "sidebar-tabs",
+        "panel-resize",
+        "panel-fuse",
+        "xp-tracker"
+      ],
+      "tagline": "Everything essential, always on: settings, status light, panel tools, tooltips, XP tracker.",
+      "description": "The ScapeLite essentials in one always-on bundle: the Plugins tab inside Settings, the pulsing status light with live performance breakdown, the first-run welcome tour, Settings quick-jump menus, hover info on tooltips, the side-menu tab controls, panel resizing / locking / fusing with the vertical menu, and the XP/hr tracker with its live graph. Individual options live under Settings > Plugins.",
+      "features": [
+        "Plugins tab in Settings (switches, options, secret fields with an eye)",
+        "Status light: health, FPS and a per-plugin CPU breakdown on hover",
+        "Welcome tour (replayable) and Settings quick-jump menus",
+        "Hover info: XP, gold, slay and quest details on tooltips",
+        "Side menu tab controls (show / hide / pin icons)",
+        "Panel tools: resize, lock, right-click menu, vertical menu, keep on screen",
+        "Panel fuse: snap panels together, move and resize them as one",
+        "XP/hr tracker with a live graph, time frames, per-skill icons and level ETAs",
+        "Network hook for hiscores / raid summaries (read-only)",
+        "Saved logs: one file per run in the Logs folder, auto-cleaned (set how long to keep them)"
+      ],
+      "tags": [
+        "core",
+        "settings",
+        "status",
+        "performance",
+        "panels",
+        "tooltips",
+        "xp"
+      ],
+      "screenshots": [
+        "core-xp-tracker.png",
+        "core-status-light.png",
+        "core-fuse.png",
+        "core-quest-tooltip.png",
+        "panel-resize.png"
+      ]
+    },
+    {
+      "id": "walking-countdown",
+      "name": "Walking Countdown",
+      "category": "Info",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Real ETA for the current walk.",
+      "description": "A small panel showing the remaining distance and a time estimate based on your measured walking speed (including speed potions), instead of a formula guess.",
+      "features": [
+        "Measured speed",
+        "Detects speed potions",
+        "Resizable"
+      ],
+      "tags": [
+        "walking",
+        "eta"
+      ],
+      "screenshots": [
+        "walking-countdown.png"
+      ]
+    },
+    {
+      "id": "route-advisor",
+      "name": "Route Advisor",
+      "category": "Planning",
+      "default": true,
+      "version": "2.0.0",
+      "author": "Wulf",
+      "requires": [
+        "game bridge"
+      ],
+      "tagline": "Finds a faster order for your task queue, with or without teleports.",
+      "description": "Simulates your queue with the game's real teleport-crystal rules and recommends the quickest order (keeping your option picks), both with and without teleports. Optimise for steps, XP/hr, tasks/hr or quest progress, preview routes on a map, and get an optional notification when a big saving appears. Display-only: you apply suggestions yourself.",
+      "features": [
+        "Recommended with and without teleports",
+        "Objectives: steps, XP/hr, tasks/hr, quests",
+        "Map preview with every node and road",
+        "Purple border = teleports, blue = quest",
+        "Alternatives and pros/cons",
+        "Optional OS notification"
+      ],
+      "tags": [
+        "route",
+        "queue",
+        "teleport",
+        "quests"
+      ],
+      "screenshots": [
+        "route-advisor.png"
+      ],
+      "guide": {
+        "title": "Route Advisor guide",
+        "steps": [
+          {
+            "title": "What it does",
+            "body": "<p>It simulates your task queue with the game’s real walking and teleport-crystal rules and suggests a faster <b>order</b> (keeping the options you picked). It never changes your queue — you apply a suggestion yourself.</p>"
+          },
+          {
+            "title": "Reading the plan",
+            "body": "<ul><li><b>Recommended · with teleports / no teleports</b>: the fastest order in each mode. Choose your style with <b>I plan with</b>.</li><li><b>Purple border</b> = the route uses teleport charges, <b>blue</b> = it involves a quest.</li><li>Pick an objective (steps, XP/hr, tasks/hr, quests) to optimise for something else.</li></ul>"
+          },
+          {
+            "title": "The warning tab",
+            "body": "<p>A pulsing tab above your Tasks panel appears when a clearly faster order exists. Opening the Route Advisor dismisses it until the situation changes. The size of the saving that triggers it, and optional notifications, are in <b>Settings → Plugins → Route Advisor</b>.</p>"
+          },
+          {
+            "title": "Needs the game bridge",
+            "body": "<p>XP/hr and task-time numbers come from the game’s own projections through the <b>Game Data Bridge</b>, which attaches a few seconds after the game loads. If it says the bridge is not attached yet, wait a moment.</p>"
+          }
+        ]
+      }
+    },
+    {
+      "id": "map-routes",
+      "name": "Map Route Lanes",
+      "category": "Planning",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Readable overlapping routes on the World Map.",
+      "description": "On the World Map, overlapping route legs are drawn side by side and chevron arrows show direction.",
+      "features": [
+        "Parallel lanes for overlapping legs",
+        "Direction arrows"
+      ],
+      "tags": [
+        "map",
+        "routes"
+      ],
+      "screenshots": [
+        "map-routes.png"
+      ]
+    },
+    {
+      "id": "notify-always",
+      "name": "Notify While Focused",
+      "category": "Notifications",
+      "default": false,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Lets the game's OS notifications fire even while the window is focused.",
+      "description": "The game normally only notifies when unfocused. This lets its (and ScapeLite's) notifications show regardless.",
+      "features": [
+        "Works with Route Advisor notifications"
+      ],
+      "tags": [
+        "notifications"
+      ],
+      "guide": {
+        "title": "Notify while focused",
+        "steps": [
+          {
+            "title": "What it does",
+            "body": "<p>The game normally only shows desktop notifications while its window is in the background. This lets notifications (the game’s and ScapeLite’s) show even while you are playing.</p><p>Your system must allow notifications for the game: check <b>Windows Settings → System → Notifications</b> and that Focus Assist is not blocking them.</p>"
+          }
+        ]
+      },
+      "screenshots": [
+        "notify-always.png"
+      ]
+    },
+    {
+      "id": "chat-relay",
+      "name": "Chat Relay (Discord)",
+      "category": "Social",
+      "default": false,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "requires": [
+        "Discord webhook"
+      ],
+      "tagline": "Forward clan/global drops, unlocks and level-ups to Discord.",
+      "description": "Collects Clan and Global announcements (rare drops, unlocks, level-ups) and posts them to your Discord webhook, with outbox and catch-up so nothing is lost across restarts. Also powers clan hiscores tracking, raid summaries and the activity digest. Needs overlay/chat-relay-config.json (see the install guide).",
+      "features": [
+        "Clan / global relay",
+        "Never loses messages across restarts",
+        "Clan hiscores rank tracking",
+        "Raid summaries",
+        "Activity digest"
+      ],
+      "tags": [
+        "discord",
+        "relay",
+        "clan"
+      ],
+      "guide": {
+        "title": "Discord relay setup",
+        "steps": [
+          {
+            "title": "What it does",
+            "body": "<p>The relay posts your clan’s notable events to a Discord channel: <b>rare drops, unlocks, level-ups, collections, quests</b>, plus optional clan hiscores updates, raid summaries and an activity digest.</p><p>It runs on your PC and only sends what you set up here. You need a Discord server where you can manage webhooks.</p>"
+          },
+          {
+            "title": "1. Make a webhook in Discord",
+            "body": "<p>In Discord open your server’s <b>Settings → Integrations → Webhooks → New Webhook</b>.</p><p>Pick the channel it should post in, give it a name, then press <b>Copy Webhook URL</b>.</p><p class=\"w-warn\">Treat the URL like a password: anyone who has it can post in that channel.</p>"
+          },
+          {
+            "title": "2. Paste it into ScapeLite",
+            "body": "<p>In the game open <b>Settings → Plugins → Chat Relay</b> and paste the URL into <b>Clan Channel Webhook URL</b>. Use the <b>eye</b> button to check it.</p><p>The URL is stored only on this PC. Do the same for the other sections you want (Clan Hiscores, Raid Summary, Activity Digest) — they can use the same or different channels.</p>"
+          },
+          {
+            "title": "3. Turn on what you want",
+            "body": "<p>Still in <b>Plugins → Chat Relay</b>: switch on <b>Relay Clan Chat</b> (and Global if you want it) and choose which pings to send.</p><p><b>Important:</b> the relay only sees what the game itself shows in chat. In the game’s own <b>Settings → Chat</b>, make sure the Clan channel has the announcement types turned on (rare drops, unlocks, levels, <b>collections</b>, quests). If a type is off there, ScapeLite never sees it.</p>"
+          },
+          {
+            "title": "4. Optional extras",
+            "body": "<ul><li><b>Role pings and member list</b> live in the config file (<code>chat-relay-config.json</code> in your ScapeLite data folder; an example file is included).</li><li><b>Ultra rare</b> drops (Shiny / Lucky items) use a separate role.</li><li><b>Digest times:</b> under Activity Digest you can add fixed posting times such as 08:00, 14:00, 20:00.</li></ul>"
+          },
+          {
+            "title": "If nothing arrives",
+            "body": "<ul><li>Open the ScapeLite dashboard and check the <b>Discord</b> log pane for errors.</li><li>A wrong or deleted webhook gives an error there; paste a fresh URL.</li><li>Make sure the plugin is on in the marketplace and the game shows the event in its chat.</li><li>The saved log files in the <b>Logs</b> folder show the same lines.</li></ul>"
+          }
+        ]
+      },
+      "screenshots": [
+        "chat-relay.png"
+      ]
+    },
+    {
+      "id": "raid-alert",
+      "name": "Raid Lobby Alert",
+      "category": "Notifications",
+      "default": false,
+      "version": "0.9.0",
+      "author": "Wulf",
+      "tagline": "Notify when an open raid lobby fits you (experimental).",
+      "description": "Watches open raid lobbies and notifies you when a strong party has a free slot. Read-only, never joins. Has cooldowns, an hourly cap and quiet hours; disabled by default.",
+      "features": [
+        "Cooldown + hourly cap + quiet hours",
+        "Read-only"
+      ],
+      "tags": [
+        "raids",
+        "notifications"
+      ],
+      "screenshots": [
+        "raid-alert.png"
+      ]
+    },
+    {
+      "id": "menu-dock",
+      "name": "Menu + HP Bar Dock",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "requires": [
+        "panel-resize"
+      ],
+      "tagline": "Move, resize and fuse the vertical menu and HP bar.",
+      "description": "Treats the vertical bottom-right menu and the HP bar as one panel: drag its top strip to move it, drag the corner to resize it, and fuse it to neighbouring panels. When it is not on a screen edge, its buttons get rounded corners all round.",
+      "features": [
+        "Drag strip to move",
+        "Corner grip to resize",
+        "Fuse with panels",
+        "Menu always paints above the HP bar"
+      ],
+      "tags": [
+        "menu",
+        "hp",
+        "layout"
+      ],
+      "screenshots": [
+        "menu-dock.png"
+      ]
+    },
+    {
+      "id": "modal-resize",
+      "name": "Resizable Windows",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Shrink the big Settings, Bank and Crafting windows.",
+      "description": "Adds a corner grip to the game's full-screen windows. Drag it towards the centre to scale the window down (50-100%) so the game stays visible around it. The size is remembered per window.",
+      "features": [
+        "Corner grip, 50-100%",
+        "Remembered per window",
+        "Double-click to reset"
+      ],
+      "tags": [
+        "settings",
+        "windows",
+        "resize"
+      ],
+      "screenshots": [
+        "modal-resize.png"
+      ]
+    },
+    {
+      "id": "notif-dock",
+      "name": "Notification Dock",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Invites and popups always on top, centred, and movable.",
+      "description": "Raises the game's notifications (raid / party / friend invites, task-complete popups, toasts) above every panel and window so nothing can hide them. The invite tray, which normally sits in the top-left, is centred by default. Drag the strip above the invite tray, or use Move Notifications in Settings > Plugins to place all three; positions are remembered.",
+      "features": [
+        "Always above panels and windows",
+        "Invite tray centred by default",
+        "Drag to move, remembered",
+        "Frames for short-lived popups and toasts"
+      ],
+      "tags": [
+        "notifications",
+        "invites",
+        "raid",
+        "popups"
+      ],
+      "screenshots": [
+        "notif-dock.png"
+      ]
+    },
+    {
+      "id": "bank-tools",
+      "name": "Bank Tools",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Category separators, item category chips and sub-category filters in your bank.",
+      "description": "Draws a separator (with a small label) between every category in the bank grid, shows which categories an item belongs to when you hover it, and adds hover menus to the bank filter buttons: hover Raw to pick Fish, Mine, Forage and so on, and only those items are shown. Uses the game's own category rules.",
+      "features": [
+        "Separator and label between every category",
+        "Hover an item to see its categories",
+        "Hover Raw / Processed / Equipment / Potions for sub-filters with item counts",
+        "Display only: your bank is never reordered"
+      ],
+      "tags": [
+        "bank",
+        "filter",
+        "categories",
+        "items"
+      ],
+      "screenshots": []
+    },
+    {
+      "id": "window-dock",
+      "name": "Window Buttons Dock",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Move, resize and tuck away the top-right button row; the cross closes the World Map.",
+      "description": "The row of buttons in the top-right corner (language, support links, World Map, Patch Notes, Sleep, Logout) can be moved and resized from a small strip that appears under it. An arrow on the strip tucks the row into the nearest screen edge as a small badge. While the World Map is open, the cross button closes the map instead of logging out.",
+      "features": [
+        "Drag to move, corner to resize",
+        "Arrow tucks it into the nearest edge as a badge",
+        "Cross closes the World Map while it is open",
+        "Remembered between sessions"
+      ],
+      "tags": [
+        "interface",
+        "map",
+        "layout"
+      ],
+      "screenshots": []
+    },
+    {
+      "id": "layouts",
+      "name": "Layout Presets",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Save named layouts of your panels and docks and switch between them.",
+      "description": "Arrange your panels, docks and windows once, save them as a named layout (for example Questing, Raid or Clean) and load it again later. A layout covers panel positions and sizes, fuses, locks, the menu and window-button docks, notification positions, trackers and window sizes. Loading a layout reloads the game page. Open it from Settings > Plugins > Layouts.",
+      "features": [
+        "Save, update, load and delete named layouts",
+        "One-click reset to the game default",
+        "Stored locally, never sent anywhere"
+      ],
+      "tags": [
+        "layout",
+        "panels",
+        "presets"
+      ],
+      "screenshots": []
+    },
+    {
+      "id": "craft-potential",
+      "name": "Crafting Potential",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "See the level you could reach by crafting with everything in your bank.",
+      "description": "In the Smith, Craft, Imbue and Brew windows, the XP bar at the top also shows a striped gold section: the XP you would gain by crafting with every material in your bank (most XP-efficient recipes first). Within a level it fills part of the bar; when it is enough for whole levels the bar fills to the end and a row of level chips shows each level you would gain, with the progress into the last one.",
+      "features": [
+        "Gold striped potential section in the XP bar",
+        "Level chips for multi-level potential",
+        "Uses the game's own recipes and your bank",
+        "Display only: nothing is crafted for you"
+      ],
+      "tags": [
+        "crafting",
+        "xp",
+        "smith",
+        "brew"
+      ],
+      "screenshots": []
+    },
+    {
+      "id": "chat-default",
+      "name": "Chat Default Channel",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Starts every session on the chat you actually use.",
+      "description": "The game always starts the chat box on Global, even when Global is hidden. This plugin remembers the channel you last chose and applies it once after login; when that channel is hidden, or none is saved, it picks the leftmost shown channel (Global, Proximity or Raid, Friends, Clan). Anything you choose later is never overridden. It only sets which channel the text box sends to and never sends anything.",
+      "features": [
+        "Remembers your last chosen chat",
+        "Falls back to the leftmost shown channel",
+        "Applied once per login, never overrides later changes"
+      ],
+      "tags": [
+        "chat",
+        "interface"
+      ],
+      "screenshots": []
+    },
+    {
+      "id": "combat-readout",
+      "name": "Combat Readout",
+      "category": "Interface",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "Exact HP, Spirit, attack timer and DPS on the combat screen.",
+      "description": "A small movable card on the combat screen showing, for you and your target: HP and Spirit as numbers on their bars, the attack timer counting down in seconds, the unrounded attack interval and attacks per second, and your expected DPS using the game's own damage formula (hit chance, average damage with crits, attack interval). Display only.",
+      "features": [
+        "HP and Spirit numbers",
+        "Attack timer countdown with 3 decimals",
+        "Unrounded attacks per second",
+        "Expected DPS from the game's own formula",
+        "Drag it anywhere"
+      ],
+      "tags": [
+        "combat",
+        "interface"
+      ],
+      "screenshots": []
+    },
+    {
+      "id": "usage-ping",
+      "name": "Anonymous Usage Data",
+      "category": "Core",
+      "default": true,
+      "version": "1.0.0",
+      "author": "Wulf",
+      "tagline": "One anonymous request a day so the author can see how many people use ScapeLite.",
+      "description": "Sent, once a day at most, to a privacy-friendly counter (GoatCounter): the page path /active, the ScapeLite version and, as with every web request, your IP address and browser/OS name (GoatCounter does not store the IP, it only uses it to count unique visitors). Never sent: your name, character, account, game progress or data, settings, plugin list, webhooks, or anything you do. No cookies are used and no ID is saved. It is on by default; you can switch it off in the first-launch setup or any time in Settings > Plugins > ScapeLite Core > Share Anonymous Usage Count. Nothing is sent before the first-launch setup has been answered.",
+      "features": [
+        "One request per day at most",
+        "Version number only",
+        "Opt out in setup or in Settings"
+      ],
+      "tags": [
+        "privacy",
+        "core"
+      ],
+      "screenshots": []
+    }
+  ],
+  "authors": {
+    "Wulf": {
+      "handle": "@Wulf",
+      "bio": "ScapeLite developer",
+      "discord": "",
+      "links": []
+    }
+  }
+}

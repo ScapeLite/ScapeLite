@@ -1,0 +1,13 @@
+{
+  "id": "session-clock",
+  "name": "Session Clock",
+  "version": "1.0.0",
+  "author": "ScapeLite examples",
+  "category": "Info",
+  "tagline": "A tiny draggable chip with your session time and XP/hr.",
+  "description": "Example plugin for the plugin author guide. Shows how long you have been playing this session and, if the XP tracker is running, your current XP per hour. Drag it anywhere; click the x to hide it until the next reload.",
+  "features": ["Session timer", "Reads the XP tracker's rates", "Remembers its position"],
+  "tags": ["example", "timer", "xp"],
+  "main": "main.js",
+  "ns": "__cc_session_clock"
+}

@@ -1,0 +1,62 @@
+node_modules/
+*.log
+
+# Regenerable from the installed game's app.asar — see README "Refreshing
+# after a game patch". Not tracked: it's 800k+ lines and would make every
+# diff noise. Re-run the extract command to populate this locally.
+data/raw/
+
+# Your personal profile (skills, gear, credit stock) -- not project code.
+data/profile.json
+
+# Discord webhook URL -- a secret (anyone with it can post to your channel).
+overlay/chat-relay-config.json
+
+# Chat relay's persisted dedup state -- local runtime data, not project code.
+overlay/chat-relay-seen.json
+
+# Discord webhook URL -- same reasoning as chat-relay-config.json above.
+overlay/clan-hiscores-config.json
+
+# Clan hiscores tracker's persisted rank/level state -- local runtime data.
+overlay/clan-hiscores-state.json
+
+# Per-player Discord avatar cache -- local runtime data, not project code.
+overlay/player-icon-cache.json
+
+# Discord webhook URL -- same reasoning as chat-relay-config.json above.
+overlay/raid-summary-config.json
+
+# Discord webhook URL -- same reasoning as chat-relay-config.json above.
+overlay/digest-config.json
+
+# Activity digest's persisted accumulation buffer -- local runtime data.
+overlay/digest-state.json
+
+# Regenerable icon assets -- same reasoning as data/raw/. See README.
+public/assets/icons/
+.icon-extract-tmp/
+
+# Per-user runtime state (plugin on/off choices, relay outbox with chat text, logs)
+overlay/plugins-config.json
+overlay/chat-relay-outbox.json
+overlay/watcher.log
+.claude/
+
+# Personal contact links shown on author credits (Discord, GitHub, ...)
+overlay/authors.local.json
+
+# Local developer switches (devMode shows the DevTools buttons)
+overlay/local-config.json
+
+# Saved ScapeLite logs (one file per run)
+Logs/
+overlay/log-config.json
+
+# Per-user launcher preference
+overlay/launch-config.json
+
+# Build output
+dist/
+
+release.local.json

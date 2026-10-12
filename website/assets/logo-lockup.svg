@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 128" width="480" height="128">
+<rect x="3" y="3" width="122" height="122" rx="28" fill="#23232f"/>
+<rect x="46" y="22" width="48" height="12" fill="#ffd24a"/><rect x="34" y="34" width="24" height="12" fill="#ffd24a"/><rect x="34" y="46" width="24" height="12" fill="#ffd24a"/><rect x="46" y="58" width="36" height="12" fill="#ffd24a"/><rect x="70" y="70" width="24" height="12" fill="#b8760f"/><rect x="70" y="82" width="24" height="12" fill="#b8760f"/><rect x="34" y="94" width="48" height="12" fill="#b8760f"/><rect x="82" y="22" width="12" height="12" fill="#fff0b0"/>
+<text x="148" y="82" font-family="Segoe UI, Inter, system-ui, sans-serif" font-weight="700" font-size="60"><tspan fill="#f4f4f6">Scape</tspan><tspan fill="#ffd24a">Lite</tspan></text>
+</svg>

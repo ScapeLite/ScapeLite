@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScapeLite - plugins for Scapewatch</title>
+<meta name="description" content="ScapeLite is a free, display-only plugin overlay for Scapewatch: Idle MMO. Better panels, route planning, XP tracking and a plugin marketplace.">
+<link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#top"><img src="assets/logo-lockup.svg" alt="ScapeLite" height="34"></a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#plugins">Plugins</a>
+    <a href="#install">Install</a>
+    <a href="#faq">FAQ</a>
+    <a class="btn small" href="#download">Download</a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="hero-text">
+      <p class="eyebrow">Free &middot; community made &middot; display only</p>
+      <h1>Make Scapewatch<br>work the way <em>you</em> play.</h1>
+      <p class="lead">ScapeLite adds optional plugins to the game: resizable and fusable panels, a smarter task route planner, a live XP/hr graph, richer tooltips, Discord updates and more. Pick only what you want from a built-in plugin marketplace.</p>
+      <div class="cta">
+        <a class="btn primary" href="#download">Download ScapeLite</a>
+        <a class="btn" href="#plugins">Browse plugins</a>
+      </div>
+      <p class="fine">Windows &middot; works with the Steam version &middot; never clicks or plays for you</p>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <div class="mock">
+        <div class="mock-bar"><i></i><i></i><i></i><span>ScapeLite Plugins</span></div>
+        <div class="mock-grid">
+          <div class="mc on"><b>Route Advisor</b><span>Faster order for your queue</span></div>
+          <div class="mc on"><b>XP/hr Tracker</b><span>Live graph and level ETAs</span></div>
+          <div class="mc on"><b>Panel Tools</b><span>Resize, lock, fuse panels</span></div>
+          <div class="mc"><b>Chat Relay</b><span>Clan drops to Discord</span></div>
+        </div>
+      </div>
+      <img class="shot" src="assets/shots/route-advisor.png" alt="Route Advisor panel" onerror="this.remove()">
+    </div>
+  </section>
+
+  <section id="features" class="block">
+    <h2>What you get</h2>
+    <div class="cards">
+      <article class="card"><h3>Panels, your way</h3><p>Resize any panel from a corner grip, lock it in place, snap panels together so they move as one, and move or resize the bottom-right menu and HP bar.</p></article>
+      <article class="card"><h3>Route Advisor</h3><p>Finds a faster order for your task queue, with and without teleport crystals, and shows the route on a map. It remembers whether you play with teleports.</p></article>
+      <article class="card"><h3>XP/hr tracker</h3><p>A live graph of XP per hour over 5 minutes to 3 hours, per-skill icons, and an ETA to your next level.</p></article>
+      <article class="card"><h3>Better tooltips</h3><p>XP, gold, slay and quest rewards at a glance, with skill icons and how much of a level a reward covers.</p></article>
+      <article class="card"><h3>Always-on-top alerts</h3><p>Invites and popups can never be hidden behind a panel, and you can move them where you like.</p></article>
+      <article class="card"><h3>Performance view</h3><p>A pulsing status light with live FPS and a breakdown of where the time goes, so you can see if the game or a plugin is slow.</p></article>
+    </div>
+  </section>
+
+  <section id="showcase" class="block alt">
+    <h2>A closer look</h2>
+    <p class="sub">The essentials that come with ScapeLite, all real screenshots from the game.</p>
+    <div class="show">
+      <figure><img src="assets/shots/core-xp-tracker.png" alt="XP per hour tracker with a live graph"><figcaption><b>XP/hr tracker</b>A live graph of your XP per hour over 5 minutes to 3 hours, one click to isolate a skill, with level-up ETAs.</figcaption></figure>
+      <figure><img src="assets/shots/core-status-light.png" alt="Status light with performance breakdown"><figcaption><b>Status light &amp; performance</b>A pulsing health light with your frame rate. Hover for a breakdown of where the time goes, including every plugin.</figcaption></figure>
+      <figure><img src="assets/shots/core-fuse.png" alt="Fused panels"><figcaption><b>Panel fuse</b>Snap panels together so they move and resize as one, with a clean seam and a link button in the title bar.</figcaption></figure>
+      <figure><img src="assets/shots/core-quest-tooltip.png" alt="Quest reward tooltip"><figcaption><b>Smarter tooltips</b>Quest rewards with skill icons, how much of a level they cover, and the level they carry you to.</figcaption></figure>
+      <figure><img src="assets/shots/route-advisor.png" alt="Route Advisor"><figcaption><b>Route Advisor</b>A faster order for your task queue, with and without teleports, with clear purple and blue markers.</figcaption></figure>
+      <figure><img src="assets/shots/menu-dock.png" alt="Movable menu and HP bar"><figcaption><b>Menu &amp; HP bar dock</b>Move, resize and fuse the vertical menu and HP bar like any other panel.</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="plugins" class="block">
+    <h2>The plugin marketplace</h2>
+    <p class="sub">ScapeLite starts small. Add only what you want from the built-in marketplace; changes apply instantly, no restart. Anyone can write a plugin.</p>
+    <div id="pluginGrid" class="cards plugins"><p class="dim">Loading plugins&hellip;</p></div>
+  </section>
+
+  <section id="download" class="block alt">
+    <h2>Download</h2>
+    <div class="dl">
+      <div>
+        <p class="lead">Download the installer from the latest release on GitHub. The version history is on the same page.</p>
+        <a class="btn primary" id="dlBtn" href="https://github.com/ScapeLite/ScapeLite/releases/latest">Download for Windows <small id="ver"></small></a>
+        <p class="fine">Windows may show an “unknown publisher” warning because the installer is not code-signed yet: choose <b>More info</b>, then <b>Run anyway</b>. Requires the Steam version of Scapewatch. ScapeLite checks for updates on launch and from Settings &rarr; Plugins &rarr; About.</p>
+      </div>
+      <img class="logo-big" src="assets/logo-256.png" alt="">
+    </div>
+  </section>
+
+  <section id="install" class="block">
+    <h2>How installing works</h2>
+    <ol class="steps">
+      <li><b>Download &amp; run the setup.</b> It checks what it needs and installs ScapeLite.</li>
+      <li><b>Launch Scapewatch with ScapeLite.</b> A ScapeLite shortcut starts the game with the connection ScapeLite needs, entirely on your own PC.</li>
+      <li><b>Take the welcome tour.</b> It shows you the settings, the dashboard and the marketplace.</li>
+      <li><b>Add plugins.</b> Open the marketplace, press Add on what you like. Done.</li>
+    </ol>
+    <p class="fine">Developers can also run it from source: see the project documentation.</p>
+  </section>
+
+  <section id="faq" class="block alt">
+    <h2>Questions</h2>
+    <details><summary>Is this allowed? Is it safe?</summary><p>ScapeLite is display-only: it changes how the game looks and tells you things, but it never clicks, selects or plays for you. It also reads nothing outside the game window. It is community made and is not affiliated with, or endorsed by, the Scapewatch developers.</p></details>
+    <details><summary>Does it send my data anywhere?</summary><p>No. Everything runs on your PC. The only network traffic is what you configure yourself (for example a Discord webhook) and the update check.</p></details>
+    <details><summary>Will it break when the game updates?</summary><p>Sometimes a game update changes something a plugin relies on. Updates are checked on launch, and a broken plugin can be switched off in one click without affecting the rest.</p></details>
+    <details><summary>Can I write my own plugin?</summary><p>Yes. A plugin is a folder with a small manifest and a script; it then shows up in the marketplace. Guidelines: display-only, clean up after yourself.</p></details>
+    <details><summary>Why does it say Official / ScapeLite on plugins?</summary><p>The ScapeLite tag marks plugins made by the ScapeLite team. It does not mean they are made by Scapewatch.</p></details>
+    <details><summary>What does the anonymous usage data send?</summary><p><b>Sent</b>, at most once a day, to GoatCounter (a free, privacy-friendly counter): the page <i>/active</i>, the ScapeLite version and, as with every web request, your IP address and browser/OS name (GoatCounter does not store the IP, it only uses it to count unique visitors). <b>Never sent</b>: your name, character, account, game progress or data, settings, plugin list, webhooks, or anything you do. No cookies, no ID is saved. It is on by default, you can switch it off in the first-launch setup or any time in Settings &rarr; Plugins &rarr; ScapeLite Core.</p></details>
+    <details><summary>Found a bug?</summary><p>Use the bug icon in the status light&rsquo;s hover menu (bottom-left of the game) or <a href="https://github.com/ScapeLite/ScapeLite/issues">open an issue on GitHub</a>. Bugs in ScapeLite&rsquo;s Official plugins are fixed by the team; community plugins are supported by their own authors.</p></details>
+  </section>
+</main>
+
+<footer>
+  <img src="assets/logo.svg" alt="" width="28" height="28">
+  <p>ScapeLite is an independent community project and is not affiliated with, or endorsed by, the creators of Scapewatch. All game names and assets belong to their owners.</p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

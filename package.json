@@ -1,0 +1,89 @@
+{
+  "name": "scapelite",
+  "version": "0.3.0",
+  "description": "ScapeLite - a plugin-based overlay and planner for Scapewatch: Idle MMO (display-only, RuneLite-style plugin marketplace).",
+  "private": true,
+  "main": "app/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node overlay/supervisor.js",
+    "extract-data": "node overlay/gamedata.js --force",
+    "planner": "node src/server.js",
+    "test": "node src/data.js",
+    "build-site": "node scripts/build-site.js",
+    "launch": "node overlay/launcher.js launch",
+    "game-status": "node overlay/launcher.js status",
+    "app": "electron .",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --win --dir"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "electron": "^37.10.3",
+    "electron-builder": "^25.1.8"
+  },
+  "author": "ScapeLite",
+  "build": {
+    "appId": "app.scapelite.desktop",
+    "productName": "ScapeLite",
+    "copyright": "ScapeLite",
+    "directories": {
+      "output": "dist"
+    },
+    "asar": false,
+    "files": [
+      "app/**",
+      "overlay/**",
+      "branding/**",
+      "package.json",
+      "website/**",
+      "examples/plugins/**",
+      "docs/PLUGINS.md",
+      "docs/SUBMIT-A-PLUGIN.md",
+      "docs/PLUGIN-AUTHOR-GUIDE.md",
+      "!overlay/chat-relay-config.json",
+      "!overlay/chat-relay-seen.json",
+      "!overlay/chat-relay-outbox.json",
+      "!overlay/clan-hiscores-config.json",
+      "!overlay/clan-hiscores-state.json",
+      "!overlay/raid-summary-config.json",
+      "!overlay/digest-config.json",
+      "!overlay/digest-state.json",
+      "!overlay/player-icon-cache.json",
+      "!overlay/plugins-config.json",
+      "!overlay/log-config.json",
+      "!overlay/launch-config.json",
+      "!overlay/update-config.json",
+      "!overlay/local-config.json",
+      "!overlay/authors.local.json",
+      "!overlay/watcher.log",
+      "!overlay/*.tmp",
+      "!overlay/plugins/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "branding/png/logo-512.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

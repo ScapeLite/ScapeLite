@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scapewatch Planner</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="sidebar">
+  <div class="brand">Scapewatch<br>Planner</div>
+  <button class="nav-btn" data-panel="profile">👤 Profile</button>
+  <button class="nav-btn" data-panel="mapBuilder">🧭 Map</button>
+  <button class="nav-btn" data-panel="combat">⚔️ Combat</button>
+  <button class="nav-btn" data-panel="skillingReroll">🔁 Skilling Reroll</button>
+  <button class="nav-btn" data-panel="slayReroll">💀 Slay Reroll</button>
+  <button class="nav-btn" data-panel="questRoute">🗺️ Quest Route</button>
+  <button class="nav-btn" data-panel="rareDrop">💎 Rare Drop</button>
+  <button class="nav-btn" data-panel="importPanel">📷 Import</button>
+  <p class="sidebar-note">Local only — your own typed-in numbers, the game's real formulas. Nothing here touches the live game.</p>
+</nav>
+
+<main>
+  <section id="profile" class="panel card">
+    <h2>Profile</h2>
+    <div class="grid2">
+      <label>Weapon
+        <div class="icon-select">
+          <img id="weaponIcon" class="icon-preview" alt="">
+          <select id="weaponId"></select>
+        </div>
+      </label>
+      <label>Combat style <select id="style">
+        <option value="stab">Stab</option><option value="slash">Slash</option><option value="crush">Crush</option>
+        <option value="range">Range</option><option value="magic">Magic</option>
+      </select></label>
+      <label>Crit sources <input type="number" id="critSources" value="0" min="0"></label>
+      <label>Current bank <select id="currentBankId"><option value="">(unknown / skip travel)</option></select></label>
+      <label>Skilling reroll credits <input type="number" id="creditStock" value="150"></label>
+      <label>Slay reroll credits <input type="number" id="slayCreditStock" value="150"></label>
+      <label>Teleport crystal tier <select id="crystalTier"><option value="">none</option><option value="1">Faulty (T1)</option><option value="2">Stable (T2)</option><option value="3">Perfect (T3)</option></select></label>
+      <label>Crystal charges <input type="number" id="crystalCharges" value="0" min="0"></label>
+    </div>
+    <h3>Skill levels</h3>
+    <div id="skillGrid" class="skill-grid"></div>
+    <button id="saveProfile">Save profile</button>
+    <span id="profileStatus" class="status"></span>
+  </section>
+
+  <section id="mapBuilder" class="panel card wide">
+    <h2>Map task builder</h2>
+    <p class="sub">Hover a bank to see everything trainable/fightable nearby. Skill → Node → Tier. Click a tier (or a mob under Combat) to add it to your queue below. Drag to reorder — travel is computed in that order, from your profile's current bank.</p>
+    <div id="mapViewport" class="map-viewport">
+      <svg id="mapRoutesSvg" class="map-routes" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+      <div id="mapCanvas" class="map-canvas"></div>
+      <div id="nodeTooltip" class="node-tooltip" hidden></div>
+    </div>
+    <p class="sub map-legend">
+      <span class="legend-swatch" style="background:hsl(130,70%,55%)"></span> short route
+      <span class="legend-swatch" style="background:hsl(0,70%,55%)"></span> long route
+      <span class="legend-swatch" style="background:#a66fff"></span> teleported (✓)
+      <span class="legend-swatch player"></span> you are here
+      &nbsp;|&nbsp; enemy icons colored by tier: feeble→chaos, gray to red
+    </p>
+
+    <h3>Queue</h3>
+    <div id="queueList" class="queue-list"></div>
+    <pre id="queueSummary" class="result"></pre>
+  </section>
+
+  <section id="combat" class="panel card">
+    <h2>Combat calculator</h2>
+    <label>Mob <select id="combatMob"></select></label>
+    <button id="runCombat">Simulate</button>
+    <pre id="combatResult" class="result"></pre>
+
+    <h3>Compare two weapons</h3>
+    <div class="grid2">
+      <label>Weapon A
+        <div class="icon-select"><img id="weaponAIcon" class="icon-preview" alt=""><select id="weaponA"></select></div>
+      </label>
+      <label>Weapon B
+        <div class="icon-select"><img id="weaponBIcon" class="icon-preview" alt=""><select id="weaponB"></select></div>
+      </label>
+    </div>
+    <button id="runCompare">Compare</button>
+    <pre id="compareResult" class="result"></pre>
+  </section>
+
+  <section id="skillingReroll" class="panel card">
+    <h2>Skilling task reroll</h2>
+    <label>Skill <select id="skillingSkill"></select></label>
+    <div id="skillingOptions"></div>
+    <button id="runSkillingReroll">Evaluate</button>
+    <pre id="skillingRerollResult" class="result"></pre>
+  </section>
+
+  <section id="slayReroll" class="panel card">
+    <h2>Slay task reroll</h2>
+    <div id="slayOptions"></div>
+    <button id="runSlayReroll">Evaluate</button>
+    <pre id="slayRerollResult" class="result"></pre>
+  </section>
+
+  <section id="questRoute" class="panel card">
+    <h2>Quest route optimizer</h2>
+    <p class="sub">Uses your saved profile's skill levels and current bank. Respects quest prerequisites; sequences by least travel (greedy, not globally optimal).</p>
+    <label>Already completed <select id="completedQuests" multiple size="8"></select></label>
+    <label>Max quests to show <input type="number" id="maxQuests" value="15"></label>
+    <button id="runQuestRoute">Get route</button>
+    <pre id="questRouteResult" class="result"></pre>
+  </section>
+
+  <section id="rareDrop" class="panel card">
+    <h2>Rare drop farm calculator</h2>
+    <div class="grid2">
+      <label>Mob <select id="rareDropMob"></select></label>
+      <label>Drop <select id="rareDropItem"></select></label>
+    </div>
+    <div class="grid2">
+      <label>Normal activity XP/hr (what you'd do instead; leave blank if this mob IS your normal grind) <input type="number" id="normalXpPerHour"></label>
+      <label>Expected remaining play hours <input type="number" id="remainingHours" value="200"></label>
+    </div>
+    <button id="runRareDrop">Evaluate</button>
+    <pre id="rareDropResult" class="result"></pre>
+  </section>
+
+  <section id="importPanel" class="panel card">
+    <h2>Import from screenshot</h2>
+    <p class="sub">Upload a screenshot of your Skills panel or Task queue and have it parsed into structured data automatically. Needs an Anthropic API key configured on the server (see README) — nothing is sent anywhere except Anthropic's API to read the image you upload.</p>
+    <input type="file" id="importFile" accept="image/*">
+    <label>What's in this image? <select id="importKind">
+      <option value="skills">Skills panel</option>
+      <option value="tasks">Task queue</option>
+    </select></label>
+    <button id="runImport">Parse image</button>
+    <pre id="importResult" class="result"></pre>
+    <div id="importApply" hidden>
+      <button id="applyImport">Apply to profile</button>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
