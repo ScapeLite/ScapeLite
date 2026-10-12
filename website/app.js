@@ -3,7 +3,7 @@
   'use strict';
   var grid = document.getElementById('pluginGrid');
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-  fetch('catalog.json').then(function (r) { return r.json(); }).then(function (cat) {
+  fetch('catalog.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (cat) {
     var v = document.getElementById('ver'); if (v && cat.version) v.textContent = 'v' + cat.version;
     grid.textContent = '';
     cat.plugins.forEach(function (p) {
