@@ -356,7 +356,9 @@
         "categories",
         "items"
       ],
-      "screenshots": []
+      "screenshots": [
+        "bank-tools.png"
+      ]
     },
     {
       "id": "window-dock",
@@ -378,7 +380,9 @@
         "map",
         "layout"
       ],
-      "screenshots": []
+      "screenshots": [
+        "window-dock.png"
+      ]
     },
     {
       "id": "layouts",
@@ -399,7 +403,9 @@
         "panels",
         "presets"
       ],
-      "screenshots": []
+      "screenshots": [
+        "layouts.png"
+      ]
     },
     {
       "id": "craft-potential",
@@ -422,7 +428,9 @@
         "smith",
         "brew"
       ],
-      "screenshots": []
+      "screenshots": [
+        "craft-potential.png"
+      ]
     },
     {
       "id": "chat-default",
@@ -442,7 +450,9 @@
         "chat",
         "interface"
       ],
-      "screenshots": []
+      "screenshots": [
+        "chat-default.png"
+      ]
     },
     {
       "id": "combat-readout",
@@ -464,7 +474,9 @@
         "combat",
         "interface"
       ],
-      "screenshots": []
+      "screenshots": [
+        "combat-readout.png"
+      ]
     },
     {
       "id": "usage-ping",
@@ -484,7 +496,9 @@
         "privacy",
         "core"
       ],
-      "screenshots": []
+      "screenshots": [
+        "usage-ping.png"
+      ]
     }
   ],
   "authors": {
