@@ -1,0 +1,60 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>layout-fixture</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#1b1b24;color:#ddd;font:14px system-ui}
+#ui-container{position:absolute;left:0;top:0;transform-origin:0 0}
+#hud-layer{position:absolute;left:0;top:0}
+.gw{position:absolute;width:376px;height:440px;box-sizing:border-box;background:#2a2a38;border:1px solid #555;transform-origin:0 0}
+.gw.tasks{height:616px}
+.gw>.panel-titlebar{height:26px;background:#3a3a4c}
+.kp{position:fixed;box-sizing:border-box;background:#242434;border:1px solid #666;transform-origin:0 0;width:320px;height:300px}
+#cc-route-panel{width:420px;height:auto;min-height:200px}
+.kp>.hd{height:28px;background:#33334a}
+</style></head>
+<body>
+<!-- Fake game shell for scripts/test-default-layout.js: windowed game panels in #ui-container, ScapeLite panels as fixed boxes, and just the helpers
+     overlay/ui-layout.js looks for (UI info, panel scales, settings, Info Bars). The REAL ui-layout.js and default-layout.js run on it. -->
+<div id="ui-container"><div id="hud-layer"></div></div>
+<script>
+document.body.classList.add('panels-windowed');
+const SET = { uiLayoutEnabled: true, uiScalePct: 100, uiPalette: 'default', uiDensity: 'cozy', uiFontPx: 0, uiAccent: '' };
+const fx = window.fx = { SET, bars: { top: 34, bottom: 34 }, mult: {}, scales: {}, sizes: {} };
+window.__ccPluginSettings = { get: (k) => SET[k], set: (k, v) => { SET[k] = v; }, seed: (o) => Object.assign(SET, o), getAll: () => Object.assign({}, SET), onChange: () => () => {} };
+window.__ccUI = { applyTheme() {} };
+window.__ccBar = { edge: () => ({ top: fx.bars.top, bottom: fx.bars.bottom }) };
+const uiBox = document.getElementById('ui-container');
+const zoom = () => Math.min(innerWidth / 1920, innerHeight / 1080);
+const KIT = ['cc-queue', 'cc-xp-tracker', 'cc-route-panel', 'cc-goals', 'cc-droplog', 'cc-matshort', 'cc-treeadv', 'cc-chat', 'cc-card-inventory', 'cc-card-equipment', 'cc-card-barter', 'cc-card-skills', 'cc-card-quests', 'cc-card-diary', 'cc-card-friends'];
+const GAME = ['tasks', 'inventory', 'equipment', 'barter', 'skills', 'quests', 'diary', 'friends'];
+const RES = KIT.filter((i) => i !== 'cc-route-panel');
+const gPanels = {};
+GAME.forEach((id, i) => {
+  const p = document.createElement('div'); p.className = 'gw ' + id + ' panel-floating'; p.style.left = (100 + i * 20) + 'px'; p.style.top = (60 + i * 15) + 'px'; p.style.display = 'none';
+  const tb = document.createElement('div'); tb.className = 'panel-titlebar'; tb.dataset.panelId = id; p.appendChild(tb); document.getElementById('hud-layer').appendChild(p); gPanels[id] = p;
+});
+const kPanels = {};
+KIT.forEach((id, i) => {
+  const p = document.createElement('div'); p.id = id; p.className = 'kp'; p.style.left = (150 + i * 10) + 'px'; p.style.top = (70 + i * 10) + 'px'; p.style.display = 'none';
+  const hd = document.createElement('div'); hd.className = 'hd'; p.appendChild(hd); document.body.appendChild(p); kPanels[id] = p;
+});
+const lsSize = (id) => 'cc-size-' + id;
+function paintKit(id) { const p = kPanels[id], s = zoom() * (SET.uiScalePct / 100) * (fx.mult[id] === undefined ? 0.8 : fx.mult[id]); p.style.scale = String(s); }
+function paintGame(id) { const s = fx.scales[id]; gPanels[id].style.scale = s ? String(s) : ''; }
+function layoutZoom() { const z = zoom(); uiBox.style.zoom = String(z); KIT.forEach(paintKit); GAME.forEach(paintGame); }
+// the game's own zoom follows the window, like the real one
+window.addEventListener('resize', layoutZoom); setInterval(layoutZoom, 100); layoutZoom();
+try { fx.mult = JSON.parse(localStorage.getItem('cc-panel-mult') || '{}') || {}; } catch (e) { fx.mult = {}; }
+window.__ccUIInfo = {
+  ids: () => KIT.slice(), name: (id) => id, locked: () => false, head: () => '.hd', mult: (id) => (fx.mult[id] === undefined ? 0.8 : fx.mult[id]),
+  setMult: (id, v) => { if (!v) delete fx.mult[id]; else fx.mult[id] = Math.max(0.5, Math.min(2, v)); localStorage.setItem('cc-panel-mult', JSON.stringify(fx.mult)); paintKit(id); },
+  resizable: (id) => RES.includes(id),
+  setSize: (id, w, h) => { const p = kPanels[id]; if (!p) return; p.style.width = w + 'px'; p.style.height = h + 'px'; if (w >= 100 && h >= 90) localStorage.setItem(lsSize(id), JSON.stringify({ w: Math.round(w), h: Math.round(h) })); },
+  clearSize: (id) => { const p = kPanels[id]; if (p) { p.style.width = ''; p.style.height = ''; } localStorage.removeItem(lsSize(id)); },
+};
+window.__ccPanelScale = {
+  get scales() { return Object.assign({}, fx.scales); },
+  setScales(map, replace) { if (replace) fx.scales = {}; Object.keys(map || {}).forEach((id) => { if (map[id] > 0) fx.scales[id] = map[id]; }); GAME.forEach(paintGame); },
+};
+window.fxShow = (on) => { Object.values(kPanels).forEach((p) => { p.style.display = on ? 'block' : 'none'; }); Object.values(gPanels).forEach((p) => { p.style.display = on ? 'block' : 'none'; }); };
+</script>
+</body></html>

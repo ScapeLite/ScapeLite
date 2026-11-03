@@ -1,0 +1,67 @@
+# Research: rebuild the game UI as a "ScapeLite UI" plugin?
+
+Date 2026-10-18. Read-only research (live page probed with Runtime.evaluate, DOMDebugger.getEventListeners and a passive MutationObserver; nothing clicked or moved). Rule applied: ScapeLite reads, displays, restyles and rearranges; it never synthesises game actions.
+
+## Verified facts about the game DOM (live probe + bundle.js)
+
+1. All panels (tasks `#unified-queue-panel`, `#bag-panel`, `#skills-panel`, `#quests-panel`, `#chat-panel`, `#diary-panel`, equipment, friends, barter, HUDs) are direct children of `#ui-container`, absolutely positioned, each with a game-made `.panel-titlebar[data-panel-id]`. Positions are inline `left/top` written by the game's own windowed-panel manager (`scapewatch_panel_windows`), which also re-clamps on window resize.
+2. `#ui-container` is zoomed by the game (`style.zoom`, currently 1.2676) and is the offsetParent of every panel. Only 38 of 4890 CSS rules are scoped to `#ui-container` (notably `#ui-container > *`); 154 are `body.`-scoped.
+3. **The game itself re-parents its live panels.** `bringToFront` does `panel.parentNode.appendChild(panel)` (moving the node to the end) and then restores scrollTop/scrollLeft of descendants. So nodes surviving an `appendChild` move within the same parent is proven by the game's own behaviour on every focus click. Moving to a different parent in the same document works the same way for JS references and listeners (a move is not a clone).
+4. Handler placement: panels use **container-level listeners** (one `click` on each panel element, `pointerdown` on the titlebar), a few `document`-level capture listeners (outside-click closers), and some per-element listeners created with the element (skill cells: `mouseenter`+`click`; tasks rows: `contextmenu` + click wired in `_attachRowHandlers`; tab bar buttons: none direct, handled by delegation). `#ui-container` itself has one `mouseover`/`mouseout` pair (almost certainly the `data-tip` tooltip delegation; 310 elements carry tips). Consequence: moving panels **inside `#ui-container`** keeps everything working; moving them **outside** it would (a) lose the zoom, (b) probably lose tooltips, (c) lose the 38 scoped rules. Keep any grid inside `#ui-container`.
+5. Re-render style: over 8 s idle, tasks/inventory/skills/quests/chat/diary had **zero childList mutations** and only attribute updates (461 on tasks); all 40 sampled descendants of each stayed connected. The game keeps element references (`this.element`, `rowsWrapEl`, `rowEls`) and updates incrementally. BUT it does rebuild: `_buildRowElements` removes and recreates `.uq-rows` and all rows on a layout/density change, and the bundle has 404 `innerHTML` uses. So anything we attach to inner nodes is fragile; anything we do to the panel root element is stable.
+6. Bank, Settings, Hiscores, Quests log, Mobs, Unlocks, Clan, Raid, Ledger etc. are not panels. They are tabs (`#tab-bank`, `#tab-hiscores`, ...) inside one `.modal-overlay > .modal-container > .modal-body`, built once (`init(e)` appends `.bank-layout` to the tab element). They have their own search inputs, drag-reorder (`_dragSourceEl`, `getBoundingClientRect` hit-testing) and keyboard handlers.
+7. Drag math in the game (queue reorder, windowed panels) uses `clientX/Y` and `getBoundingClientRect()` deltas, which is fine under zoom only when the panel stays under the same zoom ancestor. CSS `transform: scale` on a panel (instead of zoom) would break hit-testing vs layout, so ScapeLite already uses `zoom` (panel-resize, menu-dock).
+8. No `isTrusted` checks exist in the bundle (0), so the game cannot tell synthetic from real clicks. That is exactly why the dev rule matters: it cannot be enforced technically, only by us.
+
+## What ScapeLite already does (this is architecture A+, not plain A)
+
+Existing modules already do much of B without moving a single node: `panel-resize`, `panel-fuse` (CSS `margin` offsets, never writes game left/top), `menu-dock`, `window-dock`, `notif-dock`, `sidebar-tabs` (one generated stylesheet hides/pins tab buttons), `layouts` (named presets of positions/sizes, writes localStorage and reloads), `modal-resize`. Our own panels (`cc-route-panel`, trackers, drawers) sit beside the game's. `game-bridge.js` is read-only (`G`, `D` getters, `project()`, `treeState()`...). Two grey spots to keep honest: `setChatChannel` writes game-internal UI state (`C._activeChannel`, not a game command, but it is a write into the game's objects); `window-dock` makes the Map cross button close the map (a handler we attach that triggers the game's own control).
+
+## Architectures
+
+### A. CSS skin + own panels beside the game's (current, extended)
+- Gain: theming, density, per-panel scale, tooltips and advisors. Players already get this.
+- Rule risk: none. Effort to extend (more skins, per-panel opacity/compact modes, hide-able rows): 3-8 days each family.
+- Technical risk: low-medium. Selectors on game classes break on renames (mitigated by feature flags + `try`); performance cost is trivial.
+- Limits: cannot give a true "tab group" or grid because panels keep absolute positioning; overlap management stays manual (Fuse helps).
+
+### B. Dock and restyle the game's live panels (grid / tab groups)
+- Gain: the real "streamlined, customisable HUD": snap-to-column layouts, tabbed groups (Skills / Inventory / Diary in one frame), auto-hide, layout presets without page reload, window-resize responsive layouts.
+- Rule: **compliant.** Moving the game's own element does not invoke any game function; all clicks are then handled by the game's own listeners from a human click. Nothing is synthesised, selected or sent. Effectively equals the user dragging a window, which the game already supports.
+- Feasibility: proven for panel roots (fact 3-5). Technique: do not reparent into foreign wrappers; instead either (B1) CSS-only: put the panels in a CSS grid by making `#ui-container` children `position:static/relative` with `!important` and `grid-area`; the game's inline `left/top` become inert. Zero DOM moves, so all event delegation and any hidden `contains()` checks keep working; or (B2) real moves into a ScapeLite wrapper **inside** `#ui-container` (needed for tab groups: only one panel visible at a time, others `display:none`; but the game toggles `display` inline for open/close, so visibility needs a `data-cc-active` class combined with `!important`).
+- Risks: (1) game's `_clampAllIntoView`/`bringToFront` still write left/top and re-append nodes, so B2 would fight it every click (bringToFront moves the node out of our wrapper? no, it re-appends to its current parent, so it stays in the wrapper but reorders; harmless but triggers layout and MutationObserver noise); (2) `Ie.applyMultiOpenMode` hides other panels when "single open" mode is set, which fights tab groups; (3) tab bar buttons toggle panels by display; our tab group must not click them (read their `.active` state only); (4) game updates that add panels or change `#ui-container > *` rules; (5) a11y: re-ordering DOM vs visual order (focus order); the game has little a11y anyway so this is a wash; (6) layout presets must handle the unknown panel gracefully (unknown panels left untouched).
+- Effort: B1 grid layout engine + editor UI + presets ~10-15 days; tab groups on top (B2) ~8-12 days; hardening against game updates ~5 days. Total ~25-30 days.
+
+### C. Full replacement (own components fed from `G`)
+- Display-only rebuildable (read `G`/`D`, no controls needed): skills overview / XP / level-ups, current task card, HP/stats HUD, quest and diary progress views, collection/unlocks overview, hiscores view (data comes from the server, so only if the game keeps it in a readable state), equipment stats readout, chat *view* (not the input), loot log, XP/hr (already have), population/info.
+- Cannot be rebuilt without breaking the rule: Tasks queue (selecting options, reroll, reorder, pin, insert), Inventory/Equipment (use/equip/drop/right-click menus), Bank (deposit/withdraw/search with drag reorder), levers/Settings/Customize/Skillcustom, Barter, Friends actions, Smith/Craft/Brew/Imbue, Raid/Clan, chat input/send. Each of those controls would call the game's own function from our code (`G.xxx()`), which is "our code taking the action", or would `.click()` the native node, which is synthesising. Even a "human clicks our button, we call the handler" version is a judgement call the dev has not approved and the rule text ("must never take actions for the player") invites a ban. Recommend treating it as forbidden unless the dev says otherwise in writing.
+- Technical risk: every game update that renames `G` fields breaks the display silently; no ground truth for display accuracy (the bridge currently validates against the dashboard at 0.000%, which is expensive per feature); performance fine (read-only polling); a11y improves only for the parts we write.
+- Effort for the display-only subset: ~25-40 days; for full parity it is not achievable under the rule.
+
+### D. Hybrid: overview HUD for display-only parts + native interactive panels docked (B)
+- Gain: the best-looking and most useful result: a compact always-on HUD (task, XP/hr, HP, potions, skills strip, quest step, ETA, advisor hints) built by us from `G`, plus the game's own Tasks/Inventory/Bank docked in a grid with presets. Players keep the native interactive parts exactly as the dev designed them.
+- Rule: compliant (display from reads, interaction stays native).
+- Effort: B1 (10-15 d) + HUD widgets (15-20 d, many pieces already exist: xp-tracker, combat-readout, walking-countdown, task-log) + docs/settings/migration of existing layouts (5 d) = ~30-40 person-days.
+- Risks: duplicate information confusing players if the native display-only panels also remain; solved by letting the user hide the native ones via CSS (`display:none` on, say, skills panel) while ours shows the same data. But note "hide native" is only OK for display-only panels; hiding Tasks would stop the player acting.
+
+## Zoom scaling summary
+Keep everything inside `#ui-container` so one zoom applies. Positions we read with `getBoundingClientRect()` are in screen px; divide by zoom when writing CSS (all existing modules already have `uiZoom()`). Do not use transform scale on panels. Check that grid `fr` units behave under zoom at fractional zoom (1.26759): to prototype.
+
+## Recommendation
+Do not do a full rebuild (C). Take **D, staged, by first adding B1 (CSS grid dock without moving nodes) to the current layered approach**, and offer it as an opt-in "ScapeLite UI" layout mode, not a separate replacement UI. This keeps all actions native, reuses the existing dock/fuse/layout modules, and the HUD part is just more of what ScapeLite already does. Treat any control that would call a game function as out of scope.
+
+## Phased roadmap
+1. Phase 0 (2-3 d): spikes below; decide on B1 vs B2.
+2. Phase 1 (10-15 d): "Layout mode": CSS-grid dock for the 8 standard panels + chat, drag-to-arrange in an editor, presets stored with the existing `cc-layouts` (no page reload needed), fallback to floating when a panel is unknown; kill switch in settings.
+3. Phase 2 (8-12 d): tab groups (visibility via classes only; tab strip reads the game's `.active`; clicking our tab just changes which panel we show, never the game's open state, so it is not a game action. Requires Phase 0 test of `applyMultiOpenMode`).
+4. Phase 3 (15-20 d): overview HUD built from `__ccBridge`: skills strip, XP/hr, quest step, potion timers, hide-native toggles for display-only panels only.
+5. Phase 4 (5 d+ ongoing): compatibility harness: a script that, after every game update, checks all selectors/G fields we use and reports which feature to disable; versioned feature flags.
+
+## Go/no-go experiments (all read-only or reversible CSS)
+1. **Grid without moves**: inject a stylesheet in a spare tab/profile that sets panels to `position:static` inside a `display:grid` `#ui-container`; confirm the game still opens/closes/clicks panels, drag still works (or is cleanly disabled), `_clampAllIntoView` on window resize does not corrupt `scapewatch_panel_windows`. Go if no console errors and no lost clicks in 30 min of play. (Note: do this on a test account/profile; I did not do it here.)
+2. **Move test on a throwaway element**: create a dummy tooltip-bearing element with `data-tip` inside `#ui-container`, move it to a scratch wrapper inside and outside `#ui-container`, hover it: tooltips work only inside? (Confirms fact 4.)
+3. **Re-render survival**: with a MutationObserver, change layout/density in the Tasks panel by a human, verify any class/attribute we put on rows is lost but root attributes survive; define "root only" rule.
+4. **applyMultiOpenMode**: read the function; verify whether tab-group visibility classes with `!important` are overridden or cause hidden-panel desync.
+5. **Zoom**: grid at zoom 1.0, 1.27, 1.5 and window resize; ensure panel sizes and the game's click hit-testing (getBoundingClientRect) stay consistent.
+6. **Perf**: record 60 s frame times with the grid and 8 panels open vs now; no regression > 5% is the go criterion.
+7. **Dev check (blocking)**: ask the game's developer whether (a) grid/dock repositioning of native panels and (b) a ScapeLite-drawn HUD calling nothing in the game are acceptable, and whether `setChatChannel` style UI-state writes are acceptable. No-go on C for interactive panels without an explicit yes.

@@ -14,10 +14,11 @@
   try { window[NS] && window[NS].teardown && window[NS].teardown(); } catch (e) {}
 
   const settingOn = (k) => { try { const s = window.__ccPluginSettings; return !(s && s.get && s.get(k) === false); } catch (e) { return true; } };
-  let st = { x: 0, y: 0, s: 1, col: false, side: 'r', rect: null, locked: false };
-  try { const o = JSON.parse(localStorage.getItem(LS) || '{}'); st = Object.assign(st, { x: +o.x || 0, y: +o.y || 0, s: Math.min(1.8, Math.max(0.5, +o.s || 1)), col: !!o.col, side: o.side || 'r', rect: o.rect || null, locked: !!o.locked }); } catch (e) {}
+  let st = { x: 0, y: 0, s: 1, col: false, side: 'r', rect: null, locked: false, bpos: null };   // bpos: where the tucked-away tab sits along its edge (0..1), when you moved it
+  try { const o = JSON.parse(localStorage.getItem(LS) || '{}'); st = Object.assign(st, { x: +o.x || 0, y: +o.y || 0, s: Math.min(1.8, Math.max(0.5, +o.s || 1)), col: !!o.col, side: o.side || 'r', rect: o.rect || null, locked: !!o.locked, bpos: Number.isFinite(+o.bpos) && o.bpos !== null ? +o.bpos : null }); } catch (e) {}
   const save = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) {} };
   const SEL = '#ui-container .window-controls';
+  const gameK = () => { const g = window.__ccGameScale; return { x: (g && g.x) || 1, y: (g && g.y) || 1 }; };   // the info bars squeeze the game area vertically
   const uiZoom = () => { const u = document.getElementById('ui-container'); const z = u ? parseFloat(getComputedStyle(u).zoom) : 1; return z > 0 ? z : 1; };
 
   const style = document.createElement('style'); style.id = 'cc-wc-style';
@@ -42,19 +43,19 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
 #cc-wc-strip.hot .mv,#cc-wc-strip.hot .ar{opacity:1}
 #cc-wc-strip .mv{left:0;width:18px;cursor:grab;color:#7a8099;border-right:0;border-radius:16px 0 0 16px}
 #cc-wc-strip .mv::before{content:'';width:6px;height:24px;background:radial-gradient(circle,currentColor 1.2px,transparent 1.7px) 0 0/6px 8px}
-#cc-wc-strip .mv:hover{color:#ffd24a}
+#cc-wc-strip .mv:hover{color:var(--cc-accent,#ffd24a)}
 #cc-wc-strip .mv:active{cursor:grabbing}
 #cc-wc-strip .ar{right:0;width:15px;cursor:pointer;color:#8a90aa;font:600 15px/1 system-ui,sans-serif;border-left:0;border-radius:0 16px 16px 0}
-#cc-wc-strip .ar:hover{color:#ffd24a;background:rgba(40,34,12,.95)}
+#cc-wc-strip .ar:hover{color:var(--cc-accent,#ffd24a);background:rgba(40,34,12,.95)}
 #cc-wc-strip.flip .mv{left:auto;right:0;border-right:1px solid rgba(255,255,255,.07);border-left:0;border-radius:0 16px 16px 0}
 #cc-wc-strip.flip .ar{right:auto;left:0;border-left:1px solid rgba(255,255,255,.07);border-right:0;border-radius:16px 0 0 16px}
 #cc-wc-strip .sz{position:absolute;left:4px;bottom:3px;width:11px;height:11px;pointer-events:auto;cursor:nesw-resize;border-left:2px solid #8a90aa;border-bottom:2px solid #8a90aa;border-radius:0 0 0 7px;opacity:0;transition:opacity .2s,border-color .2s;z-index:2}
 #cc-wc-strip.flip .sz{left:auto;right:4px;border-left:0;border-right:2px solid #8a90aa;border-radius:0 0 7px 0;cursor:nwse-resize}
 #cc-wc-strip.hot .sz{opacity:.9}
-#cc-wc-strip .sz:hover{border-color:#ffd24a}
+#cc-wc-strip .sz:hover{border-color:var(--cc-accent,#ffd24a)}
 #cc-wc-badge{position:fixed;z-index:99990;display:none;align-items:center;justify-content:center;background:rgba(9,9,15,.88);border:1px solid rgba(120,142,210,.4);backdrop-filter:blur(6px);color:#aab1cc;
   font:600 16px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);transition:color .15s,border-color .15s,background .15s}
-#cc-wc-badge:hover{color:#ffd24a;border-color:#ffd24a;background:rgba(30,26,12,.92)}
+#cc-wc-badge:hover{color:var(--cc-accent,#ffd24a);border-color:var(--cc-accent,#ffd24a);background:rgba(30,26,12,.92)}
 #cc-wc-badge.show{display:flex}`;
   const strip = document.createElement('div'); strip.id = 'cc-wc-strip';
   strip.innerHTML = '<span class="mv" title="Drag to move \u00b7 double-click to reset"></span><span class="sz" title="Drag to resize"></span><span class="ar" title="Tuck the buttons away into the screen edge"></span>';
@@ -65,7 +66,7 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
   const ARROW_OUT = { r: '›', l: '‹', t: '˄', b: '˅' }; // toward the wall = collapse
   const ARROW_IN = { r: '‹', l: '›', t: '˅', b: '˄' };   // away from the wall = open
   function nearest(r) {
-    const d = { l: r.left, r: innerWidth - r.right, t: r.top, b: innerHeight - r.bottom };
+    const d = { l: r.left, r: innerWidth - r.right, t: r.top, b: (window.__ccVH ? window.__ccVH() : window.innerHeight) - r.bottom };
     let best = 'r'; ['r', 'l', 't', 'b'].forEach((k) => { if (d[k] < d[best] - 0.5) best = k; });
     return best;
   }
@@ -75,11 +76,12 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
     const el = wc();
     if (!el || !settingOn('winDockEnabled')) return '';
     const z = uiZoom(), s = st.s;
-    let tx = st.x / z / s, ty = st.y / z / s;
+    const kc = gameK();
+    let tx = st.x / z / s / kc.x, ty = st.y / z / s / kc.y;
     let extra = '';
     if (st.col && st.rect) {
       const r = st.rect, out = { r: [r.width + 40, 0], l: [-(r.width + 40), 0], t: [0, -(r.height + 40)], b: [0, r.height + 40] }[st.side] || [0, 0];
-      tx += out[0] / z / s; ty += out[1] / z / s;
+      tx += out[0] / z / s / kc.x; ty += out[1] / z / s / kc.y;
       extra = 'opacity:0 !important;pointer-events:none !important;';
     }
     const zoom = Math.abs(s - 1) > 0.001 ? `zoom:${s.toFixed(4)} !important;` : '';
@@ -110,8 +112,10 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
       if (st.side === 'r') { left = innerWidth - bw; top = R.top + R.height / 2 - bh / 2; }
       else if (st.side === 'l') { left = 0; top = R.top + R.height / 2 - bh / 2; }
       else if (st.side === 't') { left = R.left + R.width / 2 - bw / 2; top = 0; }
-      else { left = R.left + R.width / 2 - bw / 2; top = innerHeight - bh; }
-      badge.style.cssText = `left:${Math.round(Math.max(0, Math.min(innerWidth - bw, left)))}px;top:${Math.round(Math.max(0, Math.min(innerHeight - bh, top)))}px;width:${bw}px;height:${bh}px;border-radius:${{ r: '8px 0 0 8px', l: '0 8px 8px 0', t: '0 0 8px 8px', b: '8px 8px 0 0' }[st.side]}`;
+      else { left = R.left + R.width / 2 - bw / 2; top = (window.__ccVH ? window.__ccVH() : window.innerHeight) - bh; }
+      if (st.side === 't') top = Math.max(top, (window.__ccEdge && window.__ccEdge.top) || 0);
+      if (Number.isFinite(st.bpos)) { const VHb = (window.__ccVH ? window.__ccVH() : window.innerHeight), Eb = (window.__ccEdge && window.__ccEdge.top) || 0; if (vert) top = Eb + st.bpos * (VHb - Eb - bh); else left = st.bpos * (innerWidth - bw); }
+      badge.style.cssText = `left:${Math.round(Math.max(0, Math.min(innerWidth - bw, left)))}px;top:${Math.round(Math.max(0, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - bh, top)))}px;width:${bw}px;height:${bh}px;border-radius:${{ r: '8px 0 0 8px', l: '0 8px 8px 0', t: '0 0 8px 8px', b: '8px 8px 0 0' }[st.side]}`;
       badge.textContent = ARROW_IN[st.side];
       badge.classList.add('show');
     }
@@ -134,8 +138,54 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
   const onOut = (e) => { if (inside(e)) { clearTimeout(hideT); hideT = setTimeout(() => { hover = false; place(); }, 350); } };
   document.addEventListener('mouseover', onOver, true);
   document.addEventListener('mouseout', onOut, true);
-  arEl.addEventListener('click', (e) => { e.stopPropagation(); const el = wc(); if (el) { const r = el.getBoundingClientRect(); if (r.width > 0) { st.side = nearest(r); st.rect = { left: r.left, top: r.top, width: r.width, height: r.height }; } } st.col = true; hover = false; save(); render(); });
-  badge.addEventListener('click', (e) => { e.stopPropagation(); st.col = false; save(); render(); });
+  arEl.addEventListener('click', (e) => {
+    e.stopPropagation(); const el = wc();
+    if (el) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0) {
+        st.side = nearest(r); st.rect = { left: r.left, top: r.top, width: r.width, height: r.height };
+        const VH = (window.__ccVH ? window.__ccVH() : window.innerHeight), W = window.innerWidth, E = (window.__ccEdge && window.__ccEdge.top) || 0, cl = (v) => Math.max(0, Math.min(1, v));
+        st.bpos = (st.side === 'l' || st.side === 'r') ? cl((r.top + r.height / 2 - E - 25) / Math.max(1, VH - E - 50)) : cl((r.left + r.width / 2 - 24) / Math.max(1, W - 48));
+      }
+    }
+    st.col = true; hover = false; save(); render();
+  });
+  // The tucked-away tab can be dragged along its edge or to another edge. A dashed preview shows where the buttons will be when you open it again
+  // (it follows the tab); dropping the tab places the row there. A click (no drag) still opens the buttons.
+  let bdrag = null, bmoved = false, bPrev = null;
+  const ghost = document.createElement('div'); ghost.id = 'cc-wc-ghost';
+  ghost.style.cssText = 'position:fixed;z-index:99995;display:none;box-sizing:border-box;pointer-events:none;border:2px dashed var(--cc-accent,#ffd24a);border-radius:10px;background:rgba(255,210,74,.10);box-shadow:0 0 16px rgba(255,210,74,.35)';
+  badge.addEventListener('mousedown', (e) => { if (e.button !== 0) return; bdrag = { x: e.clientX, y: e.clientY }; bmoved = false; e.preventDefault(); });
+  const bMove = (e) => {
+    if (!bdrag) return;
+    if (!bmoved && Math.abs(e.clientX - bdrag.x) + Math.abs(e.clientY - bdrag.y) < 6) return;
+    bmoved = true;
+    const VH = (window.__ccVH ? window.__ccVH() : window.innerHeight), W = window.innerWidth, E = (window.__ccEdge && window.__ccEdge.top) || 0;
+    const d = { l: e.clientX, r: W - e.clientX, t: e.clientY - E, b: VH - e.clientY };
+    let side = 'r'; ['r', 'l', 't', 'b'].forEach((k) => { if (d[k] < d[side]) side = k; });
+    const cl = (v) => Math.max(0, Math.min(1, v));
+    st.side = side;
+    st.bpos = (side === 'l' || side === 'r') ? cl((e.clientY - E - 25) / Math.max(1, VH - E - 50)) : cl((e.clientX - 24) / Math.max(1, W - 48));
+    // where the row would sit: against that edge, centred on the tab
+    const R = st.rect || { width: 280, height: 50 }, w = R.width, h = R.height;
+    let left, top;
+    if (side === 'r' || side === 'l') { left = side === 'r' ? W - w : 0; top = Math.max(E, Math.min(VH - h, e.clientY - h / 2)); }
+    else { left = Math.max(0, Math.min(W - w, e.clientX - w / 2)); top = side === 't' ? E : VH - h; }
+    bPrev = { left, top, width: w, height: h };
+    Object.assign(ghost.style, { display: 'block', left: Math.round(left) + 'px', top: Math.round(top) + 'px', width: Math.round(w) + 'px', height: Math.round(h) + 'px' });
+    if (!ghost.isConnected && document.body) document.body.appendChild(ghost);
+    place();
+  };
+  const bUp = () => {
+    ghost.style.display = 'none';
+    if (bdrag && bmoved) {
+      if (bPrev && st.rect) { st.x = st.x + (bPrev.left - st.rect.left); st.y = st.y + (bPrev.top - st.rect.top); st.rect = { left: bPrev.left, top: bPrev.top, width: bPrev.width, height: bPrev.height }; }
+      save(); render();
+    }
+    bdrag = null; bPrev = null; setTimeout(() => { bmoved = false; }, 30);
+  };
+  document.addEventListener('mousemove', bMove, true); document.addEventListener('mouseup', bUp, true);
+  badge.addEventListener('click', (e) => { e.stopPropagation(); if (bmoved) return; st.col = false; save(); render(); });
   ['mousedown', 'pointerdown', 'click', 'contextmenu'].forEach((t) => { strip.addEventListener(t, (e) => e.stopPropagation()); badge.addEventListener(t, (e) => e.stopPropagation()); });
 
   strip.querySelector('.mv').addEventListener('pointerdown', (e) => {
@@ -158,7 +208,7 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
       if (r) { // keep at least a part of the row on screen
         const dx = nx - st.x, dy = ny - st.y;
         if (r.right + dx < 60) nx = st.x + (60 - r.right); if (r.left + dx > innerWidth - 60) nx = st.x + (innerWidth - 60 - r.left);
-        if (r.top + dy < 0) ny = st.y - r.top; if (r.top + dy > innerHeight - 30) ny = st.y + (innerHeight - 30 - r.top);
+        if (r.top + dy < 0) ny = st.y - r.top; if (r.top + dy > (window.__ccVH ? window.__ccVH() : window.innerHeight) - 30) ny = st.y + ((window.__ccVH ? window.__ccVH() : window.innerHeight) - 30 - r.top);
       }
       st.x = nx; st.y = ny;
     } else {
@@ -207,7 +257,7 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
     row('Reset position and size', onReset, true);
     document.body.appendChild(m);
     const r = m.getBoundingClientRect();
-    m.style.left = Math.max(4, Math.min(innerWidth - r.width - 4, x)) + 'px'; m.style.top = Math.max(4, Math.min(innerHeight - r.height - 4, y)) + 'px';
+    m.style.left = Math.max(4, Math.min(innerWidth - r.width - 4, x)) + 'px'; m.style.top = Math.max(4, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - r.height - 4, y)) + 'px';
     menuEl = m; document.addEventListener('mousedown', onMenuAway, true);
   }
   const setLocked = (v) => { st.locked = !!v; hover = false; save(); render(); };
@@ -228,7 +278,7 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
   try { const o = JSON.parse(localStorage.getItem(LS_P) || '{}'); ps = { x: +o.x || 0, y: +o.y || 0, locked: !!o.locked }; } catch (e) {}
   const saveP = () => { try { localStorage.setItem(LS_P, JSON.stringify(ps)); } catch (e) {} };
   const pStyle = document.createElement('style'); pStyle.id = 'cc-pot-dock-style';
-  pStyle.textContent = '#cc-pot-handle{position:fixed;z-index:99990;width:16px;height:46px;display:none;align-items:center;justify-content:center;box-sizing:border-box;border-radius:9px 0 0 9px;cursor:grab;color:#7a8099;background:rgba(8,8,14,.92);border:1px solid rgba(120,142,210,.5);border-right:0;backdrop-filter:blur(6px);box-shadow:0 8px 22px rgba(0,0,0,.5);opacity:0;transition:opacity .2s,color .2s}#cc-pot-handle.show{display:flex}#cc-pot-handle.hot{opacity:1}#cc-pot-handle:hover{color:#ffd24a}#cc-pot-handle:active{cursor:grabbing}#cc-pot-handle::before{content:"";width:6px;height:24px;background:radial-gradient(circle,currentColor 1.2px,transparent 1.7px) 0 0/6px 8px}';
+  pStyle.textContent = '#cc-pot-handle{position:fixed;z-index:99990;width:16px;height:46px;display:none;align-items:center;justify-content:center;box-sizing:border-box;border-radius:9px 0 0 9px;cursor:grab;color:#7a8099;background:rgba(8,8,14,.92);border:1px solid rgba(120,142,210,.5);border-right:0;backdrop-filter:blur(6px);box-shadow:0 8px 22px rgba(0,0,0,.5);opacity:0;transition:opacity .2s,color .2s}#cc-pot-handle.show{display:flex}#cc-pot-handle.hot{opacity:1}#cc-pot-handle:hover{color:var(--cc-accent,#ffd24a)}#cc-pot-handle:active{cursor:grabbing}#cc-pot-handle::before{content:"";width:6px;height:24px;background:radial-gradient(circle,currentColor 1.2px,transparent 1.7px) 0 0/6px 8px}';
   const pHandle = document.createElement('div'); pHandle.id = 'cc-pot-handle'; pHandle.title = 'Drag to move \u00b7 right-click to lock';
   let pHover = false, pHideT = 0, pDrag = null, pLast = '';
   const potPanel = () => document.querySelector(PSEL);
@@ -268,19 +318,19 @@ body.cc-wc-on.cc-wc-hot #ui-container .window-controls{backdrop-filter:blur(6px)
     if (!pDrag) return;
     const el = potPanel(), r = el ? el.getBoundingClientRect() : null;
     let nx = pDrag.o.x + e.clientX - pDrag.x0, ny = pDrag.o.y + e.clientY - pDrag.y0;
-    if (r) { const dx = nx - ps.x, dy = ny - ps.y; if (r.right + dx < 80) nx = ps.x + (80 - r.right); if (r.left + dx > innerWidth - 40) nx = ps.x + (innerWidth - 40 - r.left); if (r.top + dy < 0) ny = ps.y - r.top; if (r.top + dy > innerHeight - 40) ny = ps.y + (innerHeight - 40 - r.top); }
+    if (r) { const dx = nx - ps.x, dy = ny - ps.y; if (r.right + dx < 80) nx = ps.x + (80 - r.right); if (r.left + dx > innerWidth - 40) nx = ps.x + (innerWidth - 40 - r.left); if (r.top + dy < 0) ny = ps.y - r.top; if (r.top + dy > (window.__ccVH ? window.__ccVH() : window.innerHeight) - 40) ny = ps.y + ((window.__ccVH ? window.__ccVH() : window.innerHeight) - 40 - r.top); }
     ps.x = nx; ps.y = ny; pRender();
   };
   const pUp = () => { if (!pDrag) return; pDrag = null; saveP(); pRender(); };
   window.addEventListener('pointermove', pMove); window.addEventListener('pointerup', pUp); window.addEventListener('pointercancel', pUp);
 
-  const timer = setInterval(() => { try { if (!document.hidden && !drag) render(); if (!document.hidden && !pDrag) pRender(); } catch (e) { /* keep ticking */ } }, 400);
+  const timer = setInterval(() => { try { if (!(document.hidden || window.__ccEcoOn) && !drag) render(); if (!(document.hidden || window.__ccEcoOn) && !pDrag) pRender(); } catch (e) { /* keep ticking */ } }, 400);
   render();
 
   function teardown() {
     clearInterval(timer); clearTimeout(hideT);
     document.removeEventListener('mouseover', onOver, true); document.removeEventListener('mouseout', onOut, true);
-    document.removeEventListener('click', onClickCapture, true);
+    document.removeEventListener('click', onClickCapture, true); document.removeEventListener('mousemove', bMove, true); document.removeEventListener('mouseup', bUp, true); ghost.remove();
     window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
     strip.remove(); badge.remove(); style.remove(); base.remove();
     closeMenu(); pHandle.remove(); pStyle.remove();

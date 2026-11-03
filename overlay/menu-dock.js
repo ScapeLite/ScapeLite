@@ -13,7 +13,7 @@
   try { const o = JSON.parse(localStorage.getItem(LS) || '{}'); st = { x: +o.x || 0, y: +o.y || 0, s: Math.min(1.8, Math.max(0.5, +o.s || 1)), locked: !!o.locked }; } catch (e) {}
   const save = () => { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) {} };
 
-  const BAR = '#ui-container>.panel-tab-bar', HP = '#ui-container>.hp-bar';
+  const BAR = ':is(#ui-container,#hud-layer)>.panel-tab-bar', HP = ':is(#ui-container,#hud-layer)>.hp-bar';
   const uiZoom = () => { const u = document.getElementById('ui-container'); const z = u ? parseFloat(getComputedStyle(u).zoom) : 1; return z > 0 ? z : 1; };
   const style = document.createElement('style'); style.id = 'cc-menu-dock-style';
   const base = document.createElement('style'); base.id = 'cc-menu-dock-base';
@@ -26,7 +26,7 @@
 #cc-dock-grip .gb{flex:1;text-align:center;pointer-events:none;letter-spacing:.1em}
 #cc-dock-grip .panel-titlebar-btns{display:flex;gap:2px}
 #cc-dock-grip .cc-fuse-btn{background:transparent;border:0;color:#9a9aae;padding:0 3px;cursor:pointer;display:inline-flex;align-items:center}
-#cc-dock-grip .cc-fuse-btn:hover,#cc-dock-grip .cc-fuse-btn.fused{color:#ffd24a}
+#cc-dock-grip .cc-fuse-btn:hover,#cc-dock-grip .cc-fuse-btn.fused{color:var(--cc-accent,#ffd24a)}
 #cc-dock-size{position:fixed;z-index:99987;width:14px;height:14px;box-sizing:border-box;cursor:nwse-resize;opacity:.5;
   border-left:2px solid rgba(255,255,255,.55);border-top:2px solid rgba(255,255,255,.55);border-radius:6px 0 0 0}
 #cc-dock-size:hover,#cc-dock-size.drag{opacity:1}`;
@@ -51,7 +51,7 @@
     if (!document.head) return;
     if (!style.isConnected) document.head.appendChild(style);
     if (!base.isConnected) document.head.appendChild(base);
-    const on = settingOn('menuDockEnabled') && document.body && document.body.classList.contains('cc-vmenu');
+    const on = settingOn('menuDockEnabled') && document.body && document.body.classList.contains('cc-vmenu') && !document.body.classList.contains('cc-menu-hidden');
     let css = '';
     if (on) {
       const o = fuseOff(), tx = (st.x + o.x) / st.s, ty = (st.y + o.y) / st.s; // translate is scaled by the element's own zoom
@@ -88,7 +88,7 @@
     if (u.left + adjX < 0) nx = st.x - u.left / z;
     if (u.right + adjX > innerWidth) nx = st.x + (innerWidth - u.right) / z;
     if (u.top + adjY < 20) ny = st.y - (u.top - 20) / z;
-    if (u.bottom + adjY > innerHeight) ny = st.y + (innerHeight - u.bottom) / z;
+    if (u.bottom + adjY > (window.__ccVH ? window.__ccVH() : window.innerHeight)) ny = st.y + ((window.__ccVH ? window.__ccVH() : window.innerHeight) - u.bottom) / z;
     return { x: nx, y: ny };
   }
 
@@ -145,7 +145,7 @@
   const closeMenu = () => { if (menu) { menu.remove(); menu = null; } };
   function otherPanels() {
     const out = [];
-    document.querySelectorAll('.panel-floating > .panel-titlebar[data-panel-id]').forEach((tb) => {
+    window.__ccDom.qa('.panel-floating > .panel-titlebar[data-panel-id]').forEach((tb) => {
       const r = tb.parentElement.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) { const l = tb.querySelector('.panel-titlebar-label'); out.push({ name: (l && l.textContent.trim()) || tb.dataset.panelId, h: r.height }); }
     });
@@ -160,6 +160,8 @@
     head('Menu + HP bar');
     add('pm-i', st.locked ? '🔓 Unlock position and size' : '🔒 Lock (no move / resize)', () => { st.locked = !st.locked; save(); render(); });
     const sep = document.createElement('div'); sep.className = 'pm-sep'; m.appendChild(sep);
+    add('pm-i', 'Hide this menu completely', () => { try { window.__ccPluginSettings.set('menuBarHidden', true); } catch (e) { /* not saved */ } });
+    add('pm-i', 'Turn off this menu (back to the game’s own)', () => { try { window.__ccPluginSettings.set('verticalMenuEnabled', false); } catch (e) { /* not saved */ } });
     add('pm-i' + (st.s !== 1 || st.x || st.y ? '' : ' dis'), 'Reset size and position', () => { if (st.locked) return; st.x = 0; st.y = 0; st.s = 1; save(); render(); });
     head('Size');
     const chips = document.createElement('div'); chips.className = 'pm-chips';
@@ -176,7 +178,7 @@
     document.body.appendChild(m); menu = m;
     const mr = m.getBoundingClientRect();
     m.style.left = Math.max(4, Math.min(innerWidth - mr.width - 4, x)) + 'px';
-    m.style.top = Math.max(4, Math.min(innerHeight - mr.height - 4, y)) + 'px';
+    m.style.top = Math.max(4, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - mr.height - 4, y)) + 'px';
   }
   grip.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); openMenu(e.clientX, e.clientY); });
   const onDocDown = (e) => { if (menu && !(e.target.closest && e.target.closest('.cc-pm'))) closeMenu(); };

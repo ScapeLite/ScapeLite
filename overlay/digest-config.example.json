@@ -1,5 +1,5 @@
 {
-  "enabled": true,
-  "webhookUrl": "https://discord.com/api/webhooks/XXXXXXXXXXXXXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "enabled": false,
+  "webhookUrl": "",
   "intervalHours": 6
 }

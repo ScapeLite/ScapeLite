@@ -48,9 +48,11 @@
 //     the HUD's destination name to real coordinates. Indexed both by
 //     lowercased `name` (for matching "Moving to X" HUD text) and by `id`
 //     (for matching the queue panel's `data-node-id`, see below).
-//   - Movement speed formula (Constants.js, also confirmed from the real
-//     extracted data): 10 + (vigorLevel+1) * (0.1 + 0.0005*vigorLevel)
-//     px/sec, read live from the Skills panel's Vigor level.
+//   - Movement speed: the game bridge's speed() (window.__ccBridge), the single
+//     source for the whole mod: the game's own formula over Vigor, telescopes,
+//     compasses, beacons, milestones, collector, shards, fleet foot and the active
+//     movement potion. Without the bridge there is no model speed (no ETA until it
+//     attaches); a measured speed still works.
 //
 // MEASURED SPEED (2026-10-07, replaces the formula as the primary ETA): while
 // walking to the current task's node, the game's own floating Current Task
@@ -60,17 +62,13 @@
 // the ~10% gap is a permanent bonus the formula doesn't model). Speed =
 // distance delta / time between N changes; ETA = N / speed. N is the real
 // route length, so winding paths are handled without the correction factor.
-// The formula (x correction) is only the fallback for the first few seconds
-// of a walk and for walks where no N is shown (e.g. a bank trip). Speed
-// buffs (potions etc.) are detected the same way: measured speed vs a
-// learned baseline measured/formula ratio (see "Speed buff detection").
+// The bridge speed (x correction) is only the fallback for the first few
+// seconds of a walk and for walks where no N is shown (e.g. a bank trip). A
+// speed buff is read from the bridge (it names the active movement potion).
 //
-// Known limitation (unchanged for the fallback): the speed formula is BASE Vigor speed
-// only -- doesn't account for movement buffs (potion, telescope,
-// unlocks, Fortify talent, Collector bonus). The ETA self-calibration
-// below (see "ETA correction factor") absorbs most of this in practice,
-// since it learns from real observed trip times rather than trusting the
-// formula blindly, but it's still an approximation, not exact physics.
+// Known limitation of the fallback: it is the straight line between two nodes
+// over the bridge speed. The ETA self-calibration below (see "ETA correction
+// factor") absorbs the winding of real routes by learning from observed trips.
 //
 // Position tracking: there's no live "where am I right now" the page can
 // read directly, so this infers it two ways now (fixed 2026-10-07, see
@@ -103,6 +101,8 @@
   const NS = '__ccWalkingCountdown';
 
   try { window[NS] && window[NS].teardown && window[NS].teardown(); } catch (e) {}
+  const life = window.__ccLife.scope('walking-countdown');   // timers go through it: a copy that failed half way through loading can still be torn down, so a re-inject never leaves a second live copy
+  document.querySelectorAll('#cc-walk-countdown, #cc-walk-countdown-style').forEach((n) => n.remove());   // a copy left behind by an older load must never stay next to this one (two walking panels)
 
   const POLL_MS = 250; // halved from 500 -- short trips (e.g. a quick bank hop) were being missed entirely between polls
   const NODES_URL = 'https://play.scapewatch.com/shared/data/nodes.json';
@@ -153,10 +153,6 @@
     if (!Number.isFinite(level)) return null;
     return { level, pct: Number.isFinite(pct) ? pct : 0 };
   }
-  function movementSpeedPxPerSec(vigorLevel) {
-    return 10 + (vigorLevel + 1) * (0.1 + 0.0005 * vigorLevel);
-  }
-
   // --- measured speed ----------------------------------------------------
   // Remaining route distance "(N)" from the game's own Current Task widget.
   // Only trusted when the widget's node name is the walk's destination.
@@ -189,56 +185,9 @@
     }
   }
 
-  // The game's own Unlocks panel states the player's total (unbuffed)
-  // movement speed: "Total Movement Speed +51% (15.1 steps/sec)" in
-  // `.unlocks-perk-row[data-perk="movespeed"]`. That's the authoritative base
-  // speed (Vigor, telescopes, collector, fortress ... all included), so it
-  // replaces the Vigor-only formula for the fallback ETA and is the baseline
-  // a measured walk is compared against. Cached in localStorage since the
-  // row only exists once the Unlocks panel has been built.
-  const TOTAL_SPEED_KEY = 'cc-walk-total-speed';
-  function readTotalSpeed() {
-    const row = qc('.unlocks-perk-row[data-perk="movespeed"] .unlocks-perk-row-label');
-    if (row) {
-      const m = (row.firstChild ? row.firstChild.textContent : row.textContent).match(/\(([\d.]+)\s*steps?\/sec\)/i);
-      if (m) {
-        const v = parseFloat(m[1]);
-        if (v > 0) { try { localStorage.setItem(TOTAL_SPEED_KEY, String(v)); } catch (e) {} return v; }
-      }
-    }
-    try { const c = parseFloat(localStorage.getItem(TOTAL_SPEED_KEY)); if (c > 0) return c; } catch (e) {}
-    return null;
-  }
-
-  // --- Speed buff detection ----------------------------------------------
-  // No game state says "speed potion active", so: learn the player's normal
-  // measured/formula ratio (BASE_RATIO_KEY -- captures permanent bonuses the
-  // formula lacks) and call a walk buffed when its ratio clearly exceeds it.
-  // The baseline only moves down fast and up slowly, so a potion walk can't
-  // poison it. Any Active Potions row that isn't food/discovery/teleport is
-  // reported by its data-style, which also names the potion type once seen.
-  const BASE_RATIO_KEY = 'cc-walk-base-speed-ratio';
-  const BUFF_THRESHOLD = 1.08;
-  const KNOWN_POTION_STYLES = ['food', 'discovery', 'teleport'];
-  function loadBaseRatio() {
-    try { const v = parseFloat(localStorage.getItem(BASE_RATIO_KEY)); if (Number.isFinite(v) && v > 0) return v; } catch (e) {}
-    return null;
-  }
-  let baseRatio = loadBaseRatio();
-  function updateBaseRatio(ratio) {
-    if (baseRatio == null || ratio < baseRatio * 0.95) baseRatio = ratio;
-    else if (ratio < baseRatio * BUFF_THRESHOLD) baseRatio = baseRatio * 0.7 + ratio * 0.3;
-    else return; // buffed walk -- leave the baseline alone
-    try { localStorage.setItem(BASE_RATIO_KEY, String(baseRatio)); } catch (e) {}
-  }
-  function unknownPotionStyles() {
-    const out = [];
-    for (const r of document.querySelectorAll('.active-potions-body .potion-row[data-style]')) {
-      const st = r.getAttribute('data-style');
-      if (!KNOWN_POTION_STYLES.includes(st)) out.push(st);
-    }
-    return out;
-  }
+  // The walking speed model: the game bridge's speed() (steps per second, potion included, with a breakdown). Null while the bridge is not attached.
+  function bridgeInfo() { try { const b = window.__ccBridge; return b && b.speed ? b.speed() : null; } catch (e) { return null; } }
+  const bridgeSpeed = () => { const i = bridgeInfo(); return i ? i.sps : null; };
 
   // --- ETA correction factor --------------------------------------------
   const ETA_CORRECTION_KEY = 'cc-walk-eta-correction';
@@ -255,6 +204,7 @@
   let etaCorrection = loadEtaCorrection();
 
   // --- overlay element, built from the game's own cosmetic classes ----
+  document.querySelectorAll('#cc-walk-countdown, #cc-walk-countdown-style').forEach((e) => e.remove()); // a leftover from an instance that was not torn down
   const el = document.createElement('div');
   el.id = 'cc-walk-countdown';
   el.hidden = true;
@@ -437,7 +387,7 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
       function onMove(ev) {
         // Clamp: at least 80 px x 30 px of the panel always stays on screen.
         const x = Math.max(80 - rect.width, Math.min(innerWidth - 80, startLeft + (ev.clientX - startX)));
-        const y = Math.max(0, Math.min(innerHeight - 30, startTop + (ev.clientY - startY)));
+        const y = Math.max(0, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - 30, startTop + (ev.clientY - startY)));
         el.style.left = x + 'px';
         el.style.top = y + 'px';
         el.style.width = width + 'px';
@@ -503,8 +453,11 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
     return m > 0 ? `${m}m ${s}s` : `${s}s`;
   }
 
+  // Inside a Fortress / raid the hero walks between local spots and nothing here applies: no trip, no countdown.
+  const inInstance = () => window.__ccDom.qa('.gauntlet-hud, .raid-contrib-hud').some((e) => e.getClientRects().length > 0);
   function readMovingState() {
-    const stateEl = document.querySelector('.ingame-hud-state');
+    if (inInstance()) return { moving: false, acting: false, destName: null };
+    const stateEl = window.__ccDom.q('.ingame-hud-state');
     if (!stateEl) return { moving: false, acting: false, destName: null };
     const moving = stateEl.classList.contains('state-moving');
     const acting = stateEl.classList.contains('state-acting');
@@ -541,53 +494,22 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
     el.querySelector('.cc-walk-vigor-next').textContent = 'Lv ' + (v.level + 1);
   }
 
-  // "Vigor" row doubles as the speed readout: measured units/s, plus a buff
-  // note when the walk is clearly faster than the player's learned baseline.
-  function currentRatio() {
-    if (!trip || trip.speed == null) return null;
-        const v = readVigor();
-    return trip.speed / movementSpeedPxPerSec(v ? v.level : 1);
-  }
-  // The Unlocks "Total Movement Speed" INCLUDES active potions (confirmed by
-  // the player, 2026-10-07), so it can't itself be the no-potion baseline.
-  // Learn that baseline instead: it drops immediately to any lower total
-  // (potion expired / ran out) and creeps up slowly under non-buffed totals
-  // (permanent gains: level-ups, telescopes ...). A total clearly above it
-  // is a speed buff. This works even with no "(N)" distance on screen.
-  const BASE_TOTAL_KEY = 'cc-walk-base-total-speed';
-  let baseTotal = null;
-  try { const v = parseFloat(localStorage.getItem(BASE_TOTAL_KEY)); if (v > 0) baseTotal = v; } catch (e) {}
-  function updateBaseTotal(total) {
-    if (!(total > 0)) return;
-    if (baseTotal == null || total < baseTotal * 0.98) baseTotal = total;
-    else if (total < baseTotal * BUFF_THRESHOLD) baseTotal = baseTotal * 0.9 + total * 0.1;
-    else return; // buffed -- leave the baseline alone
-    try { localStorage.setItem(BASE_TOTAL_KEY, String(baseTotal)); } catch (e) {}
-  }
-  // If the game's own breakdown text names a potion, quote that segment.
-  function potionNote() {
-    const d = document.querySelector('.unlocks-perk-row[data-perk="movespeed"] .unlocks-perk-row-desc');
-    const seg = d ? (d.textContent || '').split(',').map(x => x.trim()).find(x => /potion/i.test(x)) : null;
-    return seg ? seg.replace(/^\(|\)$/g, '') : null;
-  }
+  // "Vigor" row doubles as the speed readout: the measured units/s (or the model speed before a measurement lands), plus the active speed
+  // potion straight from the bridge. Hover: the whole breakdown (what adds how many steps/s).
   function updateSpeedLabel() {
     const label = el.querySelector('.cc-walk-vigor-label');
-    const ratio = currentRatio();
-    const total = readTotalSpeed();
-    if (total) updateBaseTotal(total);
+    const info = bridgeInfo();
     let text = 'Vigor', color = '';
-    if (ratio != null) text += ' \u00b7 ' + trip.speed.toFixed(1) + '/s';
+    if (trip && trip.speed != null) text += ' \u00b7 ' + trip.speed.toFixed(1) + '/s';
     else if (trip && trip.effSpeed != null) text += ' \u00b7 ' + trip.effSpeed.toFixed(1) + '/s';
-    let buffPct = null;
-    if (total && baseTotal) { if (total > baseTotal * BUFF_THRESHOLD) buffPct = Math.round((total / baseTotal - 1) * 100); }
-    else if (ratio != null && baseRatio != null && ratio > baseRatio * BUFF_THRESHOLD) buffPct = Math.round((ratio / baseRatio - 1) * 100);
-    if (buffPct != null && settingOn('walkSpeedBuffDetect')) {
-      const names = unknownPotionStyles(), note = potionNote();
-      text += ' \u00b7 speed buff +' + buffPct + '%' + (note ? ' (' + note + ')' : names.length ? ' (' + names.join(', ') + ')' : '');
+    if (info && info.potion && settingOn('walkSpeedBuffDetect')) {
+      text += ' \u00b7 speed buff +' + Math.round(info.potion.pct * 100) + '% (' + info.potion.name + ')';
       color = '#ffd24a';
     }
     if (label.textContent !== text) label.textContent = text;
     label.style.color = color;
+    const tip = info ? 'Walking speed ' + info.sps.toFixed(2) + ' steps/s: ' + info.mods.map((m) => m.label + ' ' + (m.steps >= 0 ? '+' : '') + m.steps.toFixed(2)).join(', ') + ' on a base of ' + info.base + '.' : '';
+    if (label.title !== tip) label.title = tip;
   }
 
   // Red (just started, hue 0) -> green (about to arrive, hue 120) as the
@@ -613,8 +535,8 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
     if (destPos && lastKnownPos) {
       const dx = destPos.x - lastKnownPos.x, dy = destPos.y - lastKnownPos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const vigor = readVigor();
-      const speed = readTotalSpeed() || movementSpeedPxPerSec(vigor ? vigor.level : 1);
+      const speed = bridgeSpeed();
+      if (!speed) return { destName, destPos, startPos: lastKnownPos, totalSec: null, formulaSec: null, startedAt, changes: [], speed: null, curDist: null, startDist: null };   // no model speed yet: retried every tick
       const totalSec = (dist / speed) * etaCorrection;
       return { destName, destPos, startPos: lastKnownPos, totalSec, formulaSec: dist / speed, startedAt, changes: [], speed: null, curDist: null, startDist: null };
     }
@@ -662,7 +584,7 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
       // stated total speed is the speed -- still distance-based, so it beats
       // the straight-line formula (which is wrong whenever the start
       // position is stale).
-      trip.effSpeed = trip.speed != null ? trip.speed : (trip.curDist != null ? readTotalSpeed() : null);
+      trip.effSpeed = trip.speed != null ? trip.speed : (trip.curDist != null ? bridgeSpeed() : null);
       trip.measured = trip.curDist != null && trip.effSpeed != null;
       if (trip.measured) {
         const remainingM = Math.max(0, trip.curDist / trip.effSpeed - (nowMs - trip.curDistAt) / 1000);
@@ -707,8 +629,6 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
         // or a trip under 1s (almost certainly an interrupted/cancelled
         // move, not a real data point).
         const actualElapsedSec = (Date.now() - trip.startedAt) / 1000;
-        const ratioNow = currentRatio();
-        if (ratioNow != null && actualElapsedSec > 6 && !readTotalSpeed()) updateBaseRatio(ratioNow);
         if (trip.formulaSec != null && trip.formulaSec > 0 && actualElapsedSec > 1) {
           const uncorrectedPredicted = trip.formulaSec;
           if (uncorrectedPredicted > 0) {
@@ -755,8 +675,10 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
 
   let timerId = null;
   function scheduleTick() {
-    timerId = setTimeout(() => { tick(); scheduleTick(); }, nextPollDelay());
+    if (life.disposed) return;
+    timerId = setTimeout(() => { if (life.disposed) return; try { tick(); } finally { scheduleTick(); } }, nextPollDelay());
   }
+  life.add(() => clearTimeout(timerId));
   scheduleTick();
   insertOverlay();
 
@@ -804,11 +726,43 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
     const det = t.querySelector('.float-task-inner .float-details');
     if (det && det.title) det.removeAttribute('title'); // (an earlier build set a tooltip here)
   }
-  const ctTimer = setInterval(() => { try { if (!document.hidden) ctSync(); } catch (e) { /* keep ticking */ } }, 700);
-  ctSync();
+  // ---- Collapsible Walking bar ---------------------------------------------------------------------------------
+  // Only the Walking drawer: a small chevron on it folds it to one thin line (the time bar) while the Current Task above stays as it is. Remembered; Plugins > Panels > Collapsible Walking Bar.
+  const WK_LS = 'cc-wk-collapsed'; let wkMin = false; try { wkMin = localStorage.getItem(WK_LS) === '1'; } catch (e) { /* storage blocked */ }
+  const wkEnabled = () => { try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('walkBarCollapse'); return v !== false; } catch (e) { return true; } };
+  const wkStyle = document.createElement('style'); wkStyle.id = 'cc-wk-style';
+  wkStyle.textContent = `
+#cc-walk-countdown.cc-wk-min .float-icon,#cc-walk-countdown.cc-wk-min .float-bar:has(.cc-walk-vigor-fill),#cc-walk-countdown.cc-wk-min .cc-walk-dest,#cc-walk-countdown.cc-wk-min .cc-walk-vigor-label{display:none !important}
+#cc-walk-countdown.cc-wk-min .float-task-inner{padding:3px 26px 4px 10px !important;min-height:24px !important;box-sizing:border-box}
+#cc-walk-countdown.cc-wk-min .float-bar{height:13px !important;margin-top:0 !important}
+#cc-walk-countdown.cc-wk-min .float-bar-text{display:flex !important;font-size:10px !important;line-height:13px !important;height:13px !important;align-items:center}
+.cc-wk-btn{position:absolute;top:3px;right:4px;z-index:3;box-sizing:border-box;width:16px;height:16px;min-width:0;min-height:0;padding:0;border:0;border-radius:4px;background:rgba(255,255,255,.1);color:#cfcfda;cursor:pointer;display:flex;align-items:center;justify-content:center;pointer-events:auto}
+.cc-wk-btn:hover{background:rgba(255,255,255,.22);color:#fff}
+.cc-wk-btn svg{transition:transform .2s ease}
+#cc-walk-countdown.cc-wk-min .cc-wk-btn{top:4px}
+#cc-walk-countdown.cc-wk-min .cc-wk-btn svg{transform:rotate(180deg)}`;
+  { const old = document.getElementById('cc-wk-style'); if (old) old.remove(); }
+  document.head.appendChild(wkStyle);
+  function wkSync() {
+    const w = document.getElementById('cc-walk-countdown'); if (!w) return;
+    const on = wkEnabled(); w.classList.toggle('cc-wk-min', on && wkMin);
+    let btn = w.querySelector('.cc-wk-btn');
+    if (!on) { if (btn) btn.remove(); return; }
+    const host = w.querySelector('.cc-walk-slide') || w;
+    if (!btn) {
+      btn = document.createElement('button'); btn.type = 'button'; btn.className = 'cc-wk-btn'; btn.title = 'Fold / unfold the Walking bar';
+      btn.innerHTML = '<svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M3 10 L8 5 L13 10"/></svg>';
+      ['mousedown', 'pointerdown', 'dblclick'].forEach((ev) => btn.addEventListener(ev, (e) => e.stopPropagation()));
+      btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); wkMin = !wkMin; try { localStorage.setItem(WK_LS, wkMin ? '1' : '0'); } catch (er) { /* storage blocked */ } wkSync(); });
+    }
+    if (btn.parentElement !== host) host.appendChild(btn);
+  }
+  life.every(700, () => { try { if (!(document.hidden || window.__ccEcoOn)) { ctSync(); wkSync(); } } catch (e) { /* keep ticking */ } });
+  ctSync(); wkSync();
 
   function teardown() {
-    clearInterval(ctTimer); ctStyle.remove();
+    life.dispose();
+    try { ctStyle.remove(); } catch (e) { /* not built */ }
     const t0 = document.getElementById('task-display'); if (t0) { t0.classList.remove('cc-ct-min'); const b0 = t0.querySelector('.cc-ct-btn'); if (b0) b0.remove(); }
     clearTimeout(timerId); clearTimeout(hideTimer);
     document.body.classList.remove('cc-walk-open');
@@ -819,15 +773,12 @@ body.cc-walk-open .floating-current-task .float-task-inner{border-bottom-left-ra
   }
 
   window[NS] = {
-    version: 5,
+    version: 6,
     teardown,
     // Debug/inspection helpers.
     get lastKnownPos() { return lastKnownPos; },
     get trip() { return trip; },
     get etaCorrection() { return etaCorrection; },
-    get baseRatio() { return baseRatio; },
-    get totalSpeed() { return readTotalSpeed(); },
-    get baseTotal() { return baseTotal; },
     get speed() { return trip ? trip.speed : null; },
     nodesLoaded() { return !!nodesByName; },
     // Visual test hook: slide the drawer out with sample text / back in.

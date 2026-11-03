@@ -5,6 +5,8 @@
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
   fetch('catalog.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (cat) {
     var v = document.getElementById('ver'); if (v && cat.version) v.textContent = 'v' + cat.version;
+    var u = document.getElementById('upd');
+    if (u && cat.updated) { var d = new Date(cat.updated); if (!isNaN(d)) { u.textContent = 'Last update: ' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); u.hidden = false; } }
     grid.textContent = '';
     cat.plugins.forEach(function (p) {
       var c = el('article', 'pl');
@@ -14,6 +16,7 @@
       c.appendChild(el('p', null, p.tagline || p.description));
       var chips = el('div', 'chips'); chips.appendChild(el('span', 'chip', p.category));
       if (p.core) chips.appendChild(el('span', 'chip core', 'always on'));
+      if (p.requires) chips.appendChild(el('span', 'chip', 'needs ' + p.requires));
       c.appendChild(chips);
       grid.appendChild(c);
     });

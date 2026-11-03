@@ -21,8 +21,17 @@
   // links: [{a, b, dx, dy, side}] ; dx,dy = logical(b) - logical(a), logical = left/top + margin offset
   let links = [], off = {};
   try { const o = JSON.parse(localStorage.getItem(LS) || '{}'); links = o.links || []; off = o.off || {}; } catch (e) {}
-  const save = () => { try { localStorage.setItem(LS, JSON.stringify({ links: links.map(l => ({ a: l.a, b: l.b, dx: l.dx, dy: l.dy, side: l.side })), off })); } catch (e) {} };
+  // Safety net: offsets or links that run away (thousands of pixels) are a solver gone wrong, for example while the game re-lays its panels out in a raid.
+  // They are never saved; the last sane state is put back instead.
+  const insane = () => Object.keys(off).some((k) => off[k] && (!Number.isFinite(off[k].x) || !Number.isFinite(off[k].y) || Math.abs(off[k].x) > 1500 || Math.abs(off[k].y) > 1500)) || links.some((l) => !Number.isFinite(l.dx) || !Number.isFinite(l.dy) || Math.abs(l.dx) > 4000 || Math.abs(l.dy) > 4000);
+  let goodState = insane() ? '{"links":[],"off":{}}' : JSON.stringify({ links: links.map(l => ({ a: l.a, b: l.b, dx: l.dx, dy: l.dy, side: l.side })), off });
+  if (goodState === '{"links":[],"off":{}}' && (links.length || Object.keys(off).length)) { links = []; off = {}; }
+  const save = () => {
+    if (insane()) { try { const g = JSON.parse(goodState); links = g.links || []; off = g.off || {}; } catch (e) { links = []; off = {}; } return; }
+    try { goodState = JSON.stringify({ links: links.map(l => ({ a: l.a, b: l.b, dx: l.dx, dy: l.dy, side: l.side })), off }); localStorage.setItem(LS, goodState); } catch (e) {}
+  };
 
+  document.querySelectorAll('#cc-panel-fuse-style, #cc-panel-fuse-base').forEach((e) => e.remove());   // a copy left by an older load
   const style = document.createElement('style');
   style.id = 'cc-panel-fuse-style';
   const attach = () => { if (document.head && !style.isConnected) document.head.appendChild(style); };
@@ -35,7 +44,7 @@
   function scan() {
     const out = new Map();
     const now = performance.now();
-    if (now - tbAt > 1000 || tbList.some((t) => !t.isConnected)) { tbList = [...document.querySelectorAll('.panel-floating > .panel-titlebar[data-panel-id]')]; tbAt = now; }
+    if (now - tbAt > 1000 || tbList.some((t) => !t.isConnected)) { tbList = [...window.__ccDom.qa('.panel-floating > .panel-titlebar[data-panel-id]')]; tbAt = now; }
     tbList.forEach((tb) => {
       const el = tb.parentElement, r = el.getBoundingClientRect();
       if (!(r.width > 0 && r.height > 0) || el.classList.contains('panel-minimized')) return;
@@ -168,7 +177,7 @@
       if (mover.widget) { // never push the menu / HP dock off the screen: move the panel instead
         const amt = (mover === S ? 1 : -1) * delta;
         const nl = mover.r.left + (vertical ? amt : 0), nr = mover.r.right + (vertical ? amt : 0), nt = mover.r.top + (vertical ? 0 : amt), nb = mover.r.bottom + (vertical ? 0 : amt);
-        if (nl < -2 || nr > innerWidth + 2 || nt < -2 || nb > innerHeight + 2) mover = mover === S ? F : S;
+        if (nl < -2 || nr > innerWidth + 2 || nt < -2 || nb > (window.__ccVH ? window.__ccVH() : window.innerHeight) + 2) mover = mover === S ? F : S;
       }
       const sign = mover === S ? 1 : -1;
       const o = off[mover.id] || (off[mover.id] = { x: 0, y: 0 });
@@ -185,36 +194,92 @@
   // A fused row of panels behaves like one panel: closing one closes the others, opening one opens the others. Display-only: it clicks the
   // same close button / menu-bar tab you would click yourself. Ignores minimising, and waits out the first seconds after a (re)load.
   const gOn = () => { try { const st = window.__ccPluginSettings; return !(st && st.get && st.get('fuseGroupToggle') === false); } catch (e) { return true; } };
-  let gPrev = null, gLock = 0;
+  let gPrev = null, gLock = 0, gRawSig = '', gRawAt = 0;
+  // Diagnostics: every click this module makes on a panel button, with the time, so a "panel closes right after opening" report can be traced.
+  window.__ccFuseLog = window.__ccFuseLog || [];
+  function fuseLog(what, b) { try { window.__ccFuseLog.push({ t: Math.round(performance.now()), what, tab: (b && (b.dataset.tab || (b.closest && b.closest('.panel-titlebar') && b.closest('.panel-titlebar').dataset.panelId))) || null, cls: b && b.className }); if (window.__ccFuseLog.length > 60) window.__ccFuseLog.shift(); } catch (e) {} }
   const comp = (id) => {
     const seen = new Set([id]), q = [id];
     while (q.length) { const c = q.pop(); links.forEach((l) => { const o = l.a === c ? l.b : l.b === c ? l.a : null; if (o && o !== 'menudock' && !seen.has(o)) { seen.add(o); q.push(o); } }); }
     seen.delete(id); return [...seen];
   };
-  const isMinimized = (id) => { const t = document.querySelector(`.panel-titlebar[data-panel-id="${CSS.escape(id)}"]`); return !!(t && t.parentElement && t.parentElement.classList.contains('panel-minimized')); };
+  const isMinimized = (id) => { const t = window.__ccDom.q(`.panel-titlebar[data-panel-id="${CSS.escape(id)}"]`); return !!(t && t.parentElement && t.parentElement.classList.contains('panel-minimized')); };
+  // Diagnostics: note any panel that moves vertically by itself (no mouse button held) so a "my panels jumped" report has evidence.
+  // Read from window.__ccPanelFuse.jumps (kept in localStorage cc-panel-jumps, last 40).
+  let jwPrev = null, jwDown = 0;
+  function jumpWatch(P) {
+    const cur = {}; P.forEach((p, id) => { if (p.r) cur[id] = Math.round(p.r.top); });
+    if (pointerDown) jwDown = performance.now();
+    if (jwPrev && performance.now() - jwDown > 1500) {
+      const moved = [];
+      for (const id in cur) if (jwPrev[id] != null && Math.abs(cur[id] - jwPrev[id]) >= 20) moved.push({ id, dy: cur[id] - jwPrev[id] });
+      if (moved.length) {
+        let a = []; try { a = JSON.parse(localStorage.getItem('cc-panel-jumps') || '[]') || []; } catch (e) {}
+        a.push({ at: new Date().toISOString(), sinceLoadSec: Math.round((performance.now() - T0) / 1000), links: links.length, moved, vh: (window.__ccVH ? window.__ccVH() : window.innerHeight), vw: innerWidth });
+        try { localStorage.setItem('cc-panel-jumps', JSON.stringify(a.slice(-40))); } catch (e) {}
+      }
+    }
+    jwPrev = cur;
+  }
   function groupToggle(P) {
     const now = performance.now();
     const ids = new Set([...P.keys()].filter((i) => i !== 'menudock'));
     if (!gPrev) { gPrev = ids; return; }
+    // A panel closed or opened while the pointer was still down (or just after a group action) used to be swallowed: the "previous" list moved on
+    // without acting, so only that one panel closed and the next time all of them did. Keep the change pending until the pointer is up.
+    if (gOn() && enabled() && links.length && now - T0 > 15000 && now <= gLock) { gPrev = ids; return; } // our own click-driven change: nothing to catch up on
+    if (gOn() && enabled() && links.length && now - T0 > 15000 && pointerDown) return;
+    // A panel can flicker out of (or into) the scan for a moment while it opens: only act on a change that has stayed the same for a moment (about 0.2 s),
+    // otherwise the group logic "closed" the panel you just opened (by clicking its tab again) and then opened the rest.
+    if (gOn() && enabled() && links.length && now - T0 > 15000) {
+      const sig = [...ids].sort().join('|');
+      if (sig !== gRawSig) { gRawSig = sig; gRawAt = now; }
+      if (sig !== [...gPrev].sort().join('|') && now - gRawAt < 180) return;
+    }
     if (gOn() && enabled() && now - T0 > 15000 && now > gLock && !pointerDown && links.length) {
       let acted = false;
       for (const id of gPrev) {
         if (ids.has(id) || isMinimized(id) || P.has(id)) continue;
-        comp(id).forEach((m) => { if (ids.has(m)) { const b = document.querySelector(`.panel-titlebar[data-panel-id="${CSS.escape(m)}"] .panel-titlebar-close`); if (b) { b.click(); acted = true; } } });
+        comp(id).forEach((m) => { if (ids.has(m)) { const b = window.__ccDom.q(`.panel-titlebar[data-panel-id="${CSS.escape(m)}"] .panel-titlebar-close`); if (b) { (fuseLog('click', b), b.click()); acted = true; } } });
       }
       for (const id of ids) {
         if (gPrev.has(id)) continue;
-        comp(id).forEach((m) => { if (!ids.has(m) && !isMinimized(m)) { const b = document.querySelector(`.panel-tab-btn[data-tab="${CSS.escape(m)}"]`); if (b) { b.click(); acted = true; } } });
+        comp(id).forEach((m) => { if (!ids.has(m) && !isMinimized(m)) { const b = window.__ccDom.q(`.panel-tab-btn[data-tab="${CSS.escape(m)}"]`); if (b) { (fuseLog('click', b), b.click()); acted = true; } } });
       }
       if (acted) gLock = now + 1500;
     }
     gPrev = ids;
   }
+  // Instant path: the moment you click a tab button or a close button, the rest of the fused row follows in the same tick (no waiting for the
+  // panel scan to notice). Keyboard shortcuts still go through the slower scan in groupToggle above.
+  function onGroupClick(e) {
+    try {
+      if (!e.isTrusted) return;   // only YOUR clicks start a round; our own clicks on the other panels must not (that closed the panel you just opened)
+      if (!gOn() || !enabled() || !links.length || performance.now() - T0 < 15000 || !lastP) return;
+      const tab = e.target.closest && e.target.closest('.panel-tab-btn[data-tab]'), cl = e.target.closest && e.target.closest('.panel-titlebar-close');
+      let id = null, opening = false;
+      if (tab) { id = tab.dataset.tab; const tbx = window.__ccDom.q(`.panel-titlebar[data-panel-id="${CSS.escape(id)}"]`); opening = !(tbx && tbx.getClientRects().length > 0); }   // by what is on screen right now, so rapid clicks stay correct
+      else if (cl) { const tb = cl.closest('.panel-titlebar[data-panel-id]'); if (tb) id = tb.dataset.panelId; }
+      if (!id || id === 'menudock') return;
+      const mem = comp(id); if (!mem.length) return;
+      gLock = performance.now() + 1500;
+      setTimeout(() => {
+        mem.forEach((m) => {
+          // closed panels keep their (hidden) title bar in the page: open means VISIBLE, not merely present
+          const tbm = window.__ccDom.q(`.panel-titlebar[data-panel-id="${CSS.escape(m)}"]`), open = !!(tbm && tbm.getClientRects().length > 0);
+          if (opening && !open && !isMinimized(m)) { const b = window.__ccDom.q(`.panel-tab-btn[data-tab="${CSS.escape(m)}"]`); if (b) (fuseLog('click', b), b.click()); }
+          else if (!opening && open) { const b = window.__ccDom.q(`.panel-titlebar[data-panel-id="${CSS.escape(m)}"] .panel-titlebar-close`); if (b) (fuseLog('click', b), b.click()); }
+        });
+      }, 0);
+    } catch (er) { /* never break the click */ }
+  }
+  document.addEventListener('click', onGroupClick, true);
   const seam = {};  // panelId -> Set of sides ('l','r','t','b') that are fused
   function sync() {
     attach();
     if (!enabled()) { style.textContent = ''; document.querySelectorAll('.cc-fuse-btn').forEach(b => b.remove()); return; }
     const P = scan();
+    jumpWatch(P);
     if (links.length) propagate(P); else for (const [id, p] of P) lastNat[id] = { x: p.nx, y: p.ny };
     // drop links that stopped touching (checked at rest only, after a short grace)
     if (!pointerDown) {
@@ -291,7 +356,7 @@
       b.classList.toggle('fused', !!link);
       b.title = link ? 'Fused with ' + q.name + ' – click to separate' : 'Fuse with ' + q.name + ' (move together, cleaner seam)';
     }
-    document.querySelectorAll('.cc-fuse-btn').forEach(b => {
+    window.__ccDom.qa('.cc-fuse-btn').forEach(b => {
       const tb = b.closest('.panel-titlebar, .cc-dock-grip'); const pid = tb && tb.dataset.panelId;
       if (!want.has(pid + '>' + b.dataset.with)) b.remove();
     });
@@ -350,11 +415,18 @@
     for (const [id, p] of P) lastNat[id] = { x: p.nx, y: p.ny };
     save();
   }
+  // Move some fused panels vertically relative to the rest (dy in screen px) and record the new link offsets. Used to undo a lift.
+  function nudge(ids, dy) {
+    const z = uiZoom();
+    ids.forEach((m) => { const o = off[m] || (off[m] = { x: 0, y: 0 }); o.y += dy / z; });
+    rebase(); try { sync(); } catch (e) {}
+  }
   let timer = 0, raf = 0, alive = true;
-  const down = () => { pointerDown = true; loop(); };
+  const ownUi = (e) => !!(e && e.target && e.target.closest && e.target.closest('.cc-panel,#cc-route-panel,#cc-xp-tracker,#cc-treeadv,.cc-bar,#cc-alertbell'));   // dragging one of ScapeLite's own panels is not a game panel move: skip the per-frame game-panel passes
+  const down = (e) => { if (ownUi(e)) return; pointerDown = true; loop(); };
   const up = () => { pointerDown = false; setTimeout(() => { try { sync(); } catch (e) {} }, 60); };
   function loop() { if (!alive || !pointerDown) return; try { sync(); } catch (e) {} raf = requestAnimationFrame(loop); }
-  function tick() { if (!alive) return; if (!document.hidden && !pointerDown) { try { sync(); } catch (e) {} } timer = setTimeout(tick, 500); }
+  function tick() { if (!alive) return; if (!(document.hidden || window.__ccEcoOn) && !pointerDown) { try { sync(); } catch (e) {} } timer = setTimeout(tick, 500); }
   document.addEventListener('pointerdown', down, true);
   document.addEventListener('pointerup', up, true);
   document.addEventListener('pointercancel', up, true);
@@ -362,6 +434,7 @@
 
   function teardown() {
     alive = false; clearTimeout(timer); cancelAnimationFrame(raf);
+    document.removeEventListener('click', onGroupClick, true);
     document.removeEventListener('pointerdown', down, true);
     document.removeEventListener('pointerup', up, true);
     document.removeEventListener('pointercancel', up, true);
@@ -375,7 +448,7 @@
     if (!pa || !pb || !touching(pb, pa) || links.some(l => (l.a === a && l.b === b) || (l.a === b && l.b === a))) return false;
     fuse(pa, pb); return true;
   }
-  window[NS] = { sidesOf, dropLog, version: 2, fuseIds, teardown, isPrimary, group, place, rebase, get links() { return links.slice(); }, get off() { return Object.assign({}, off); }, sync };
+  window[NS] = { sidesOf, dropLog, nudge, version: 2, fuseIds, teardown, isPrimary, group, place, rebase, get jumps() { try { return JSON.parse(localStorage.getItem('cc-panel-jumps') || '[]'); } catch (e) { return []; } }, get links() { return links.slice(); }, get off() { return Object.assign({}, off); }, sync };
   console.log('[cc] panel-fuse loaded');
   return 'cc panel-fuse loaded';
 })();

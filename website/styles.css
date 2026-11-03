@@ -69,3 +69,5 @@ footer p{margin:0;max-width:80ch}
 @keyframes liveSweep{0%{transform:translateX(-120%)}55%,100%{transform:translateX(120%)}}
 @keyframes liveDot{0%,100%{opacity:.5;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
 @media(prefers-reduced-motion:reduce){.btn.live,.btn.live::before,.btn.live::after{animation:none}}
+
+.updated{margin:10px 0 0;color:#8f8fa4;font-size:14px}

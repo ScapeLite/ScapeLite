@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en" data-cc-density="cozy">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScapeLite Design Lab</title>
+<link rel="stylesheet" href="lab.css">
+</head>
+<body class="cc-themed">
+<div id="lab-app">
+  <header class="lab-top">
+    <div class="lab-brand"><b>ScapeLite Design Lab</b><span>mock data, real CSS</span></div>
+    <label class="lab-search"><input id="lab-q" type="search" placeholder="Search name, path, id, class, file ...   ( / )" autocomplete="off" spellcheck="false"></label>
+    <div class="lab-top-r">
+      <button class="lab-btn" id="lab-inspect" title="Click any element in a specimen to see its standard name">Inspect</button>
+      <button class="lab-btn" id="lab-side-toggle" title="Scenario simulator">Scenario</button>
+    </div>
+  </header>
+  <div class="lab-main">
+    <nav class="lab-nav" id="lab-nav" aria-label="Categories"></nav>
+    <main class="lab-content" id="lab-content" tabindex="-1"></main>
+    <aside class="lab-side" id="lab-side" aria-label="Scenario simulator"></aside>
+  </div>
+  <div class="lab-ident" id="lab-ident" hidden></div>
+  <div class="lab-boot" id="lab-boot">Loading the real ScapeLite code ...</div>
+</div>
+<!-- real production code, run against stand-ins for the game (design-lab/stub-*.js) -->
+<script src="stub-settings.js"></script>
+<script src="../overlay/lifecycle.js"></script>
+<script src="../overlay/dom-scope.js"></script>
+<script src="../overlay/ui-kit.js"></script>
+<script src="mock.js"></script>
+<script src="lab.js"></script>
+<script src="stub-bridge.js"></script>
+<!-- the Task queue runs for real (it exposes mountHover); everything else is specimens built from the real CSS -->
+<script src="../overlay/ui-queue.js"></script>
+<script src="tokens.js"></script>
+<script src="icons.js"></script>
+<script src="spec-kit.js"></script>
+<script src="spec-panels.js"></script>
+<script src="spec-queue.js"></script>
+<script src="spec-bars.js"></script>
+<script src="spec-more.js"></script>
+<script src="scenes.js"></script>
+<script src="boot.js"></script>
+</body>
+</html>

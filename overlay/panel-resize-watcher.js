@@ -35,7 +35,7 @@
 // Windows Startup folder) and left running for the whole login session.
 //
 // Requires Scapewatch's Steam launch options to include:
-//   --remote-debugging-port=9222 --remote-allow-origins=*
+//   --remote-debugging-port=9222 --remote-allow-origins=http://localhost:9222,http://127.0.0.1:9222
 //
 // Chat relay requires overlay/chat-relay-config.json (gitignored, not
 // included -- copy chat-relay-config.example.json and fill it in; see
@@ -53,11 +53,26 @@ const path = require('path');
 const { startStatusServer } = require('./status-server');
 const logstore = require('./logstore');
 const P = require('./paths');
+const { getSender, chunkBlocks, deliverChunks } = require('./discord-sender');
+const { createCommandHost, createHandlers } = require('./chat-commands-watcher');
+const { writeJsonAtomic, readJsonRecover } = require('./safe-json');
+const { createStore: createOptionLogStore } = require('./option-log-store');   // State/option-log.json: the task options the game offered (overlay/option-log.js)
+const { createBoard } = require('./clan-board-sync');
+const RelayEvents = require('./relay-events');                           // raw game chat line -> typed event (the one place wording is parsed)
+const { createRelay, leaseGate } = require('./relay-core');              // outbox + gate + posting
+const { createLeaseManager, newInstanceId } = require('./relay-lease');  // one relay leader on the clan's optional private lease webhook (duplicate-instance protection)
+const legacyLeaseCleanup = require('./relay-legacy-cleanup');            // removes the visible lease message + webhook-name suffix the first lease version left behind
+// One watcher only (whoever started it: the supervisor, a shortcut, a terminal): a second one would double every Discord post and fight over the game connection.
+// A watcher that is being restarted may need a few seconds to let go, so the new one waits for it.
+{ const lock = require('./single-instance').acquire('watcher', { waitMs: 25000 });
+  if (!lock.ok) { console.log('[watcher] another watcher is already running (pid ' + lock.owner + '): this copy exits.'); process.exit(0); } }
 
 const PANEL_SCRIPT_PATH = path.join(__dirname, 'panel-resize.js');
 const CHAT_RELAY_SCRIPT_PATH = path.join(__dirname, 'chat-relay-collect.js');
 const CHAT_RELAY_CONFIG_PATH = P.state('chat-relay-config.json');
-const RELAYED_STATE_PATH = P.state('chat-relay-seen.json');
+// Runtime state lives in State/ (moved there once, with a .moved safety copy left behind; see paths.js). Notes are logged when the logger exists.
+const STATE_MOVE = P.migrateRuntime(['chat-relay-seen.json', 'digest-state.json', 'clan-hiscores-state.json']);
+const RELAYED_STATE_PATH = STATE_MOVE.paths['chat-relay-seen.json'];
 const PLAYER_ICON_CACHE_PATH = P.state('player-icon-cache.json');
 const WS_HOOK_SCRIPT_PATH = path.join(__dirname, 'ws-hook.js');
 const PLUGINS_UI_SCRIPT_PATH = path.join(__dirname, 'plugins-settings-ui.js');
@@ -72,26 +87,67 @@ const SIDEBAR_TABS_SCRIPT_PATH = path.join(__dirname, 'sidebar-tabs.js');
 const PANEL_FUSE_SCRIPT_PATH = path.join(__dirname, 'panel-fuse.js');
 const SETTINGS_NAV_SCRIPT_PATH = path.join(__dirname, 'settings-nav.js');
 const WELCOME_TOUR_SCRIPT_PATH = path.join(__dirname, 'welcome-tour.js');
+const PRESETS_SCRIPT_PATH = path.join(__dirname, 'presets.js');
 const MENU_DOCK_SCRIPT_PATH = path.join(__dirname, 'menu-dock.js');
 const MODAL_RESIZE_SCRIPT_PATH = path.join(__dirname, 'modal-resize.js');
 const NOTIF_DOCK_SCRIPT_PATH = path.join(__dirname, 'notif-dock.js');
 const BANK_TOOLS_SCRIPT_PATH = path.join(__dirname, 'bank-tools.js');
 const WIN_DOCK_SCRIPT_PATH = path.join(__dirname, 'window-dock.js');
 const CHAT_DEFAULT_SCRIPT_PATH = path.join(__dirname, 'chat-default.js');
+const MECHANICS_SCRIPT_PATH = path.join(__dirname, 'mechanics-explainer.js');
+const MATSHORT_SCRIPT_PATH = path.join(__dirname, 'material-shortage.js');
+const SLMENU_SCRIPT_PATH = path.join(__dirname, 'scapelite-menu.js');
+const UISCALE_SCRIPT_PATH = path.join(__dirname, 'ui-scale.js');
+const DROPLUCK_SCRIPT_PATH = path.join(__dirname, 'drop-luck.js');
+const GOALS_SCRIPT_PATH = path.join(__dirname, 'goals.js');
+const DIARYCORE_SCRIPT_PATH = path.join(__dirname, 'diary-credits-core.js');
+const DIARYCREDITS_SCRIPT_PATH = path.join(__dirname, 'diary-credits.js');
+const ADVISORCORE_SCRIPT_PATH = path.join(__dirname, 'advisor-core.js');
+const ADVISOR_SCRIPT_PATH = path.join(__dirname, 'advisor.js');
+const QWALK_SCRIPT_PATH = path.join(__dirname, 'queue-walk.js');
+const RDPS_SCRIPT_PATH = path.join(__dirname, 'raid-dps-extra.js');
+const UIKIT_SCRIPT_PATH = path.join(__dirname, 'ui-kit.js');
+const LIFECYCLE_SCRIPT_PATH = path.join(__dirname, 'lifecycle.js');
+const DOMSCOPE_SCRIPT_PATH = path.join(__dirname, 'dom-scope.js');
+const LOGCLIENT_SCRIPT_PATH = path.join(__dirname, 'log-client.js');
+const ANCHOR_SCRIPT_PATH = path.join(__dirname, 'anchor.js');
+const HP_PANEL_SCRIPT_PATH = path.join(__dirname, 'hp-panel.js');
+const FORTRESS_SCRIPT_PATH = path.join(__dirname, 'fortress-tracker.js');
+const CARDFUSE_SCRIPT_PATH = path.join(__dirname, 'card-fuse.js');
+const UILAYOUT_SCRIPT_PATH = path.join(__dirname, 'ui-layout.js');
+const DEFAULT_LAYOUT_SCRIPT_PATH = path.join(__dirname, 'default-layout.js');
+const CARDSYNC_SCRIPT_PATH = path.join(__dirname, 'card-sync.js');
+const UIBAR_SCRIPT_PATH = path.join(__dirname, 'ui-bar.js');
+const CARDS_DIR = path.join(__dirname, 'cards');
+const CHATPLUS_SCRIPT_PATH = path.join(__dirname, 'chat-plus.js');
+const CHATCMD_SCRIPT_PATH = path.join(__dirname, 'chat-commands.js');
+const UIQUEUE_SCRIPT_PATH = path.join(__dirname, 'ui-queue.js');
+const ALERTS_SCRIPT_PATH = path.join(__dirname, 'alert-bell.js');
+const TREECORE_SCRIPT_PATH = path.join(__dirname, 'tree-core.js');
+const TREEADV_SCRIPT_PATH = path.join(__dirname, 'tree-advisor.js');
 const COMBAT_READOUT_SCRIPT_PATH = path.join(__dirname, 'combat-readout.js');
 const BUG_REPORT_SCRIPT_PATH = path.join(__dirname, 'bug-report.js');
 const USAGE_PING_SCRIPT_PATH = path.join(__dirname, 'usage-ping.js');
+const TASK_LOG_SCRIPT_PATH = path.join(__dirname, 'task-log.js');
+const OPTION_LOG_SCRIPT_PATH = path.join(__dirname, 'option-log.js');
+const TASK_TIP_SCRIPT_PATH = path.join(__dirname, 'task-tip.js');
+const LEVER_ADVISOR_SCRIPT_PATH = path.join(__dirname, 'lever-advisor.js');
 const CRAFT_POT_SCRIPT_PATH = path.join(__dirname, 'craft-potential.js');
 const LAYOUTS_SCRIPT_PATH = path.join(__dirname, 'layouts.js');
 const RAID_ALERT_SCRIPT_PATH = path.join(__dirname, 'raid-alert.js');
 const RAIDS_DATA_PATH = path.join(P.dataRaw, 'raids.json');
 const STATUS_INDICATOR_SCRIPT_PATH = path.join(__dirname, 'status-indicator.js');
+const CLAN_BOARD_CARD_SCRIPT_PATH = path.join(__dirname, 'clan-board-card.js');
+const CLAN_BOARD_SCRIPT_PATH = path.join(__dirname, 'clan-board-collect.js');
+const CLAN_BOARD_CONFIG_PATH = P.state('clan-board-config.json');
+const CLAN_BOARD_STATE_PATH = P.state('clan-board-state.json');
 const ACTIVITIES_DIR = path.join(P.dataRaw, 'activities');
 const CLAN_HISCORES_CONFIG_PATH = P.state('clan-hiscores-config.json');
-const CLAN_HISCORES_STATE_PATH = P.state('clan-hiscores-state.json');
+const CLAN_HISCORES_STATE_PATH = STATE_MOVE.paths['clan-hiscores-state.json'];
 const RAID_SUMMARY_CONFIG_PATH = P.state('raid-summary-config.json');
 const DIGEST_CONFIG_PATH = P.state('digest-config.json');
-const DIGEST_STATE_PATH = P.state('digest-state.json');
+const DIGEST_STATE_PATH = STATE_MOVE.paths['digest-state.json'];
+const optionLog = createOptionLogStore(P.runtime('option-log.json'));
 const LOG_PATH = P.state('watcher.log');
 const CDP_PORT = 9222;
 const STATUS_SERVER_PORT = 7777;
@@ -118,12 +174,14 @@ const STATUS = {
   cdp: { connected: false, since: null },
   chatRelay: { configured: false, lastEventAt: null, totalRelayed: 0, totalSkipped: 0 },
   clanHiscores: { configured: false, wsHookReady: false, lastPollAt: null, lastClanRank: null, nextPollAt: null },
-  raidSummary: { configured: false, lastPostAt: null, totalPosted: 0, totalSkippedSolo: 0 },
+  raidSummary: { configured: false, lastPostAt: null, totalPosted: 0, totalSkippedSolo: 0, lastDecision: null },
   digest: { configured: false, lastPostAt: null, nextPostAt: null, totalPosted: 0 },
   recentLog: [],
   plugins: [],
   bridge: { ok: false, attachedAt: null, ms: null, error: null },
 };
+// Discord health (per feature: configured, last success, last error, queue length, broken) -- computed on demand from the shared sender.
+Object.defineProperty(STATUS, 'discord', { enumerable: true, get: () => discordHealth() });
 
 // Supervised mode: overlay/supervisor.js forks this process with an IPC
 // channel and hosts the dashboard itself (so Stop/Start/Restart work even
@@ -138,6 +196,7 @@ const SUPERVISED = typeof process.send === 'function';
 function categorize(text) {
   const t = text;
   if (/^\s*->\s*(clan|global|chat)\b/i.test(t)) return { cat: 'discord', sub: 'relay' };
+  if (/^\s*Clan board/i.test(t)) return { cat: 'discord', sub: 'board' };
   if (/hiscores/i.test(t) && /polled|posted|\bpost\b|rank/i.test(t)) return { cat: 'discord', sub: 'hiscores' };
   if (/raid summar/i.test(t) && /post/i.test(t)) return { cat: 'discord', sub: 'raid' };
   if (/digest/i.test(t) && /posted/i.test(t)) return { cat: 'discord', sub: 'digest' };
@@ -148,16 +207,82 @@ function categorize(text) {
   return { cat: 'system', sub: 'config' };
 }
 
+// watcher.log is rotated by size (one backup, watcher.1.log): checked on the first line and then every 200 lines.
+const { rotateIfBig } = require('./log-rotate');
+const LOG_MAX_BYTES = 1024 * 1024; let logLines = 199;
 function log(...args) {
   const text = args.join(' ');
   const line = `[${new Date().toISOString()}] ${text}`;
   console.log(line);
+  if (++logLines >= 200) { logLines = 0; rotateIfBig(LOG_PATH, LOG_MAX_BYTES); }
   try { fs.appendFileSync(LOG_PATH, line + '\n'); } catch (e) { /* best effort */ }
   const entry = Object.assign({ t: Date.now(), text }, categorize(text));
   STATUS.recentLog.push(entry);
   if (STATUS.recentLog.length > RECENT_LOG_CAP) STATUS.recentLog.shift();
   if (SUPERVISED) { try { process.send({ type: 'log', entry }); } catch (e) { /* supervisor gone */ } }
   else logstore.write(entry); // standalone: the supervisor normally owns the session log
+}
+
+// The one Discord sender (overlay/discord-sender.js): queue per webhook, rate limits, timeout, retry, size limits, no mentions. Its log lines
+// never contain a webhook URL.
+const sender = getSender({ log: (t) => log(t) });
+
+// Features that post to a webhook, for the dashboard's Discord health card and the Test button.
+const DISCORD_FEATURES = [
+  { id: 'relay-clan', label: 'Chat relay (clan)', secret: 'relayClanWebhook' },
+  { id: 'relay-global', label: 'Chat relay (global)', secret: 'relayGlobalWebhook' },
+  { id: 'digest', label: 'Activity digest', secret: 'digestWebhook' },
+  { id: 'hiscores', label: 'Clan hiscores', secret: 'hiscoresWebhook' },
+  { id: 'raid', label: 'Raid summary', secret: 'raidSummaryWebhook' },
+  { id: 'board', label: 'Clan status board', secret: 'boardWebhook' },
+];
+let discordUrlCache = { at: 0, urls: {} };
+function discordUrls() {
+  if (Date.now() - discordUrlCache.at < 4000) return discordUrlCache.urls;
+  const urls = {};
+  DISCORD_FEATURES.forEach((f) => { try { urls[f.id] = readSecretValue(SECRET_FIELDS[f.secret]); } catch (e) { urls[f.id] = ''; } });
+  discordUrlCache = { at: Date.now(), urls };
+  return urls;
+}
+function discordHealth() {
+  const h = sender.health(), urls = discordUrls();
+  const features = DISCORD_FEATURES.map((f) => Object.assign({ id: f.id, label: f.label, configured: !!urls[f.id] }, h.features[f.id] || { lastOkAt: null, lastErrorAt: null, lastError: null, lastStatus: null, sent: 0, failed: 0, queueLength: 0, broken: false, brokenReason: null, rateLimitedUntil: null }));
+  return { features, globalRateLimitedUntil: h.globalRateLimitedUntil, problems: features.filter((f) => f.configured && (f.broken || (f.lastErrorAt && (!f.lastOkAt || f.lastErrorAt > f.lastOkAt)))).length };
+}
+const lastDiscordTest = {};
+// The dashboard's Test send button: one harmless message, only when asked, at most once every 10 s per feature.
+async function discordTest(featureId) {
+  const f = DISCORD_FEATURES.find((x) => x.id === featureId);
+  if (!f) return { ok: false, error: 'unknown feature' };
+  const url = discordUrls()[f.id];
+  if (!url) return { ok: false, error: 'no webhook is set for ' + f.label };
+  if (Date.now() - (lastDiscordTest[f.id] || 0) < 10000) return { ok: false, error: 'wait a few seconds between tests' };
+  lastDiscordTest[f.id] = Date.now();
+  sender.reset(url);
+  const r = await sender.send(f.id, url, { username: 'ScapeLite', content: 'ScapeLite test message' }, { force: true });
+  log('Discord test message (' + f.label + '): ' + (r.ok ? 'accepted' : 'failed -- ' + (r.error || 'unknown error')));
+  return r.ok ? { ok: true } : { ok: false, error: r.error || 'failed' };
+}
+
+// The clan status board (overlay/clan-board-sync.js): one editable card for this player. Never blocks the watcher: a tick that is still talking to
+// Discord makes the next one return at once.
+const clanBoard = createBoard({ sender, log: (t) => log(t), statePath: CLAN_BOARD_STATE_PATH });
+Object.defineProperty(STATUS, 'clanBoard', { enumerable: true, get: () => clanBoard.status() });
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), ms))]);
+let boardTickBusy = false;
+async function boardTick() {
+  if (boardTickBusy) return;
+  boardTickBusy = true;
+  try {
+    const url = readSecretValue(SECRET_FIELDS.boardWebhook), conn = activeConn;
+    let plugin = null, snap = null;
+    if (conn) {
+      plugin = await withTimeout(conn.evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false), 8000).catch(() => null);
+      if (plugin && plugin.clanBoardEnabled) snap = await withTimeout(conn.evalAwait('window.__ccClanBoard && window.__ccClanBoard.snapshot ? window.__ccClanBoard.snapshot() : null', false), 8000).catch(() => null);
+    }
+    await clanBoard.tick({ url, plugin, snap, connected: !!conn });
+  } catch (e) { log('Clan board: error -- ' + (e && e.message || e)); }
+  finally { boardTickBusy = false; }
 }
 
 // --- Plugin table (page-side mods) -------------------------------------------
@@ -169,7 +294,14 @@ const PLUGINS_CONFIG_PATH = P.state('plugins-config.json');
 const readScript = (file) => fs.readFileSync(file, 'utf8');
 const PLUGIN_DEFS = [
   { id: 'ws-hook', label: 'WebSocket hook', core: true, ns: '__ccGameSocket', desc: 'Reads the game\u2019s websocket traffic (hiscores, raid summaries).', build: () => readScript(WS_HOOK_SCRIPT_PATH) },
-  { id: 'panel-resize', core: true, label: 'Panel resize + vertical menu', ns: '__ccPanelScale', desc: 'Resize handles, edge anchoring, vertical bottom-right menu.', build: () => readScript(PANEL_SCRIPT_PATH) },
+  { id: 'lifecycle', core: true, label: 'Lifecycle', ns: '__ccLife', desc: 'Owns the listeners, timers and frame loops of every plugin so a re-inject never leaves a second copy running.', build: () => readScript(LIFECYCLE_SCRIPT_PATH) },
+  { id: 'dom-scope', core: true, label: 'DOM scope', ns: '__ccDom', desc: 'Page lookups that skip the game’s 134 000 hidden crafting-window elements, so polling plugins stay cheap.', build: () => readScript(DOMSCOPE_SCRIPT_PATH) },
+  { id: 'log-client', core: true, label: 'Log client', ns: '__ccLog', desc: 'Lets plugins write to the log files in Logs/<Channel>/ (window.__ccLog.channel(name).info(...)). The watcher drains it every few seconds.', build: () => readScript(LOGCLIENT_SCRIPT_PATH) },
+  { id: 'ui-kit', core: true, label: 'UI kit', ns: '__ccUI', desc: 'Shared design tokens, theme (accent, density, font size) and panel component for ScapeLite panels.', build: () => readScript(UIKIT_SCRIPT_PATH) },
+  { id: 'ui-scale', core: true, label: 'UI scale', ns: '__ccUiScale', desc: 'Scales ScapeLite panels with the game window so they stay in proportion in a small window.', build: () => readScript(UISCALE_SCRIPT_PATH) },
+  { id: 'panel-resize', core: true, label: 'Panel tools', ns: '__ccPanelScale', desc: 'Part of Core: resize handles, lock, the right-click panel menu, keep-on-screen and the vertical bottom-right menu.', build: () => readScript(PANEL_SCRIPT_PATH) },
+  { id: 'anchor', core: true, label: 'Edge anchoring', ns: '__ccAnchor', desc: 'Keeps every floating panel at the same distance from its nearest screen edges when the window is resized.', build: () => readScript(ANCHOR_SCRIPT_PATH) },
+  { id: 'card-fuse', label: 'Panel fusing', ns: '__ccCardFuse', desc: 'Glue touching ScapeLite panels together with a link button on their seam; a fused group moves, snaps and anchors as one.', build: () => readScript(CARDFUSE_SCRIPT_PATH) },
   { id: 'chat-relay', label: 'Chat collector (Discord relay)', ns: '__ccChatRelay', desc: 'Collects clan/game chat events for the Discord relay and digest.', build: () => readScript(CHAT_RELAY_SCRIPT_PATH) },
   { id: 'plugins-settings-ui', label: 'Plugins settings tab', core: true, ns: '__ccPluginSettings', desc: 'The Plugins tab inside the game\u2019s Settings.', build: () => {
       const authors = require('./authors').loadAuthors();
@@ -190,6 +322,7 @@ const PLUGIN_DEFS = [
       readScript(HOVER_INFO_SCRIPT_PATH),
   },
   { id: 'status-indicator', core: true, label: 'Status indicator', ns: '__ccStatusIndicator', desc: 'Corner dot showing watcher / Discord health.', build: () => readScript(STATUS_INDICATOR_SCRIPT_PATH) },
+  { id: 'clan-board', label: 'Clan status board', ns: '__ccClanBoard', desc: 'Reads your own task, progress and levels for the Clan Status Board (a Discord card per player). Sends nothing itself; off until you switch the board on in Settings > Plugins.', build: () => readScript(CLAN_BOARD_CARD_SCRIPT_PATH) + '\n' + readScript(CLAN_BOARD_SCRIPT_PATH) },
   { id: 'route-advisor', label: 'Route advisor', ns: '__ccRouteAdvisor', desc: 'Best task order, teleport-aware, with warning triangle.', build: () => readScript(ROUTE_ADVISOR_SCRIPT_PATH) },
   { id: 'notify-always', label: 'Notify while focused', ns: '__ccNotifyAlways', desc: 'Lets the game\u2019s OS notifications fire while focused.', build: () => readScript(NOTIFY_ALWAYS_SCRIPT_PATH) },
   { id: 'map-routes', label: 'Map route lanes + arrows', ns: '__ccMapRoutes', desc: 'World Map: overlapping route legs side by side, chevron arrows for direction.', build: () => readScript(MAP_ROUTES_SCRIPT_PATH) },
@@ -208,6 +341,29 @@ const PLUGIN_DEFS = [
   { id: 'sidebar-tabs', core: true, label: 'Side menu tab controls', ns: '__ccSidebarTabs', desc: 'Show/hide switches and sticky pins for the left icon strip (Settings > Hotkeys).', build: () => readScript(SIDEBAR_TABS_SCRIPT_PATH) },
   { id: 'window-dock', label: 'Window buttons dock', ns: '__ccWinDock', desc: 'The top-right button row: movable, resizable, collapsible to an edge badge; the cross closes the World Map.', build: () => readScript(WIN_DOCK_SCRIPT_PATH) },
   { id: 'layouts', label: 'Layout presets', ns: '__ccLayouts', desc: 'Save and load named layouts of your panels, docks and windows.', build: () => readScript(LAYOUTS_SCRIPT_PATH) },
+  { id: 'tree-advisor', label: 'Tree Advisor', ns: '__ccTreeAdvisor', desc: 'Plans the best Delve and Fortress tree builds (DPS priced with the Gear Calc maths), with a tree picture, steps, saved builds and import / export.', build: () => readScript(TREECORE_SCRIPT_PATH) + '\n' + readScript(TREEADV_SCRIPT_PATH) },
+  { id: 'raid-dps-extra', label: 'Raid DPS extras', ns: '__ccRaidDps', desc: 'Party total DPS line and a damage-over-time graph tab in the Raid DPS panel.', build: () => readScript(RDPS_SCRIPT_PATH) },
+  { id: 'queue-walk', label: 'Queue walking time', ns: '__ccQueueWalk', desc: 'A bar and tag on each queued task showing how long the walk to it takes.', build: () => readScript(QWALK_SCRIPT_PATH) },
+  { id: 'fortress-tracker', label: 'Fortress tracker', ns: '__ccFortress', desc: 'Tracks your Fortress runs, loot chances and drops, and shows how lucky you have been (Fortress tab of the Drop Luck panel).', build: () => readScript(FORTRESS_SCRIPT_PATH) },
+  { id: 'hp-panel', label: 'HP panel', ns: '__ccHpPanel', desc: 'Your hit points as a bar or as numbers with an icon, in a small movable panel (the game’s own HP bar can be hidden).', build: () => readScript(HP_PANEL_SCRIPT_PATH) },
+  { id: 'goals', label: 'Goals', ns: '__ccGoals', desc: 'Skill goals with time left at your real XP per hour, plus unlock drops worth hunting.', build: () => readScript(GOALS_SCRIPT_PATH) },
+  { id: 'diary-credits', label: 'Locations and free pips', ns: '__ccDiaryCredits', desc: 'Rates every location by walking distance to its bank, shows how often it is rolled and used, and says where to put the free node-lever pips the diary gives; also diary progress and credit pools.', build: () => readScript(DIARYCORE_SCRIPT_PATH) + '\n' + readScript(DIARYCREDITS_SCRIPT_PATH) },
+  { id: 'drop-luck', label: 'Drop luck tracker', ns: '__ccDropLuck', desc: 'How lucky your rare drops have been: luck rating, most overdue drops, per-mob list, dungeons (Delve), unlocks with filters and search, pets and lucky tools, a chance graph per drop.', build: () => readScript(DROPLUCK_SCRIPT_PATH) },
+  { id: 'advisor', label: 'Advisor', ns: '__ccAdvisor', desc: 'One panel that says what to do next, how and where, from the Route Advisor, Lever Advisor, Tree Advisor, Goals and Locations and Free Pips, with how sure each action is.', build: () => readScript(ADVISORCORE_SCRIPT_PATH) + '\n' + readScript(ADVISOR_SCRIPT_PATH) },
+  { id: 'card-sync', core: true, label: 'Card sync', ns: '__ccCardSync', desc: 'One shared way for every ScapeLite card to learn that the game panel or data it copies changed, and one rule for when it may redraw.', build: () => readScript(CARDSYNC_SCRIPT_PATH) },
+  { id: 'cards', core: true, label: 'Cards', ns: '__ccCards', desc: 'The model builders of the ScapeLite cards (Skills, Inventory, Equipment, Diary, Quests, Friends, Barter, Chat): what each card shows and which game panel it copies. Registered with the card layer.', build: () => {
+      const names = fs.readdirSync(CARDS_DIR).filter((n) => /^[\w-]+\.js$/.test(n)).sort();
+      return names.map((n) => readScript(path.join(CARDS_DIR, n))).join('\n;\n') + '\n;window.__ccCards = { files: ' + JSON.stringify(names) + ' };';
+    } },
+  { id: 'ui-bar', label: 'Info Bars', ns: '__ccBar', desc: 'Customisable bars along the top and bottom of the screen (like Titan Panel): task, location, XP per hour, gold, clock and more. Drag modules, right-click to add, remove and set options. The game and ScapeLite panels use the space that is left.', build: () => readScript(UIBAR_SCRIPT_PATH) },
+  { id: 'ui-queue', label: 'Task queue panel', ns: '__ccQueue', desc: 'The task queue as compact cards: tiers, walking pills, options that slide out to the side, drag to reorder, the Route Advisor’s highlight and order. Opens from the info bar’s Tasks button.', build: () => readScript(UIQUEUE_SCRIPT_PATH) },
+  { id: 'chat-plus', label: 'Chat panel', ns: '__ccChat', desc: 'A calmer replacement for the game chat window: a width you choose, channel tabs with unread counts, search, message-type filters, highlight and mute words, seconds on timestamps, font size and more.', build: () => readScript(CHATPLUS_SCRIPT_PATH) },
+  { id: 'chat-commands', label: 'Chat commands', ns: '__ccCmd', desc: 'Type /sl help in the chat for ScapeLite commands (status, refresh, plugin on/off, relay and digest checks). Replies are only shown to you and never sent to chat.', build: () => readScript(CHATCMD_SCRIPT_PATH) },
+  { id: 'ui-layout', label: 'Layout Editor', ns: '__ccUILayout', desc: 'Edit mode for ScapeLite panels: drag with snapping, fade, scale, resize, lock, and save whole layouts (export / import as text).', build: () => readScript(DEFAULT_LAYOUT_SCRIPT_PATH) + '\n' + readScript(UILAYOUT_SCRIPT_PATH) },
+  { id: 'alert-bell', core: true, label: 'Alerts bell', ns: '__ccAlerts', desc: 'A bell that is always visible with a red number for things that need you: unspent tree points, finished quests, unopened chests, gear upgrades, craftable collection entries and more.', build: () => readScript(ALERTS_SCRIPT_PATH) },
+  { id: 'scapelite-menu', core: true, label: 'ScapeLite menu', ns: '__ccScapeliteMenu', desc: 'A ScapeLite button in the left icon strip; hover it to open or close ScapeLite panels.', build: () => readScript(SLMENU_SCRIPT_PATH) },
+  { id: 'material-shortage', label: 'Material shortage warning', ns: '__ccMaterialShortage', desc: 'Warns when the running or a queued processing task will probably run out of materials (counts half your save chance).', build: () => readScript(MATSHORT_SCRIPT_PATH) },
+  { id: 'mechanics-explainer', label: 'Mechanics explainer', ns: '__ccMechanics', desc: 'Adds a plain-language explanation to the lever tooltips in the customization windows.', build: () => readScript(MECHANICS_SCRIPT_PATH) },
   { id: 'chat-default', label: 'Chat default channel', ns: '__ccChatDefault', desc: 'Remembers your last chat channel and starts on the leftmost shown one.', build: () => readScript(CHAT_DEFAULT_SCRIPT_PATH) },
   { id: 'combat-readout', label: 'Combat readout', ns: '__ccCombatReadout', desc: 'Exact HP, Spirit, attack timer countdown, attacks per second and DPS on the combat screen.', build: () => readScript(COMBAT_READOUT_SCRIPT_PATH) },
   { id: 'bug-report', core: true, label: 'Bug report', ns: '__ccBugReport', desc: 'In-game bug report form (Settings > Plugins, and the bug icon under the status light).', build: () => {
@@ -217,16 +373,21 @@ const PLUGIN_DEFS = [
 ` + readScript(BUG_REPORT_SCRIPT_PATH);
     } },
   { id: 'usage-ping', label: 'Anonymous usage count', ns: '__ccUsagePing', desc: 'One anonymous request per day so the author can see roughly how many people use ScapeLite. Off in Settings or the first-launch setup.', build: () => readScript(USAGE_PING_SCRIPT_PATH) },
+  { id: 'task-log', label: 'Task log', ns: '__ccTaskLog', desc: 'Records every task you run (time split into walking and acting, real XP, predictions) locally, to tune the Route Advisor.', build: () => readScript(TASK_LOG_SCRIPT_PATH) },
+  { id: 'option-log', label: 'Task option log', ns: '__ccOptionLog', desc: 'Writes down which task options the game offered (not only the one you picked) in State/option-log.json, to test the roll odds and the lucky chance. Local only.', build: () => readScript(OPTION_LOG_SCRIPT_PATH) },
+  { id: 'task-tip', label: 'Task history tooltips', ns: '__ccTaskTip', desc: 'Rich hover tooltips on the Skills Customization history lists (real task number, time split, XP, drops, materials, potions) and a Slay History filled from the Task Log.', build: () => readScript(TASK_TIP_SCRIPT_PATH) },
+  { id: 'lever-advisor', label: 'Lever advisor', ns: '__ccLeverAdvisor', desc: 'Outlines the skill and slay levers worth pulling, by route, within your credits.', build: () => readScript(LEVER_ADVISOR_SCRIPT_PATH) },
   { id: 'craft-potential', label: 'Crafting potential', ns: '__ccCraftPot', desc: 'Shows the level you could reach by crafting with every material in your bank, in the XP bar of the Smith / Craft / Imbue / Brew windows.', build: () => readScript(CRAFT_POT_SCRIPT_PATH) },
   { id: 'bank-tools', label: 'Bank tools', ns: '__ccBankTools', desc: 'Category separators in the bank, category chips on item hover, and sub-category filter menus.', build: () => readScript(BANK_TOOLS_SCRIPT_PATH) },
   { id: 'notif-dock', label: 'Notification dock', ns: '__ccNotifDock', desc: 'Raid/party invites and popups: always on top, centred, movable.', build: () => readScript(NOTIF_DOCK_SCRIPT_PATH) },
-  { id: 'modal-resize', label: 'Resizable windows', ns: '__ccModalResize', desc: 'Shrink the big Settings / Bank / Crafting windows with a corner grip.', build: () => readScript(MODAL_RESIZE_SCRIPT_PATH) },
+  { id: 'modal-resize', label: 'Resizable windows', ns: '__ccModalResize', desc: 'Move and resize the big Settings / Bank / Crafting windows (title bar, grips, fullscreen snap); the game stays visible behind them.', build: () => readScript(MODAL_RESIZE_SCRIPT_PATH) },
   { id: 'menu-dock', label: 'Menu + HP bar dock', ns: '__ccMenuDock', desc: 'Move, resize and fuse the vertical menu and HP bar.', build: () => readScript(MENU_DOCK_SCRIPT_PATH) },
   { id: 'welcome-tour', core: true, label: 'Welcome tour', ns: '__ccWelcome', desc: 'First-run popup explaining the plugin settings, dashboard and marketplace.', build: () => {
       let guides = {};
       try { (JSON.parse(fs.readFileSync(path.join(__dirname, 'catalog.json'), 'utf8')).plugins || []).forEach((pl) => { if (pl.guide) guides[pl.id] = pl.guide; }); } catch (e) { /* no catalog */ }
       return `window.__CC_GUIDES = ${JSON.stringify(guides)};\n` + readScript(WELCOME_TOUR_SCRIPT_PATH);
     } },
+  { id: 'presets', core: true, label: 'ScapeLite looks', ns: '__ccPresets', desc: 'Full Vanilla, Combination and ScapeLite only: one choice that sets the Info Bar and the display options, with a one-time chooser on a new install.', build: () => readScript(PRESETS_SCRIPT_PATH) },
   { id: 'settings-nav', core: true, label: 'Settings quick-jump menu', ns: '__ccSettingsNav', desc: 'Hover a Settings category to jump straight to its sub-categories.', build: () => readScript(SETTINGS_NAV_SCRIPT_PATH) },
   { id: 'panel-fuse', core: true, label: 'Panel fuse', ns: '__ccPanelFuse', desc: 'Fuse panels that sit edge to edge: move together, cleaner seam.', build: () => readScript(PANEL_FUSE_SCRIPT_PATH) },
   { id: 'xp-tracker', core: true, label: 'XP/hr tracker', ns: '__ccXpTracker', desc: 'Live XP/hr chip with level-up ETA.', build: () => readScript(XP_TRACKER_SCRIPT_PATH) },
@@ -263,7 +424,7 @@ function saveDisabledPlugins(set) {
     let cfg = {};
     try { cfg = JSON.parse(fs.readFileSync(PLUGINS_CONFIG_PATH, 'utf8')) || {}; } catch (e) { cfg = {}; }
     cfg.disabled = [...set];
-    fs.writeFileSync(PLUGINS_CONFIG_PATH, JSON.stringify(cfg, null, 2));
+    writeJsonAtomic(PLUGINS_CONFIG_PATH, cfg, { indent: 2, backup: false });
   } catch (e) { log('ERROR: could not save plugins-config.json --', e.message); }
 }
 // Community plugins start disabled the first time they are seen (the user opts in from the marketplace).
@@ -278,7 +439,7 @@ function saveDisabledPlugins(set) {
   const disabled = loadDisabledPlugins();
   add.forEach((d) => { disabled.add(d.id); seen.add(d.id); });
   cfg.disabled = [...disabled]; cfg.seen = [...seen];
-  try { fs.writeFileSync(PLUGINS_CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch (e) { /* best effort */ }
+  try { writeJsonAtomic(PLUGINS_CONFIG_PATH, JSON.stringify(cfg, null, 2)); } catch (e) { /* best effort */ }
 })();
 const pluginEnabled = (def) => def.core || !loadDisabledPlugins().has(def.id);
 let activeConn = null; // { call, evalAwait, registered: {id: identifier}, loaded: Set } while the game is connected
@@ -323,7 +484,8 @@ async function setPluginEnabled(id, enabled) {
 function loadChatRelayConfig() {
   try {
     const cfg = JSON.parse(fs.readFileSync(CHAT_RELAY_CONFIG_PATH, 'utf8'));
-    STATUS.chatRelay.configured = true;
+    // a hollow first-run config (no webhook on any channel) counts as not configured
+    STATUS.chatRelay.configured = !!(cfg && cfg.channels && Object.keys(cfg.channels).some((k) => cfg.channels[k] && cfg.channels[k].webhookUrl));
     return cfg;
   } catch (e) {
     STATUS.chatRelay.configured = false;
@@ -404,58 +566,7 @@ async function findPage() {
   }
 }
 
-// --- Discord formatting -----------------------------------------------
-
-const CATEGORY_META = {
-  unlock: { emoji: '🔓', roleKey: 'unlock' },
-  rareDrop: { emoji: '💎', roleKey: 'rareDrop' },
-  petDrop: { emoji: '🐾', roleKey: 'pet' },
-  shinyPetDrop: { emoji: '✨', roleKey: 'shinyPet' },
-  levelUp: { emoji: '⭐', roleKey: 'levelUp' },
-  collection: { emoji: '📖', roleKey: 'rareDrop' },
-  questComplete: { emoji: '📜', roleKey: 'quest' },
-};
-
-// One emoji per skill, keyed by the game's own data-skill-id (pulled live
-// from the real Skills panel, not guessed -- see overlay/README.md). Best
-// a thematic reading of the id can do for a few of these (draw, sight,
-// imbue, delve) -- swap any that don't match the actual skill icon.
-const SKILL_EMOJI = {
-  life: '❤️', spirit: '🪽', fish: '🐟', cook: '🍳', strike: '⚔️',
-  heft: '💪', mine: '⛏️', smith: '🔨', sight: '🏹', draw: '🎨',
-  forage: '🌿', craft: '🧵', focus: '🎯', surge: '⚡', invoke: '🔮',
-  imbue: '🪄', dodge: '💨', defend: '🛡️', farm: '🌾', brew: '⚗️',
-  slay: '💀', vigor: '🏃', plunder: '💰', barter: '⚖️', delve: '🕳️',
-  fortify: '🧱', bard: '🎵', discover: '🔍', luck: '🍀', alms: '🙏',
-};
-
-// Secondary, text-based check -- the primary pet detection is the
-// collector's category match (pets/shinyPets/... on Clan, pet/shiny_pet/...
-// on Global), which is reliable. This catches non-pet "Shiny" items (e.g.
-// a Shiny Telescope or Shiny Lucky Tool), which the game's own category
-// list has no dedicated category for -- they come through as a plain
-// rareDrops line, so this is the only way to detect them. Routed to its
-// own "shinyRareDrop" role, separate from "shinyPet".
-function isUltraRare(evt, keywords) {
-  if (!keywords || !keywords.length) return false;
-  if (evt.kind !== 'rareDrop' && evt.kind !== 'collection') return false;
-  const hay = (evt.item || '').toLowerCase();
-  return keywords.some(k => hay.includes(String(k).toLowerCase()));
-}
-
-function descriptionFor(evt) {
-  switch (evt.kind) {
-    case 'rareDrop':
-    case 'petDrop':
-    case 'shinyPetDrop':
-      return evt.source ? `received **${evt.item}** from ${evt.source}` : `received **${evt.item}**`;
-    case 'unlock': return `unlocked **${evt.item}**`;
-    case 'levelUp': return `${evt.skill} level is now **${evt.level}**`;
-    case 'collection': return `logged **${evt.item}**` + (evt.source ? ` (${evt.source})` : '') + (evt.luck ? ` · +${Number(evt.luck).toLocaleString('en-US')} Luck XP` : '');
-    case 'questComplete': return `completed quest **${evt.item}**`;
-    default: return evt.text || evt.raw;
-  }
-}
+// --- Discord formatting: overlay/relay-events.js (text from the typed event) and overlay/relay-core.js (payload) ---
 
 // Per-player avatar cache: badgeIconUrl (equipped title) is the normal
 // avatar, but "game"-channel events (your own drops/unlocks/levels, merged
@@ -469,10 +580,10 @@ function descriptionFor(evt) {
 // first sighting with nothing cached yet.
 let playerIconCache = {};
 function loadPlayerIconCache() {
-  try { playerIconCache = JSON.parse(fs.readFileSync(PLAYER_ICON_CACHE_PATH, 'utf8')) || {}; } catch (e) { playerIconCache = {}; }
+  try { playerIconCache = readJsonRecover(PLAYER_ICON_CACHE_PATH, {}) || {}; } catch (e) { playerIconCache = {}; }
 }
 function savePlayerIconCache() {
-  try { fs.writeFileSync(PLAYER_ICON_CACHE_PATH, JSON.stringify(playerIconCache)); } catch (e) { /* best effort */ }
+  try { writeJsonAtomic(PLAYER_ICON_CACHE_PATH, playerIconCache, { backup: false }); } catch (e) { /* best effort */ }
 }
 function resolvePlayerAvatar(evt) {
   if (!evt.player) return evt.badgeIconUrl || evt.iconUrl || undefined;
@@ -491,173 +602,96 @@ function resolvePlayerAvatar(evt) {
   return evt.iconUrl || undefined;
 }
 
-// No embeds -- an embed's padding/box has a fixed minimum size in Discord
-// no matter how little is in it. The player's name/icon instead ride on
-// the webhook's own per-message identity override (username/avatar_url),
-// and the message itself is a single line of plain markdown text. Tried a
-// ```ansi code-block tier-color treatment here too; dropped it after
-// seeing it live -- the grey monospace box looked out of place next to
-// the plain single-line messages. Tier tags still show, just as plain
-// **bold** text like everything else, no color.
-function buildDiscordPayload(evt, cfg) {
-  const identity = { username: evt.player || undefined, avatar_url: resolvePlayerAvatar(evt) };
-
-  if (evt.kind === 'chat') {
-    return Object.assign({ content: evt.text }, identity);
-  }
-
-  const ultra = evt.kind !== 'petDrop' && evt.kind !== 'shinyPetDrop' && isUltraRare(evt, cfg.ultraRareKeywords);
-  const meta = CATEGORY_META[evt.kind] || { emoji: '•', roleKey: null };
-  const emoji = evt.kind === 'levelUp' ? (SKILL_EMOJI[(evt.skill || '').toLowerCase()] || meta.emoji) : (ultra ? '🌟' : meta.emoji);
-
-  let roleKey = ultra ? 'shinyRareDrop' : meta.roleKey;
-  if (roleKey === 'levelUp' && !cfg.pingLevelUps) roleKey = null;
-  if (roleKey === 'rareDrop' && cfg.pingRareDrops === false) roleKey = null;
-  if (roleKey === 'unlock' && cfg.pingUnlocks === false) roleKey = null;
-  if ((roleKey === 'pet' || roleKey === 'shinyPet') && cfg.pingPets === false) roleKey = null;
-  if (roleKey === 'quest' && cfg.pingQuests === false) roleKey = null;
-  // Ping roles (Plugins > Chat Relay Pings): any number of roles, each with any number of categories. A category pings every
-  // role that lists it. Without pingRoles the old per-category roleMentions + toggles apply.
-  let mention = '';
-  if (Array.isArray(cfg.pingRoles)) {
-    const ck = ultra ? 'shinyRareDrop' : meta.roleKey;
-    mention = ck ? cfg.pingRoles.filter((r) => r && /^\d{6,}$/.test(String(r.roleId || '')) && Array.isArray(r.categories) && r.categories.indexOf(ck) !== -1).map((r) => `<@&${r.roleId}>`).join(' ') : '';
-  } else {
-    const mentions = cfg.roleMentions || {};
-    mention = roleKey && mentions[roleKey] ? mentions[roleKey] : '';
-  }
-
-  const prefix = ultra ? '**ULTRA RARE** ' : '';
-  // Role mention moved to the end and spoiler-wrapped so it doesn't clutter
-  // the line -- Discord still fires the ping/notification for a mention
-  // inside ||spoiler|| tags, only the visible text is hidden until clicked.
-  const mentionSuffix = mention ? ` ||${mention}||` : '';
-  const content = `${emoji} ${prefix}${descriptionFor(evt)}${mentionSuffix}`;
-  return Object.assign({ content }, identity);
+// Every post goes through the shared sender (overlay/discord-sender.js). Returns its result: { ok, ... } -- callers that must not lose data
+// (outbox, digest buffer, hiscores baseline, raid summaries) keep it until result.ok is true. See that file for the other flags.
+function postToDiscord(feature, webhookUrl, payload, opts) {
+  return sender.send(feature, webhookUrl, payload, opts);
 }
 
-// Returns true when Discord accepted the message (callers that must not lose
-// it -- the chat relay outbox -- retry on false).
-async function postToDiscord(webhookUrl, payload) {
-  try {
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      log('  -> Discord webhook error:', res.status, await res.text().catch(() => ''));
-      return false;
-    }
-    return true;
-  } catch (e) {
-    log('  -> Discord webhook request failed:', e.message || String(e));
-    return false;
-  }
-}
-
-// Global chat is server-wide (thousands of players), so plain banter is
-// gated per-channel the same as Clan's -- off by default for Global.
-// Structured events need no extra volume filtering: the collector only
-// ever recognizes Global's own narrow category vocabulary (cape/pet
-// milestones -- the game itself never broadcasts anything else to
-// Global), so anything that reaches here already cleared that bar.
-function shouldRelay(evt, channelCfg) {
-  if (evt.kind === 'chat') return !!channelCfg.relayPlainChat;
-  return true;
-}
-
-// Authoritative dedup -- same key shape as the collector's own in-page
-// "seen" set, but persisted to disk, not just in-memory. This matters
-// because of what a live rebuild test confirmed (2026-10-06): switching
-// chat tabs away and back destroys and recreates every message's DOM node
-// (confirmed via isConnected), but the message *content*, including its
-// in-game timestamp, is preserved exactly. The collector's in-page set
-// catches that fine *within one script instance's lifetime* -- but it
-// (and an earlier in-memory-only version of this set) resets to empty on
-// every watcher restart, which has no memory of what a *previous* process
-// already relayed. The failure mode that exposed this: restart the
-// watcher to deploy a fix -> user switches tabs -> the game rebuilds the
-// whole visible history as "new" nodes -> a fresh process doesn't
-// recognize any of it as already-sent -> the entire chat history gets
-// relayed again. Persisting this set means a restart no longer forgets.
-const RELAYED_CAP = 1000;
-let relayedKeys = new Set();
-
-function loadRelayedKeys() {
-  try {
-    const arr = JSON.parse(fs.readFileSync(RELAYED_STATE_PATH, 'utf8'));
-    if (Array.isArray(arr)) relayedKeys = new Set(arr.slice(-RELAYED_CAP));
-  } catch (e) { /* no state file yet -- fine, starts empty */ }
-}
-
-function saveRelayedKeys() {
-  try { fs.writeFileSync(RELAYED_STATE_PATH, JSON.stringify(Array.from(relayedKeys))); } catch (e) { /* best effort */ }
-}
-
-const relayKey = (evt) => `${evt.channel}|${evt.timestamp || ''}|${evt.player}|${evt.text}`;
-function isRelayed(evt) { return relayedKeys.has(relayKey(evt)); }
-// Marked only AFTER Discord accepted the post (it used to be marked before, so a
-// kill/restart mid-send lost the event for good).
-function markRelayed(evt) {
-  relayedKeys.add(relayKey(evt));
-  if (relayedKeys.size > RELAYED_CAP) relayedKeys.delete(relayedKeys.values().next().value);
-  saveRelayedKeys();
-}
-
-// --- Outbox: events drained from the page but not yet accepted by Discord ----
-// Persisted to disk before any posting, so a watcher stop / restart / crash
-// can't lose them: they're re-sent on the next start (or retried on the next
-// tick after a failed post, up to OUTBOX_MAX_TRIES). A graceful Stop/Restart
-// from the dashboard additionally flushes everything first (gracefulShutdown).
+// --- Chat relay engine (overlay/relay-core.js) ----------------------------------------------------------------------------------------
+// Typed events -> outbox (kept on disk until Discord accepted them) -> gate -> shared sender. The gate is the duplicate-instance protection:
+// with several ScapeLite instances on one webhook only the one holding the lease posts the shared stream (docs/DISCORD-RELAY-AUDIT.md).
+// Global chat is server-wide, so plain banter stays gated per channel (off by default for Global); structured events pass.
+const RELAYED_STATE_LOAD = () => { const info = {}, arr = readJsonRecover(RELAYED_STATE_PATH, null, info); if (info.recovered) log('WARNING: the relayed-keys file was damaged; recovered it from the ' + info.recovered + ' copy.'); return arr; };
 const OUTBOX_PATH = P.state('chat-relay-outbox.json');
-const OUTBOX_MAX_TRIES = 6;
-let outbox = [];
-try { const a = JSON.parse(fs.readFileSync(OUTBOX_PATH, 'utf8')); if (Array.isArray(a)) outbox = a; } catch (e) { /* none yet */ }
-function saveOutbox() {
-  try { fs.writeFileSync(OUTBOX_PATH, JSON.stringify(outbox)); } catch (e) { /* best effort */ }
+const RELAY_INSTANCE_PATH = P.state('relay-instance.json');
+function loadInstanceId() {
+  try { const j = readJsonRecover(RELAY_INSTANCE_PATH, null); if (j && /^[0-9a-f]{8}$/.test(String(j.id))) return j.id; } catch (e) { /* new id below */ }
+  const id = newInstanceId();
+  try { writeJsonAtomic(RELAY_INSTANCE_PATH, { id }, { backup: false }); } catch (e) { /* best effort */ }
+  return id;
 }
-let outboxBusy = false;
-async function processOutbox(cfg) {
-  if (outboxBusy || !cfg) return;
-  outboxBusy = true;
+let ownPlayerName = '';           // the in-game name, shown on the lease message as "leader <name>"
+let relayRole = 'auto';           // Plugins > Chat Relay > "Several ScapeLite users": auto | always | never | own
+const SL_VERSION = (() => { try { return String(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version || ''); } catch (e) { return ''; } })();
+// The lease lives on the OPTIONAL lease webhook (Plugins > Chat Relay > Shared Lease Webhook, a webhook in a private channel). None set = no lease and nothing extra in any channel.
+// A lease webhook that is also one of the posting webhooks is ignored: it would put the lease message back into a channel people read.
+function leaseWebhookUrl() {
+  const u = readSecretValue(SECRET_FIELDS.relayLeaseWebhook);
+  if (!u) return '';
+  const posting = [SECRET_FIELDS.relayClanWebhook, SECRET_FIELDS.relayGlobalWebhook, SECRET_FIELDS.digestWebhook, SECRET_FIELDS.hiscoresWebhook, SECRET_FIELDS.raidSummaryWebhook].map(readSecretValue);
+  return posting.indexOf(u) === -1 ? u : '';
+}
+const leaseMgr = createLeaseManager({ send: (f, u, pl, o) => sender.send(f, u, pl, o), label: () => ownPlayerName, instanceId: loadInstanceId(), leaseUrl: leaseWebhookUrl, version: SL_VERSION, log: (t) => log(t) });
+const relayGate = leaseGate(leaseMgr, () => relayRole);
+const relay = createRelay({
+  send: (feature, url, payload) => postToDiscord(feature, url, payload),
+  isBroken: (url) => sender.isBroken(url),
+  gate: relayGate,
+  ownOnly: () => relayRole === 'own',
+  noteRelayed: (url, key) => { if (relayRole === 'auto') { const l = leaseMgr.forWebhook(url); if (l) l.noteRelayed(key); } },
+  alreadyRelayedByOthers: (url, key) => { const l = relayRole === 'auto' && leaseMgr.forWebhook(url); return !!(l && l.alreadyRelayed(key)); },
+  avatarFor: (evt) => resolvePlayerAvatar(evt),
+  log: (...a) => log(...a),
+  status: STATUS.chatRelay,
+  store: {
+    loadKeys: RELAYED_STATE_LOAD,
+    saveKeys: (a) => writeJsonAtomic(RELAYED_STATE_PATH, a),
+    loadOutbox: () => readJsonRecover(OUTBOX_PATH, null),
+    saveOutbox: (a) => writeJsonAtomic(OUTBOX_PATH, a),
+  },
+  options: { spacingMs: DISCORD_POST_SPACING_MS },
+});
+Object.defineProperty(STATUS, 'relayLease', { enumerable: true, get: () => {
+  const hooks = [];
+  leaseMgr.all().forEach((l) => { const i = l.info(); hooks.push({ role: i.role, leader: i.leader, epoch: i.epoch, errors: i.errors, lastError: i.lastError || null, hasLease: i.hasLease }); });
+  const first = Array.from(leaseMgr.all().values())[0];
+  return { mode: relayRole, instance: leaseMgr.instanceId, configured: leaseMgr.configured(), version: SL_VERSION, newerVersion: first ? first.info().newerVersion : '', webhooks: hooks };
+} });
+const processOutbox = (cfg) => relay.process(cfg);
+// drained / rescanned raw events -> typed events -> digest + outbox -> post (what is allowed to leave this PC is decided by the gate)
+function ingestDrained(rawEvents, cfg) {
+  const typed = relay.typed(rawEvents);
+  accumulateForDigest(typed);
+  relay.enqueue(typed);
+  return relay.process(cfg);
+}
+function setRelayRole(v) { relayRole = (v === 'always' || v === 'never' || v === 'own') ? v : 'auto'; }
+// The lease is created ahead of the first event so a failover is ready. Without a lease webhook there is nothing to create: say so once.
+let quietNoted = false;
+function ensureLeases() {
+  if (relayRole !== 'auto') return;
+  if (leaseMgr.configured()) { leaseMgr.forWebhook(); return; }
+  if (!quietNoted) { quietNoted = true; log('Relay: no shared lease webhook is set (Plugins > Chat Relay), so this PC posts everything it sees. If other ScapeLite users share these channels, set one or choose "Own events only" (docs/DISCORD-RELAY-AUDIT.md, part 8).'); }
+}
+// Version signalling: a clanmate on the same lease runs a newer ScapeLite. Shown in the Plugins tab (About) and logged once per version; nothing else about them is known.
+let lastNewerLogged = '';
+function noteNewerVersion() {
+  const l = Array.from(leaseMgr.all().values())[0], nv = l ? l.info().newerVersion : '';
+  if (nv && nv !== lastNewerLogged) { lastNewerLogged = nv; log('ScapeLite version: another ScapeLite user on this relay runs ' + nv + ', this PC runs ' + SL_VERSION + '. Plugins > About > Check For Updates.'); }
+}
+// One-time removal of the visible lease message and name suffix the first lease version put on the clan's webhooks (overlay/relay-legacy-cleanup.js).
+const LEGACY_CLEANUP_PATH = P.state('relay-legacy-cleanup.json');
+async function runLegacyLeaseCleanup() {
+  const targets = [['relayClanWebhook', 'relay'], ['relayGlobalWebhook', 'relay (global)'], ['digestWebhook', 'digest'], ['hiscoresWebhook', 'hiscores'], ['raidSummaryWebhook', 'raid']]
+    .map((x) => ({ feature: x[1], url: readSecretValue(SECRET_FIELDS[x[0]]) })).filter((t) => t.url);
   try {
-    while (outbox.length) {
-      const evt = outbox[0];
-      const channelCfg = cfg.channels && cfg.channels[evt.channel];
-      let done = true;
-      if (!channelCfg || !channelCfg.enabled || !channelCfg.webhookUrl || !shouldRelay(evt, channelCfg)) {
-        /* this channel is off / filtered: nothing to send */
-      } else if (isRelayed(evt)) {
-        log('  -> skipped duplicate:', evt.channel, evt.kind, '--', evt.raw);
-        STATUS.chatRelay.totalSkipped += 1;
-      } else {
-        log('  ->', evt.channel, evt.kind, '--', evt.raw);
-        const ok = await postToDiscord(channelCfg.webhookUrl, buildDiscordPayload(evt, cfg));
-        if (ok) {
-          markRelayed(evt);
-          STATUS.chatRelay.lastEventAt = Date.now();
-          STATUS.chatRelay.totalRelayed += 1;
-        } else {
-          evt._tries = (evt._tries || 0) + 1;
-          if (evt._tries >= OUTBOX_MAX_TRIES) log('  -> giving up on a relay event after', String(OUTBOX_MAX_TRIES), 'failed posts:', evt.raw);
-          else done = false;
-        }
-      }
-      if (!done) { saveOutbox(); break; } // retry on the next tick, keep order
-      outbox.shift();
-      saveOutbox();
-      await new Promise((r) => setTimeout(r, DISCORD_POST_SPACING_MS));
-    }
-  } finally {
-    outboxBusy = false;
-  }
+    await legacyLeaseCleanup.run({ send: (f, u, pl, o) => sender.send(f, u, pl, o), targets, log: (t) => log(t),
+      load: () => readJsonRecover(LEGACY_CLEANUP_PATH, {}), save: (s) => writeJsonAtomic(LEGACY_CLEANUP_PATH, s, { backup: false }) });
+  } catch (e) { log('Relay lease clean-up: error --', e.message || String(e)); }
 }
-async function relayEvents(events, cfg) {
-  outbox.push(...events); // persist BEFORE posting
-  saveOutbox();
-  await processOutbox(cfg);
-}
+setTimeout(runLegacyLeaseCleanup, 20000);
+setInterval(runLegacyLeaseCleanup, 3600000);
 
 // Graceful shutdown: pull whatever the page has queued, post everything pending,
 // then exit. Bounded so a dead webhook can't hang a restart.
@@ -674,8 +708,11 @@ async function gracefulShutdown(reason) {
       })(),
       new Promise((r) => setTimeout(r, 12000)),
     ]);
+    try { await clanBoard.shutdown({ url: readSecretValue(SECRET_FIELDS.boardWebhook), timeoutMs: 4000 }); } catch (e) { log('Clan board: final offline update failed --', e.message || String(e)); }
+    await sender.flush(2500);
+    try { await Promise.race([leaseMgr.releaseAll(), new Promise((r) => setTimeout(r, 3000))]); } catch (e) { /* the lease just expires */ }
   } catch (e) { log('Flush error during shutdown --', e.message || String(e)); }
-  log(`Flush finished (${outbox.length} event(s) left in the outbox for next start) -- exiting`);
+  log(`Flush finished (${relay.outbox().length} event(s) left in the outbox for next start) -- exiting`);
   setTimeout(() => process.exit(0), 150);
 }
 process.on('SIGINT', () => { gracefulShutdown('SIGINT'); });
@@ -710,8 +747,8 @@ function loadClanHiscoresConfig() {
 
 function loadClanHiscoresState() {
   try {
-    const s = JSON.parse(fs.readFileSync(CLAN_HISCORES_STATE_PATH, 'utf8'));
-    if (s && typeof s === 'object') return Object.assign({ clanRank: null, members: {}, lastPost: null }, s);
+    const s = readJsonRecover(CLAN_HISCORES_STATE_PATH, null);
+    if (s && typeof s === 'object' && !Array.isArray(s)) return Object.assign({ clanRank: null, members: {}, lastPost: null }, s);
   } catch (e) { /* no state yet */ }
   return { clanRank: null, members: {}, lastPost: null };
   // members: displayName -> {rank, totalLevel, page} -- updated every poll,
@@ -727,7 +764,7 @@ function loadClanHiscoresState() {
 }
 
 function saveClanHiscoresState(state) {
-  try { fs.writeFileSync(CLAN_HISCORES_STATE_PATH, JSON.stringify(state, null, 2)); } catch (e) { /* best effort */ }
+  try { writeJsonAtomic(CLAN_HISCORES_STATE_PATH, state, { indent: 2 }); } catch (e) { /* best effort */ }
 }
 
 function formatNumber(n) { return typeof n === 'number' ? n.toLocaleString('en-US') : String(n); }
@@ -763,18 +800,77 @@ function formatRaidDuration(ms) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+// Rules for posting a summary (Settings > Plugins > Raid Summary). `st` = the run's facts: party size, guild mates, wave, kind.
+// Mode 'any' posts when one switched-on rule that applies to this run matches; 'all' needs every one of them. No rules on = post everything.
+function evaluateRaidSummaryRules(plugin, st) {
+  const p = plugin || {};
+  if (st.kind === 'dungeon' && p.raidSummaryDungeons === false) return { post: false, why: 'dungeon runs are switched off' };
+  if (st.kind !== 'dungeon' && p.raidSummaryRaids === false) return { post: false, why: 'raids are switched off' };
+  const rules = [];
+  if (p.raidSummaryPartyOn !== false) { const n = Number(p.raidSummaryMinMembers) || 2; rules.push({ name: 'party >= ' + n, ok: (st.size || 0) >= n }); }
+  if (p.raidSummaryGuildOn !== false) { const n = Number(p.raidSummaryGuildMin) || 1; rules.push({ name: 'guild mates >= ' + n, ok: (st.guild || 0) >= n }); }
+  if (p.raidSummaryWaveOn !== false && st.kind === 'dungeon') { const n = Number(p.raidSummaryWaveMin) || 10; rules.push({ name: 'wave >= ' + n, ok: (st.wave || 0) >= n }); }
+  if (!rules.length) return { post: true, why: 'no rules on' };
+  const all = p.raidSummaryMode === 'all';
+  const post = all ? rules.every((r) => r.ok) : rules.some((r) => r.ok);
+  return { post, why: (all ? 'all of: ' : 'any of: ') + rules.map((r) => r.name + (r.ok ? ' yes' : ' no')).join(', ') };
+}
+
 function buildRaidSummaryPayload(entry) {
   const dmgLine = entry.perPlayerDamage.length
-    ? entry.perPlayerDamage.slice(0, 5).map((p) => `${p.playerName} (${formatNumber(p.damageDealt)})`).join(', ')
+    ? entry.perPlayerDamage.slice(0, 5).map((p) => p.text ? `${p.playerName} ${p.text}` : `${p.playerName} (${formatNumber(p.damageDealt)})`).join(', ')
     : '--';
   const lootLine = entry.loot.length
     ? entry.loot.map((l) => `${l.quantity > 1 ? l.quantity + 'x ' : ''}${l.name}${l.isRare ? ' 🌟' : ''}`).join(', ')
     : 'No loot';
   const memberWord = entry.memberCount === 1 ? 'member' : 'members';
-  const content = `⚔️ **${entry.raidName}** complete -- ${entry.memberCount} ${memberWord}, ${formatRaidDuration(entry.runMs)}\n` +
+  const guildBit = entry.guildCount > 0 ? ` (${entry.guildCount} guild)` : '';
+  const head = entry.kind === 'dungeon'
+    ? `⚔️ **${entry.raidName}** -- reached **Wave ${entry.wave || '?'}** in ${formatRaidDuration(entry.runMs)} -- ${entry.memberCount} ${memberWord}${guildBit}`
+    : `⚔️ **${entry.raidName}** complete -- ${entry.memberCount} ${memberWord}${guildBit}, ${formatRaidDuration(entry.runMs)}`;
+  const content = head + '\n' +
     `🏆 ${dmgLine}\n` +
     `🎁 ${lootLine}`;
   return { username: 'Raid Summary', content };
+}
+
+// A finished run is drained from the page ONCE (the page forgets it), so it waits here until Discord has accepted it: kept on disk,
+// retried with a growing delay, dropped after RAID_MAX_TRIES failed posts, or when the webhook rejects the message.
+const RAID_PENDING_PATH = P.state('raid-summary-pending.json');
+const RAID_MAX_TRIES = 6, RAID_MAX_AGE_MS = 6 * 3600 * 1000;
+let raidPending = [], raidTickBusy = false;
+function loadRaidPending() { try { const a = readJsonRecover(RAID_PENDING_PATH, []); raidPending = Array.isArray(a) ? a : []; } catch (e) { raidPending = []; } }
+function saveRaidPending() { try { writeJsonAtomic(RAID_PENDING_PATH, raidPending); } catch (e) { /* best effort */ } }
+async function flushRaidPending(cfg) {
+  if (!cfg || !cfg.webhookUrl) return;
+  for (const it of raidPending.slice()) {
+    if (Date.now() < (it.nextAt || 0)) continue;
+    if (Date.now() - it.firstAt > RAID_MAX_AGE_MS) { log('Raid summary: dropping', it.entry.raidName, 'after 6 hours without a successful post.'); raidPending.splice(raidPending.indexOf(it), 1); saveRaidPending(); continue; }
+    if (relayRole === 'never' || relayRole === 'own') { log('Raid summary: not posting', it.entry.raidName, '-- this PC is set to never post shared messages.'); raidPending.splice(raidPending.indexOf(it), 1); saveRaidPending(); continue; }
+    if (relayRole === 'auto' && !it.claimed && leaseMgr.forWebhook(cfg.webhookUrl)) {   // (needs the lease webhook; without one this PC posts) every raid member's PC has the same summary: the first to claim it posts it, the others skip it
+      const bucket = Math.floor((it.entry.ts || it.firstAt) / 300000), nm = String(it.entry.raidName || '') + '|' + (it.entry.kind || 'raid');
+      const lease = leaseMgr.forWebhook(cfg.webhookUrl);
+      const c = lease ? await lease.claim('raid|' + nm + '|' + bucket, ['raid|' + nm + '|' + (bucket - 1), 'raid|' + nm + '|' + (bucket + 1)]) : { ok: false, error: 'no lease' };
+      if (c.ok) { it.claimed = true; saveRaidPending(); }
+      else if (c.by) { log('Raid summary:', it.entry.raidName, 'is posted by another ScapeLite instance -- skipping it here.'); raidPending.splice(raidPending.indexOf(it), 1); saveRaidPending(); continue; }
+      else { it.nextAt = Date.now() + 60000; saveRaidPending(); continue; }   // lease not readable yet: ask again in a minute (the summary is kept)
+    }
+    log('  -> raid summary:', it.entry.raidName, '(' + it.entry.memberCount + ' members)' + (it.tries ? ' retry ' + it.tries : ''));
+    const res = await postToDiscord('raid', cfg.webhookUrl, buildRaidSummaryPayload(it.entry));
+    if (res.ok) {
+      raidPending.splice(raidPending.indexOf(it), 1); saveRaidPending();
+      STATUS.raidSummary.lastPostAt = Date.now();
+      STATUS.raidSummary.totalPosted += 1;
+      await new Promise((r) => setTimeout(r, DISCORD_POST_SPACING_MS));
+      continue;
+    }
+    if (res.rejected) { log('Raid summary: Discord rejected the message, dropping it --', res.error); raidPending.splice(raidPending.indexOf(it), 1); saveRaidPending(); continue; }
+    if (res.broken || res.deferred) { it.nextAt = Date.now() + 5 * 60000; saveRaidPending(); break; }   // not the summary's fault: no try used
+    it.tries = (it.tries || 0) + 1;
+    if (it.tries >= RAID_MAX_TRIES) { log('Raid summary: giving up on', it.entry.raidName, 'after', String(RAID_MAX_TRIES), 'failed posts.'); raidPending.splice(raidPending.indexOf(it), 1); }
+    else it.nextAt = Date.now() + Math.min(30 * 60000, 30000 * Math.pow(2, it.tries - 1));
+    saveRaidPending();
+  }
 }
 
 // --- Activity digest -------------------------------------------------------
@@ -811,90 +907,69 @@ function emptyDigestBuffer() {
 
 function loadDigestBuffer() {
   try {
-    const b = JSON.parse(fs.readFileSync(DIGEST_STATE_PATH, 'utf8'));
-    if (b && typeof b === 'object' && b.players) return Object.assign({ seenKeys: [] }, b);
+    const b = readJsonRecover(DIGEST_STATE_PATH, null);
+    if (b && typeof b === 'object' && b.players) {
+      // Older buffers: entries were filed by the WORDING of the line (Fortress loot ended up under Unlocks for some members and Drops for others), carried "Luck XP"
+      // leftovers and duplicates. Re-file every entry by its item (data/raw/items.json), the same for everybody.
+      RelayEvents.migrateDigestBuffer(b);
+      return Object.assign({ seenKeys: [] }, b);
+    }
   } catch (e) { /* no buffer yet */ }
   return emptyDigestBuffer();
 }
 
 function saveDigestBuffer(buffer) {
-  try { fs.writeFileSync(DIGEST_STATE_PATH, JSON.stringify(buffer)); } catch (e) { /* best effort */ }
+  try { writeJsonAtomic(DIGEST_STATE_PATH, buffer); } catch (e) { /* best effort */ }
 }
 
 let digestBuffer = emptyDigestBuffer(); // loaded for real in main()
 
-// Independent dedup, same key shape and same reasoning as `alreadyRelayed`
-// above (restart + DOM-rebuild can re-drain already-seen chat history as
-// "new") -- but deliberately a SEPARATE Set/array, not a reuse of
-// `relayedKeys`. Confirmed necessary live, 2026-10-07: accumulateForDigest
-// runs on every drained event regardless of whether relayEvents() already
-// touched it for live-relay purposes (digest works even with live relay
-// off), so if both shared one check-and-mark Set, whichever ran first in
-// a given drain cycle (relayEvents does, see the call site) would mark an
-// event as "seen" and the digest would then wrongly treat a BRAND NEW
-// event as a duplicate just because relayEvents saw it moments earlier in
-// the very same cycle. Capped and persisted the same way (DIGEST_SEEN_CAP,
-// stored inside digest-state.json's own `seenKeys` field).
+// Independent dedup, same reasoning as the relay's own (restart + DOM-rebuild can re-drain already-seen chat history as "new") but a SEPARATE set, not a reuse of
+// the relay's: the digest keeps working with live relay off, and a relay that saw an event first must not make the digest treat it as a duplicate. Persisted inside
+// digest-state.json (seenKeys). Keys are the raw line keys (channel|time|player|text) of every line that was merged into the typed event.
 const DIGEST_SEEN_CAP = 1000;
 let digestSeenKeys = new Set();
 function syncDigestSeenKeys() { digestSeenKeys = new Set(digestBuffer.seenKeys || []); }
 syncDigestSeenKeys();
 
 function alreadyInDigest(evt) {
-  const key = `${evt.channel}|${evt.timestamp || ''}|${evt.player}|${evt.text}`;
-  if (digestSeenKeys.has(key)) return true;
-  digestSeenKeys.add(key);
-  if (digestSeenKeys.size > DIGEST_SEEN_CAP) digestSeenKeys.delete(digestSeenKeys.values().next().value);
+  const keys = evt.rawKeys && evt.rawKeys.length ? evt.rawKeys : [RelayEvents.rawKey(evt)];
+  const fresh = keys.filter((k) => !digestSeenKeys.has(k));
+  if (!fresh.length) return true;
+  fresh.forEach((k) => digestSeenKeys.add(k));
+  while (digestSeenKeys.size > DIGEST_SEEN_CAP) digestSeenKeys.delete(digestSeenKeys.values().next().value);
   digestBuffer.seenKeys = Array.from(digestSeenKeys);
   return false;
 }
 
-// Only structured events are worth a digest line -- plain chat ('chat'
-// kind) is deliberately skipped, same "noise vs. signal" call as the rest
-// of this file.
+// ---- Activity digest: collecting ------------------------------------------------------------------------------------
+// Fed with TYPED events (overlay/relay-events.js): one logical event per drop however many chat lines announced it, and the bucket is decided by the ITEM
+// (an unlock item is an Unlock, whoever got it and however the game worded it). Collection-log entries from skilling are never listed.
+const DIGEST_CHANNELS = new Set(['clan', 'friends', 'game']);
 function accumulateForDigest(events) {
   if (!Array.isArray(events) || !events.length) return;
   let changed = false;
   for (const evt of events) {
-    if (!evt.player || evt.kind === 'chat') continue;
-    if (alreadyInDigest(evt)) continue; // restart/DOM-rebuild re-drain guard -- see comment above
-    changed = true; // seenKeys itself changed even on a kind/field this switch doesn't otherwise handle
-    const p = digestBuffer.players[evt.player] || (digestBuffer.players[evt.player] = {
-      rareDrops: [], unlocks: [], pets: [], quests: [], levels: {},
-    });
-    switch (evt.kind) {
-      case 'rareDrop':
-      case 'collection':
-        if (evt.item) { p.rareDrops.push(evt.item); changed = true; }
-        break;
-      case 'petDrop':
-      case 'shinyPetDrop':
-        if (evt.item) { p.pets.push((evt.kind === 'shinyPetDrop' ? '✨ ' : '') + evt.item); changed = true; }
-        break;
-      case 'unlock':
-        if (evt.item) { p.unlocks.push(evt.item); changed = true; }
-        break;
-      case 'questComplete':
-        if (evt.item) { p.quests.push(evt.item); changed = true; }
-        break;
-      case 'levelUp':
-        // Only the skill name + highest level reached in the window is
-        // kept, not one line per ding -- a single skill can level up
-        // dozens of times in 6h, which would otherwise bury everything
-        // else in the digest under one repetitive skill's noise.
-        if (evt.skill && evt.level != null) {
-          const lvl = parseInt(evt.level, 10);
-          if (Number.isFinite(lvl) && (p.levels[evt.skill] == null || lvl > p.levels[evt.skill])) {
-            p.levels[evt.skill] = lvl;
-            changed = true;
-          }
-        }
-        break;
-      default:
-        break;
-    }
+    if (!evt.player || evt.type === 'chat') continue;
+    if (evt.channel && !DIGEST_CHANNELS.has(evt.channel)) continue;   // only Clan, Friends and your own (Game) lines are ever reported: never Global or Proximity
+    if (alreadyInDigest(evt)) continue; // restart/DOM-rebuild re-drain guard
+    changed = true; // seenKeys itself changed
+    if (RelayEvents.digestAdd(digestBuffer, evt)) changed = true;
   }
   if (changed) saveDigestBuffer(digestBuffer);
+}
+
+// A follower (another ScapeLite instance posts the digest): when the leader has posted, empty this PC's copy so a later takeover does not post the same activity again.
+// Only compares the leader's "posted at" value with the one remembered here (never the clocks of two PCs); the first sighting is just remembered.
+function syncDigestWithLease(url) {
+  if (relayRole !== 'auto') return;
+  const l = leaseMgr.forWebhook(url), sh = l && l.shared();
+  if (!sh || !sh.dg) return;
+  if (digestBuffer.lastDg === undefined) { digestBuffer.lastDg = sh.dg; saveDigestBuffer(digestBuffer); return; }
+  if (digestBuffer.lastDg === sh.dg) return;
+  log('Activity digest: another ScapeLite instance posted the digest -- emptying this PC\'s copy of it.');
+  digestBuffer = { sinceAt: Date.now(), players: {}, seenKeys: digestBuffer.seenKeys, lastDg: sh.dg };
+  saveDigestBuffer(digestBuffer);
 }
 
 // Caps each category per player so one extremely active member can't blow
@@ -902,24 +977,21 @@ function accumulateForDigest(events) {
 // rather than silently fail" approach used for quest-reward lines
 // elsewhere in this mod.
 const DIGEST_CAP_PER_CATEGORY = 8;
-function capList(list) {
+function capList(listIn) {
+  const list = RelayEvents.collapseEntries(listIn);   // a drop that came several times is one entry with a count
   if (list.length <= DIGEST_CAP_PER_CATEGORY) return list.join(', ');
   return list.slice(0, DIGEST_CAP_PER_CATEGORY).join(', ') + ` (+${list.length - DIGEST_CAP_PER_CATEGORY} more)`;
 }
 
-function buildDigestPayload(buffer) {
+// One block per player with something notable (snap = what the block was built from, so a send that finishes later removes exactly that).
+function buildDigestBlocks(buffer) {
   const names = Object.keys(buffer.players).filter((name) => {
     const p = buffer.players[name];
     return p.rareDrops.length || p.unlocks.length || p.pets.length || p.quests.length || Object.keys(p.levels).length;
   });
-  if (!names.length) return null;
   names.sort((a, b) => a.localeCompare(b));
-
-  const hours = Math.round((Date.now() - buffer.sinceAt) / 3600000);
-  const lines = [`📋 **Activity Digest** -- last ${hours}h`, ''];
-  for (const name of names) {
-    const p = buffer.players[name];
-    lines.push(`**${name}**`);
+  return names.map((name) => {
+    const p = buffer.players[name], lines = [`**${name}**`];
     if (p.rareDrops.length) lines.push(`💎 Drops: ${capList(p.rareDrops)}`);
     if (p.pets.length) lines.push(`🐾 Pets: ${capList(p.pets)}`);
     if (p.unlocks.length) lines.push(`🔓 Unlocks: ${capList(p.unlocks)}`);
@@ -928,9 +1000,18 @@ function buildDigestPayload(buffer) {
       lines.push(`⭐ Levels: ${skillNames.map((s) => `${s} → ${p.levels[s]}`).join(', ')}`);
     }
     if (p.quests.length) lines.push(`📜 Quests: ${capList(p.quests)}`);
-    lines.push('');
-  }
-  return { username: 'Activity Digest', content: lines.join('\n').trim() };
+    return { name, text: lines.join('\n'), snap: JSON.parse(JSON.stringify(p)) };
+  });
+}
+const digestHead = (buffer) => `📋 **Activity Digest** -- last ${Math.round((Date.now() - buffer.sinceAt) / 3600000)}h`;
+// After a chunk was accepted: take that player's sent entries out of the buffer (anything collected while the post was in flight stays).
+function subtractDigestSnapshot(buffer, name, snap) {
+  const cur = buffer.players[name];
+  if (!cur) return;
+  const lists = ['rareDrops', 'unlocks', 'pets', 'quests'];
+  lists.forEach((k) => { cur[k] = (cur[k] || []).slice((snap[k] || []).length); });
+  Object.keys(snap.levels || {}).forEach((s) => { if (cur.levels && cur.levels[s] != null && cur.levels[s] <= snap.levels[s]) delete cur.levels[s]; });
+  if (lists.every((k) => !cur[k].length) && !Object.keys(cur.levels || {}).length) delete buffer.players[name];
 }
 
 // Finds `displayName`'s current {rank, totalLevel, page} in the "overall"
@@ -1047,42 +1128,110 @@ async function findMemberInHiscores(evalAwait, displayName, hintPage, hintLevel)
   return null; // genuinely not found -- name typo in config, or an extreme jump beyond the walk budget (will retry next poll)
 }
 
-async function pollClanHiscores(evalAwait, cfg) {
+// Keeps the Clan Hiscores member list in line with the clan roster the game itself holds. Runs at the start of every lookup:
+//   - a member who joined the clan is added to the config's list;
+//   - a member who left is removed from it, and forgotten in the poll state and in the last-post baseline (so nobody is announced as "changed" because they left);
+//   - everything else in the config (webhook, intervals, tag, order of the remaining members) is left exactly as it was.
+// It only acts on a complete, trustworthy roster: the game must report the same clan tag as the config (when the config has one), the roster must not be empty, and it must
+// not be less than half the size of the list it replaces (a half-loaded roster would otherwise wipe the list). Otherwise it logs and changes nothing.
+const lower = (n) => String(n || '').trim().toLowerCase();
+function planRosterSync(current, roster) {
+  const have = new Map((current || []).map((n) => [lower(n), n])), want = new Map((roster || []).map((m) => [lower(m.name), m.name]));
+  const added = [...want.keys()].filter((k) => !have.has(k)).map((k) => want.get(k));
+  const removed = [...have.keys()].filter((k) => !want.has(k)).map((k) => have.get(k));
+  const kept = (current || []).filter((n) => want.has(lower(n)));
+  return { added, removed, members: kept.concat(added) };
+}
+async function syncClanRoster(evalAwait, cfg, state) {
+  let roster;
+  try { roster = await evalAwait(`window.__ccBridge && window.__ccBridge.clanRoster ? window.__ccBridge.clanRoster() : null`, false); } catch (e) { return false; }
+  if (!roster || roster.state !== 'ok' || !Array.isArray(roster.members) || !roster.members.length) return false;   // not in a clan, still loading, or the bridge is not attached
+  if (cfg.clanTag && roster.tag && lower(cfg.clanTag) !== lower(roster.tag)) { log('Clan hiscores: roster sync skipped (the game is in clan', JSON.stringify(roster.tag), 'but the config is for', JSON.stringify(cfg.clanTag) + ')'); return false; }
+  const cur = Array.isArray(cfg.members) ? cfg.members : [], plan = planRosterSync(cur, roster.members);
+  // Someone who left must not stay in the next Activity Digest with what they did earlier in the same period (also cleans up after a roster change that was synced before this ran).
+  if (digestBuffer && digestBuffer.players) {
+    const here = new Set(roster.members.map((m) => lower(m.name))); const gone = Object.keys(digestBuffer.players).filter((n) => !here.has(lower(n)));
+    if (gone.length) { gone.forEach((n) => delete digestBuffer.players[n]); saveDigestBuffer(digestBuffer); log('Activity digest: dropped the buffered activity of', gone.join(', '), '(not in the clan roster)'); }
+  }
+  if (!plan.added.length && !plan.removed.length) return false;
+  if (cur.length && roster.members.length * 2 < cur.length) { log('Clan hiscores: roster sync skipped (the game reports', roster.members.length, 'members against', cur.length, 'in the config: looks incomplete)'); return false; }
+  // write the change into the config FILE (read fresh, so edits made meanwhile, webhook included, are kept)
+  try {
+    const file = JSON.parse(fs.readFileSync(CLAN_HISCORES_CONFIG_PATH, 'utf8'));
+    const filePlan = planRosterSync(Array.isArray(file.members) ? file.members : [], roster.members);
+    file.members = filePlan.members;
+    writeJsonAtomic(CLAN_HISCORES_CONFIG_PATH, JSON.stringify(file, null, 2) + '\n', { backup: false });   // no .bak: the config holds the webhook
+  } catch (e) { log('Clan hiscores: could not update the member list --', e.message || String(e)); return false; }
+  cfg.members = plan.members;
+  plan.removed.forEach((n) => { delete state.members[n]; if (state.lastPost && state.lastPost.members) delete state.lastPost.members[n]; });
+  STATUS.clanHiscores.rosterSync = { at: Date.now(), added: plan.added, removed: plan.removed, members: plan.members.length };
+  log('Clan hiscores: roster updated --', plan.added.length ? 'added ' + plan.added.join(', ') : 'nobody added', '/', plan.removed.length ? 'removed ' + plan.removed.join(', ') : 'nobody removed');
+  return true;
+}
+
+// One lookup at a time (the scheduled poll and /sl hiscores check share the game socket and the state file). opts.dryRun: look up and report, never post, never move the post baseline.
+let hiscoresPollBusy = false;
+let hiscoresMisses = 0; // clan rank requests in a row the game did not answer (after the quiet retry); the scheduler tries again early while it is small
+const HISCORES_EARLY_RETRY_MS = 3 * 60 * 1000, HISCORES_EARLY_RETRIES = 2;
+async function pollClanHiscores(evalAwait, cfg, opts) {
+  if (hiscoresPollBusy) return opts && opts.dryRun ? { error: 'A clan hiscores lookup is already running. Try again in a minute.' } : undefined;
+  hiscoresPollBusy = true;
+  try { return await pollClanHiscoresRun(evalAwait, cfg, opts); } finally { hiscoresPollBusy = false; }
+}
+async function pollClanHiscoresRun(evalAwait, cfg, opts) {
+  const dry = !!(opts && opts.dryRun);
   STATUS.clanHiscores.lastPollAt = Date.now();
   const ready = await evalAwait(`window.__ccGameSocket ? window.__ccGameSocket.isReady() : false`, false).catch(() => false);
   STATUS.clanHiscores.wsHookReady = !!ready;
   if (!ready) {
     log('Clan hiscores: ws-hook not active yet (needs a game reload since it was installed) -- skipping this poll.');
-    return;
+    return dry ? { error: 'The game connection is not ready for lookups yet (reload the game page once).' } : undefined;
   }
 
   let myRank;
+  // The server sometimes does not answer within 8 s (busy during a dungeon, or just after a reconnect / watcher restart).
+  // One quiet retry with a longer wait before reporting a failure; the next poll tries again anyway.
   try {
-    myRank = await evalAwait(`window.__ccGameSocket.request({type:'clan_hiscores_my_rank',data:{}}, 'clan_hiscores_my_rank', 8000)`, true);
+    try {
+      myRank = await evalAwait(`window.__ccGameSocket.request({type:'clan_hiscores_my_rank',data:{}}, 'clan_hiscores_my_rank', 8000)`, true);
+    } catch (e1) {
+      if (!/timeout/.test(String(e1 && e1.message || e1))) throw e1;
+      await new Promise((r) => setTimeout(r, 4000));
+      myRank = await evalAwait(`window.__ccGameSocket.request({type:'clan_hiscores_my_rank',data:{}}, 'clan_hiscores_my_rank', 15000)`, true);
+    }
   } catch (e) {
-    log('Clan hiscores: request failed --', e.message || String(e));
-    return;
+    const msg = e.message || String(e);
+    hiscoresMisses++;
+    STATUS.clanHiscores.missedRounds = hiscoresMisses;
+    // A server that does not answer is routine (~100 lines a day before): one line for the first miss, then every third round in a row, and one when it answers again.
+    // Any other error is logged every time.
+    if (!/timeout/.test(msg) || hiscoresMisses === 1 || hiscoresMisses % 3 === 0) log('Clan hiscores: request failed --', msg, hiscoresMisses > 1 ? '(' + hiscoresMisses + ' rounds in a row)' : '');
+    return dry ? { error: 'The clan rank request failed or timed out. Try again in a minute.' } : undefined;
   }
-  if (!myRank || typeof myRank.rank !== 'number') return;
+  if (!myRank || typeof myRank.rank !== 'number') return dry ? { error: 'The game did not report a clan rank (not in a clan?).' } : undefined;
+  if (hiscoresMisses) { log('Clan hiscores: the game answers again after', hiscoresMisses, 'missed round(s).'); hiscoresMisses = 0; STATUS.clanHiscores.missedRounds = 0; }
   STATUS.clanHiscores.lastClanRank = myRank.rank;
 
   const state = loadClanHiscoresState();
+  await syncClanRoster(evalAwait, cfg, state);   // the member list follows the game's clan roster on every lookup
   const lastPost = state.lastPost; // baseline everything below diffs against -- NOT state.members, see loadClanHiscoresState's comment
-  const memberChangesSincePost = [];
+  const memberChangesSincePost = [], seenMembers = [], notFound = [], failedLookups = [];
 
   for (const name of cfg.members || []) {
     // Hint for the SEARCH comes from the last POLL (state.members), kept
     // fresh every cycle regardless of posting -- cheap, and unrelated to
     // what gets announced.
     const hint = state.members[name] || {};
-    let found = null;
+    let found = null, lookupError = null;
     try {
       found = await findMemberInHiscores(evalAwait, name, hint.page, hint.totalLevel);
     } catch (e) {
-      log('Clan hiscores: lookup failed for', name, '--', e.message || String(e));
+      lookupError = e.message || String(e);
+      failedLookups.push({ name, error: lookupError });
     }
-    if (!found) { log('Clan hiscores: could not locate member', JSON.stringify(name), 'in hiscores'); continue; }
+    if (!found) { if (!lookupError) log('Clan hiscores: could not locate member', JSON.stringify(name), 'in hiscores'); notFound.push(name); continue; }
     state.members[name] = { rank: found.rank, totalLevel: found.totalLevel, page: found.page };
+    seenMembers.push({ name, rank: found.rank, totalLevel: found.totalLevel });
 
     // What to ANNOUNCE is diffed against the last POST, not the last poll
     // -- so a throttled/delayed post still shows the full change since
@@ -1091,6 +1240,12 @@ async function pollClanHiscores(evalAwait, cfg) {
     if (prevPost && (found.totalLevel !== prevPost.totalLevel || found.rank !== prevPost.rank)) {
       memberChangesSincePost.push({ name, prevLevel: prevPost.totalLevel, level: found.totalLevel, prevRank: prevPost.rank, rank: found.rank });
     }
+  }
+
+  // One line per round for the members whose lookup failed (a hiscores page that did not answer), not two lines per member.
+  if (failedLookups.length) {
+    const errs = [...new Set(failedLookups.map((f) => f.error))];
+    log('Clan hiscores: lookup failed for', failedLookups.map((f) => f.name).join(', '), '--', errs.join('; '));
   }
 
   // Posting is throttled ("scarce") -- requested 2026-10-07 after the
@@ -1115,35 +1270,55 @@ async function pollClanHiscores(evalAwait, cfg) {
 
   state.clanRank = myRank.rank; // latest observed, independent of posting -- for status/logging only
 
+  if (dry) {   // /sl hiscores check: the lookup is kept (state.members, STATUS), nothing is posted and lastPost stays as it is
+    saveClanHiscoresState(state);
+    log('Clan hiscores: manual check, rank', myRank.rank, '-- nothing posted');
+    return { rank: myRank.rank, prevRank: lastPost && lastPost.clanRank != null ? lastPost.clanRank : null, members: seenMembers, notFound, hasBaseline: !!lastPost, changes: memberChangesSincePost.length + (rankChanged ? 1 : 0), wouldPost: shouldPost };
+  }
+
   if (shouldPost) {
-    const lines = [];
+    let head;
     if (rankChanged) {
       const arrow = myRank.rank < lastPost.clanRank ? '📈' : '📉';
-      lines.push(`${arrow} **${cfg.clanTag || 'Clan'}** moved from clan rank **#${lastPost.clanRank}** to **#${myRank.rank}**${isMajor ? ' (major move)' : ''}`);
+      head = `${arrow} **${cfg.clanTag || 'Clan'}** moved from clan rank **#${lastPost.clanRank}** to **#${myRank.rank}**${isMajor ? ' (major move)' : ''}`;
     } else {
-      lines.push(`📊 **${cfg.clanTag || 'Clan'}** update -- rank unchanged at **#${myRank.rank}**`);
+      head = `📊 **${cfg.clanTag || 'Clan'}** update -- rank unchanged at **#${myRank.rank}**`;
     }
-    if (memberChangesSincePost.length) {
-      lines.push('', rankChanged ? '**Reason**' : '**Changes**');
-      // One block per member: name on its own line, then one line per change.
-      // 🔼 = improvement (higher level, or a LOWER rank number), 🔽 = drop.
-      for (const c of memberChangesSincePost) {
-        lines.push('', `**${c.name}**`);
-        if (c.prevLevel !== c.level) lines.push(`${c.level > c.prevLevel ? '🔼' : '🔽'} Total level ${formatNumber(c.prevLevel)} → ${formatNumber(c.level)}`);
-        if (c.prevRank !== c.rank) lines.push(`${c.rank < c.prevRank ? '🔼' : '🔽'} Hiscores rank #${formatNumber(c.prevRank)} → #${formatNumber(c.rank)}`);
-      }
-    }
-    if (cfg.webhookUrl) await postToDiscord(cfg.webhookUrl, { username: 'Clan Hi Scores', avatar_url: HISCORES_AVATAR_URL, content: lines.join('\n') });
+    if (memberChangesSincePost.length) head += '\n\n' + (rankChanged ? '**Reason**' : '**Changes**');
+    // One block per member: name on its own line, then one line per change.
+    // 🔼 = improvement (higher level, or a LOWER rank number), 🔽 = drop.
+    const blocks = memberChangesSincePost.map((c) => {
+      const ls = [`**${c.name}**`];
+      if (c.prevLevel !== c.level) ls.push(`${c.level > c.prevLevel ? '🔼' : '🔽'} Total level ${formatNumber(c.prevLevel)} → ${formatNumber(c.level)}`);
+      if (c.prevRank !== c.rank) ls.push(`${c.rank < c.prevRank ? '🔼' : '🔽'} Hiscores rank #${formatNumber(c.prevRank)} → #${formatNumber(c.rank)}`);
+      return { name: c.name, text: ls.join('\n') };
+    });
+    // The baseline (state.lastPost) only moves forward for what Discord ACCEPTED: a failed post is simply announced again at the next poll.
+    const progress = { at: lastPost.at, clanRank: lastPost.clanRank, members: Object.assign({}, lastPost.members) };
     const memberSnapshot = {};
     for (const name of cfg.members || []) {
       if (state.members[name]) memberSnapshot[name] = { rank: state.members[name].rank, totalLevel: state.members[name].totalLevel };
     }
-    state.lastPost = { at: Date.now(), clanRank: myRank.rank, members: memberSnapshot };
-    log(
-      'Clan hiscores:',
-      rankChanged ? `rank changed ${lastPost.clanRank} -> ${myRank.rank}${isMajor ? ' (major)' : ''}` : `rank unchanged at ${myRank.rank}`,
-      '--', memberChangesSincePost.length, 'member change(s) -- posted'
-    );
+    let delivered = true, detail = '';
+    if (cfg.webhookUrl) {
+      const chunks = chunkBlocks(blocks, { max: 1900, head });
+      const dr = await deliverChunks(sender, 'hiscores', cfg.webhookUrl, chunks,
+        (c, i) => ({ username: 'Clan Hi Scores', avatar_url: HISCORES_AVATAR_URL, content: (i ? '(continued)\n\n' : '') + c.text }),
+        (c, i) => { if (i === 0) progress.clanRank = myRank.rank; c.blocks.forEach((b) => { if (memberSnapshot[b.name]) progress.members[b.name] = memberSnapshot[b.name]; }); });
+      delivered = dr.ok;
+      if (!dr.ok) detail = (dr.sent ? dr.sent + ' of ' + dr.total + ' message(s) went out; ' : '') + (dr.last && dr.last.error || 'unknown error');
+    }
+    if (delivered) {
+      state.lastPost = { at: Date.now(), clanRank: myRank.rank, members: memberSnapshot };
+      log(
+        'Clan hiscores:',
+        rankChanged ? `rank changed ${lastPost.clanRank} -> ${myRank.rank}${isMajor ? ' (major)' : ''}` : `rank unchanged at ${myRank.rank}`,
+        '--', memberChangesSincePost.length, 'member change(s) -- posted'
+      );
+    } else {
+      state.lastPost = progress;
+      log('Clan hiscores: the update was NOT delivered (' + detail + ') -- it stays pending and is sent again at the next poll.');
+    }
   } else if (!lastPost) {
     // First poll ever (or state file was reset) -- establish the baseline
     // silently, same as the original first-poll guard, just now also
@@ -1217,7 +1392,7 @@ function persistPingRoles(roles) {
     try { file = JSON.parse(fs.readFileSync(CHAT_RELAY_CONFIG_PATH, 'utf8')) || {}; } catch (e) { return; } // no relay config yet: nothing to attach roles to
     if (JSON.stringify(file.pingRoles || null) === s) return;
     file.pingRoles = roles;
-    fs.writeFileSync(CHAT_RELAY_CONFIG_PATH, JSON.stringify(file, null, 2));
+    writeJsonAtomic(CHAT_RELAY_CONFIG_PATH, file, { indent: 2, backup: false });
     log('Ping roles saved (' + roles.length + ').');
   } catch (e) { log('ERROR: could not save ping roles --', e.message); }
 }
@@ -1294,6 +1469,16 @@ function applyPluginOverridesToDigestCfg(cfg, plugin) {
 // elementsFromPoint, ...) -- is attributed to the plugin. Result goes to STATUS.perf for the in-game indicator
 // and the dashboard. Bursts run every 60 s, or back-to-back while the indicator tooltip is open.
 STATUS.perf = null;
+let perfLogAt = 0;
+function logPerfSample(r) {
+  if (Date.now() - perfLogAt < 55000) return;
+  perfLogAt = Date.now();
+  const m = r.metrics || {};
+  const text = 'ScapeLite uses ' + r.scapelitePct + '% of the page (script ' + m.scriptPct + '%, layout ' + m.layoutPct + '%, style ' + m.stylePct + '%)';
+  const data = { scapelitePct: r.scapelitePct, metrics: m, plugins: (r.plugins || []).slice(0, 8).map((x) => ({ id: x.id, pct: x.pct })) };
+  if (SUPERVISED) { try { process.send({ type: 'logbatch', entries: [{ t: Date.now(), ch: 'Perf', lv: 'info', m: text, d: data }], dropped: 0 }); } catch (e) { /* supervisor gone */ } }
+  else logstore.ingest([{ t: Date.now(), ch: 'Perf', lv: 'info', m: text, d: data }]);
+}
 async function perfBurst(call, ms, plugins) {
   const metricsOf = (r) => { const o = {}; (r && r.metrics || []).forEach((m) => { o[m.name] = m.value; }); return o; };
   await call('Profiler.enable', {});
@@ -1331,7 +1516,11 @@ async function perfBurst(call, ms, plugins) {
   });
   const pct = (v) => Math.round(v / wall * 1000) / 10;
   const labelOf = (id) => { const d = plugins.find((p) => p.id === id); return d ? d.label : id; };
-  const list = Object.keys(per).map((id) => ({ id, label: labelOf(id), pct: pct(per[id]) })).sort((a, b) => b.pct - a.pct);
+  // One line per package, not per file: everything that is part of ScapeLite Core (lifecycle, kit, scale, panel tools, anchoring, hover info ...) is one entry,
+  // so the list names things the way the Plugins tab does and a Core internal never looks like a plugin of its own.
+  const pkg = {};
+  Object.keys(per).forEach((id) => { const d = plugins.find((p) => p.id === id), key = d && d.core ? 'core' : id; (pkg[key] = pkg[key] || { id: key, label: key === 'core' ? 'ScapeLite Core' : labelOf(id), v: 0 }).v += per[id]; });
+  const list = Object.values(pkg).map((x) => ({ id: x.id, label: x.label, pct: pct(x.v) })).sort((a, b) => b.pct - a.pct);
   const d = (k) => (m1[k] != null && m0[k] != null ? m1[k] - m0[k] : 0);
   const secs = Math.max(0.001, (t0 ? (Date.now() - t0) / 1000 : ms / 1000));
   return {
@@ -1345,14 +1534,97 @@ async function perfBurst(call, ms, plugins) {
 }
 
 // --- In-game log settings -> overlay/log-config.json (the supervisor's log store re-reads it every few seconds) ---
+// Plugins-tab keys: logsEnabled, logsKeepDays, logsHistoryDays, logsLevel, logsMaxMB, logsStructured, and one toggle per page-fed channel.
+const LOG_CHANNEL_TOGGLES = { Tasks: 'logsTasks', Fortress: 'logsFortress', Drops: 'logsDrops', Alerts: 'logsAlerts', Perf: 'logsPerf', Discord: 'logsDiscord' };
 async function syncLogSettings(evalAwait) {
+  const keys = ['logsEnabled', 'logsKeepDays', 'logsHistoryDays', 'logsLevel', 'logsMaxMB', 'logsStructured'].concat(Object.values(LOG_CHANNEL_TOGGLES));
   let v = null;
-  try { v = await evalAwait(`window.${PLUGINS_NS} ? ({ e: window.${PLUGINS_NS}.get('logsEnabled'), d: window.${PLUGINS_NS}.get('logsKeepDays') }) : null`, false); } catch (e) { return; }
+  try { v = await evalAwait(`window.${PLUGINS_NS} ? ({ ${keys.map((k, i) => 'k' + i + ': window.' + PLUGINS_NS + '.get(' + JSON.stringify(k) + ')').join(', ')} }) : null`, false); } catch (e) { return; }
   if (!v) return;
+  const g = (k) => v['k' + keys.indexOf(k)];
+  const patch = {};
+  const numeric = (k) => (g(k) !== '' && g(k) != null && Number.isFinite(Number(g(k))) ? Number(g(k)) : undefined);
+  if (typeof g('logsEnabled') === 'boolean') patch.enabled = g('logsEnabled');
+  if (numeric('logsKeepDays') !== undefined) patch.keepDays = numeric('logsKeepDays');
+  if (numeric('logsHistoryDays') !== undefined) patch.historyDays = numeric('logsHistoryDays');
+  if (typeof g('logsLevel') === 'string') patch.level = g('logsLevel');
+  if (numeric('logsMaxMB') !== undefined) patch.maxTotalMB = numeric('logsMaxMB');
+  if (typeof g('logsStructured') === 'boolean') patch.structured = g('logsStructured');
+  patch.channels = {};
+  for (const ch of Object.keys(LOG_CHANNEL_TOGGLES)) { const t = g(LOG_CHANNEL_TOGGLES[ch]); if (typeof t === 'boolean') patch.channels[ch] = { enabled: t }; }
   const cur = logstore.config();
-  const enabled = v.e !== false, days = Number(v.d);
-  if (enabled === cur.enabled && (!Number.isFinite(days) || days === cur.keepDays)) return;
-  try { const n = logstore.saveConfig({ enabled, keepDays: Number.isFinite(days) ? days : undefined }); log('Log settings: ' + (n.enabled ? 'saving logs, keeping ' + n.keepDays + ' day(s)' : 'saving logs is OFF')); logstore.prune(true); } catch (e) { log('ERROR: could not save log settings --', e.message); }
+  const chans = Object.assign({}, cur.channels);
+  for (const c of Object.keys(patch.channels)) chans[c] = Object.assign({}, cur.channels[c], patch.channels[c]);
+  const next = logstore.normalize(Object.assign({}, cur, patch, { channels: chans }));
+  if (JSON.stringify(next) === JSON.stringify(cur)) return;
+  try {
+    logstore.saveConfig(patch);
+    log('Log settings: ' + (next.enabled ? 'saving logs (level ' + next.level + ', diagnostics ' + next.keepDays + ' day(s), history ' + next.historyDays + ' day(s))' : 'saving logs is OFF'));
+    if (SUPERVISED) { try { process.send({ type: 'logcmd', cmd: 'prune' }); } catch (e) { /* supervisor gone */ } } else logstore.prune();
+  } catch (e) { log('ERROR: could not save log settings --', e.message); }
+}
+
+// --- In-game plugin log lines (window.__ccLog, overlay/log-client.js) -> the logging core ----------------------
+// Drained over the existing DevTools connection every few seconds. Supervised: forwarded to the supervisor, which owns
+// the files. Standalone: written directly.
+let logDrainBusy = false;
+async function drainPageLogs(evalAwait) {
+  if (logDrainBusy) return 0;
+  logDrainBusy = true;
+  let total = 0;
+  try {
+    const req = await evalAwait('(() => { const r = window.__ccLogReq || null; window.__ccLogReq = null; return r; })()', false);
+    if (req === 'open') {
+      try { await fetch('http://127.0.0.1:' + STATUS_SERVER_PORT + '/api/logs/open', { method: 'POST', headers: { 'x-cc-control': '1', 'content-type': 'application/json' }, body: '{}' }); } catch (e) { log('Open logs folder request failed --', e.message); }
+    }
+    for (let i = 0; i < 5; i++) {
+      const r = await evalAwait('window.__ccLog && window.__ccLog.drain ? window.__ccLog.drain(400) : null', false);
+      if (!r || !Array.isArray(r.entries)) break;
+      if (r.entries.length || r.dropped) forwardPageLogs(r.entries, r.dropped);
+      total += r.entries.length;
+      if (!r.left) break;
+    }
+  } catch (e) { /* page busy or reloading */ }
+  finally { logDrainBusy = false; }
+  return total;
+}
+// --- Task Option Log (window.__ccOptionLog, overlay/option-log.js) -> State/option-log.json --------------------
+// The page only collects finished rows; they are taken over here and appended (deduplicated, capped, atomic write). A failed write keeps the rows for the next try.
+let optionLogBusy = false, optionLogRetry = [];
+async function drainOptionLog(evalAwait) {
+  if (optionLogBusy) return 0;
+  optionLogBusy = true;
+  let total = 0;
+  try {
+    for (let i = 0; i < 5; i++) {
+      const r = await evalAwait('window.__ccOptionLog && window.__ccOptionLog.drain ? window.__ccOptionLog.drain(200) : null', false);
+      if (!r || !Array.isArray(r.rows)) break;
+      optionLogRetry = optionLogRetry.concat(r.rows); total += r.rows.length;
+      if (!r.left) break;
+    }
+    if (optionLogRetry.length) {
+      optionLog.ingest(optionLogRetry);
+      try { optionLog.save(); optionLogRetry = []; } catch (e) { log('Task option log: could not write State/option-log.json --', e.message); if (optionLogRetry.length > 2000) optionLogRetry = optionLogRetry.slice(-2000); }
+    }
+  } catch (e) { /* page busy or reloading */ }
+  finally { optionLogBusy = false; }
+  return total;
+}
+function forwardPageLogs(entries, dropped) {
+  if (SUPERVISED) { try { process.send({ type: 'logbatch', entries, dropped: dropped || 0 }); } catch (e) { /* supervisor gone */ } }
+  else logstore.ingest(entries, { dropped });
+}
+
+// One-time recovery: if this browser profile lost its Task Log (site data cleared), refill it from Logs/Tasks/*.jsonl.
+async function recoverTaskLog(evalAwait) {
+  try {
+    const n = await evalAwait('window.__ccTaskLog && window.__ccTaskLog.log ? window.__ccTaskLog.log().length : -1', false);
+    if (n !== 0) return;
+    const recs = logstore.reader.taskRecords();
+    if (!recs.length) return;
+    const got = await evalAwait(`window.__ccTaskLog && window.__ccTaskLog.restore ? window.__ccTaskLog.restore(${JSON.stringify(recs.slice(-2500))}) : -1`, false);
+    if (got > 0) log('Task Log: restored ' + got + ' task record(s) from the log files (the browser copy was empty).');
+  } catch (e) { /* task log not loaded yet */ }
 }
 
 // --- In-game "About" buttons -> updater (the dashboard server owns the update logic) ---------------------
@@ -1373,9 +1645,11 @@ async function handleUpdateRequest(evalAwait) {
 const SECRET_FIELDS = {
   relayClanWebhook: { file: CHAT_RELAY_CONFIG_PATH, example: 'chat-relay-config.example.json', at: ['channels', 'clan', 'webhookUrl'], label: 'Clan relay webhook' },
   relayGlobalWebhook: { file: CHAT_RELAY_CONFIG_PATH, example: 'chat-relay-config.example.json', at: ['channels', 'global', 'webhookUrl'], label: 'Global relay webhook' },
+  relayLeaseWebhook: { file: CHAT_RELAY_CONFIG_PATH, example: 'chat-relay-config.example.json', at: ['leaseWebhookUrl'], label: 'Shared lease webhook' },
   hiscoresWebhook: { file: CLAN_HISCORES_CONFIG_PATH, example: 'clan-hiscores-config.example.json', at: ['webhookUrl'], label: 'Clan hiscores webhook' },
   raidSummaryWebhook: { file: RAID_SUMMARY_CONFIG_PATH, example: 'raid-summary-config.example.json', at: ['webhookUrl'], label: 'Raid summary webhook' },
   digestWebhook: { file: DIGEST_CONFIG_PATH, example: 'digest-config.example.json', at: ['webhookUrl'], label: 'Activity digest webhook' },
+  boardWebhook: { file: CLAN_BOARD_CONFIG_PATH, example: 'clan-board-config.example.json', at: ['webhookUrl'], label: 'Clan board webhook' },
 };
 const isPlaceholderUrl = (v) => !v || /X{6,}|Y{6,}/.test(v);
 function readSecretValue(def) {
@@ -1392,14 +1666,51 @@ function writeSecretValue(def, value) {
   let o = cfg;
   def.at.slice(0, -1).forEach((k) => { if (!o[k] || typeof o[k] !== 'object') o[k] = {}; o = o[k]; });
   o[def.at[def.at.length - 1]] = value;
-  const tmp = def.file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2));
-  fs.renameSync(tmp, def.file);
+  writeJsonAtomic(def.file, JSON.stringify(cfg, null, 2), { backup: false });   // no .bak: these configs hold webhooks
 }
 function currentSecrets() {
   const out = {};
   for (const k of Object.keys(SECRET_FIELDS)) out[k] = readSecretValue(SECRET_FIELDS[k]);
   return out;
+}
+// The "Reload ScapeLite" button in the status tooltip leaves window.__ccReloadRequest; restart the watcher (re-injects every plugin) when it is set.
+let reloadBusy = false;
+async function handleReloadRequest(evalAwait) {
+  if (reloadBusy) return;
+  let t = 0;
+  try { t = await evalAwait('(() => { const t = window.__ccReloadRequest || 0; window.__ccReloadRequest = 0; return t; })()', false); } catch (e) { return; }
+  if (!t) return;
+  reloadBusy = true;
+  log('Reload requested from the status tooltip: restarting the watcher.');
+  try { await fetch('http://127.0.0.1:7777/api/watcher/restart', { method: 'POST', headers: { 'content-type': 'application/json', 'x-cc-control': '1' }, body: '{}' }); } catch (e) { log('ERROR: could not request the restart --', e.message); }
+  setTimeout(() => { reloadBusy = false; }, 15000);
+}
+// Chat commands (/sl ...): chat-commands.js leaves records in window.__ccCmdBox; they run through the allowlisted host (overlay/chat-commands-watcher.js) and each reply is handed back to the page.
+let cmdHost = null;
+async function hiscoresCheckNow() {
+  const conn = activeConn;
+  if (!conn) return { error: 'The game is not connected.' };
+  const rawCfg = loadClanHiscoresConfig();
+  if (!rawCfg || !Array.isArray(rawCfg.members) || !rawCfg.members.length) return { error: 'No clan hiscores members are set up.' };
+  const plugin = await conn.evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
+  return pollClanHiscores(conn.evalAwait, applyPluginOverridesToHiscoresCfg(rawCfg, plugin), { dryRun: true });
+}
+function commandHost() {
+  if (cmdHost) return cmdHost;
+  cmdHost = createCommandHost({ log, handlers: createHandlers({
+    status: () => STATUS, version: SL_VERSION, pluginDefs: PLUGIN_DEFS, setPluginEnabled,
+    relayRole: () => relayRole, outbox: () => relay.outbox(),
+    digest: { buffer: () => digestBuffer, build: buildDigestBlocks, chunk: chunkBlocks, head: digestHead, config: () => applyPluginOverridesToDigestCfg(loadDigestConfig(), null) },
+    hiscoresCheck: hiscoresCheckNow,
+  }) });
+  return cmdHost;
+}
+async function handleCommandRequests(evalAwait) {
+  let recs = null;
+  try { recs = await evalAwait('(() => { const b = window.__ccCmdBox; return Array.isArray(b) && b.length ? b.splice(0, 20) : null; })()', false); } catch (e) { return; }
+  if (!Array.isArray(recs) || !recs.length) return;
+  const write = (rep) => evalAwait('window.__ccCmdReply && window.__ccCmdReply(' + JSON.stringify(rep) + ')', false);   // lines and names are already cleaned by the host
+  await commandHost().process(recs, write).catch(() => {});
 }
 async function collectSecrets(evalAwait) {
   let got = null;
@@ -1439,6 +1750,11 @@ async function seedPluginSettings(evalAwait) {
     digestPostTimes: ((digestCfg && digestCfg.postTimes) || []).join(', '),
     logsEnabled: logstore.config().enabled,
     logsKeepDays: logstore.config().keepDays,
+    logsHistoryDays: logstore.config().historyDays,
+    logsLevel: logstore.config().level,
+    logsMaxMB: logstore.config().maxTotalMB,
+    logsStructured: logstore.config().structured,
+    logsTasks: logstore.channelEnabled('Tasks'), logsFortress: logstore.channelEnabled('Fortress'), logsDrops: logstore.channelEnabled('Drops'), logsAlerts: logstore.channelEnabled('Alerts'), logsPerf: logstore.channelEnabled('Perf'), logsDiscord: logstore.channelEnabled('Discord'),
   };
   try {
     await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.seed(${JSON.stringify(seed)}) : null`, false);
@@ -1465,6 +1781,7 @@ function connectAndWatch(target) {
 
     const ws = new WebSocket(target.webSocketDebuggerUrl);
     let chatRelayTimer = null;
+    let leaseTimer = null;
     let clanHiscoresTimer = null;
     let raidSummaryTimer = null;
     let digestTimer = null;
@@ -1509,7 +1826,7 @@ function connectAndWatch(target) {
         try { src = fs.readFileSync(GAME_BRIDGE_PATH, 'utf8'); } catch (e) { STATUS.bridge.error = 'cannot read game-bridge.js'; return; }
         const r = await call('Runtime.callFunctionOn', {
           objectId: arrId,
-          functionDeclaration: 'function(){var G=null,D=null,Y=null,C=null,E=null;for(var i=0;i<this.length&&!(G&&D&&Y&&C&&E);i++){var x=this[i];try{if(!E&&x&&typeof x.onMobDeath==="function"&&Array.isArray(x._mobs)&&"_playerUnit" in x)E=x;if(!C&&x&&typeof x._soloFilter==="function"&&x.SEND_CHANNELS)C=x;if(!G&&x&&typeof x._estimateActionDuration==="function"&&x.skills)G=x;else if(!D&&x&&typeof x._projectOpt==="function")D=x;else if(!Y&&x&&typeof x.actionDurationFinal==="function"&&x.MIN_ACTION_DURATION)Y=x}catch(e){}}if(!G||!D)return false;(' + src + ')(G,D,Y,C,E);return true}',
+          functionDeclaration: 'function(){var G=null,D=null,Y=null,C=null,E=null,U=null,M=null,S=null,Q=null,W=null;for(var i=0;i<this.length&&!(G&&D&&Y&&C&&E&&U&&M&&S&&Q&&W);i++){var x=this[i];try{if(!W&&x&&x._masterMobCards&&typeof x._currentMaster===\"function\"&&typeof x._groupEncountersByTier===\"function\")W=x;if(!Q&&x&&typeof x._attachDragHandle===\"function\"&&typeof x._computeQueueSig===\"function\")Q=x;if(!S&&x&&x.individualSkillCredits&&"totalSkillCredits" in x&&typeof x._resetAllSkillWeightLevers==="function")S=x;if(!M&&x&&typeof x._onXPToggleClick===\"function\"&&\"_loadoutStyle\" in x)M=x;if(!U&&x&&x.CALC_URL&&typeof x.buildSnapshot===\"function\")U=x;if(!E&&x&&typeof x.onMobDeath==="function"&&Array.isArray(x._mobs)&&"_playerUnit" in x)E=x;if(!C&&x&&typeof x._soloFilter==="function"&&x.SEND_CHANNELS)C=x;if(!G&&x&&typeof x._estimateActionDuration==="function"&&x.skills)G=x;else if(!D&&x&&typeof x._projectOpt==="function")D=x;else if(!Y&&x&&typeof x.actionDurationFinal==="function"&&x.MIN_ACTION_DURATION)Y=x}catch(e){}}if(!G||!D)return false;(' + src + ')(G,D,Y,C,E,U,M,S,Q,W);return true}',
           returnByValue: true,
         }, 30000);
         await call('Runtime.releaseObjectGroup', { objectGroup: 'ccbridge' });
@@ -1575,6 +1892,7 @@ function connectAndWatch(target) {
       if (perfTimer) { clearInterval(perfTimer); perfTimer = null; }
       if (secretsTimer) { clearInterval(secretsTimer); secretsTimer = null; }
       if (chatRelayTimer) { clearInterval(chatRelayTimer); chatRelayTimer = null; }
+      if (leaseTimer) { clearInterval(leaseTimer); leaseTimer = null; leaseMgr.releaseAll().catch(() => {}); }   // game closed: this PC cannot see the chat any more, so it must not stay the relay
     }
 
     // Catch-up safety net, run on every (re)connect: the page collector can miss
@@ -1585,31 +1903,43 @@ function connectAndWatch(target) {
     // dumped). Duplicates are impossible: relayedKeys + the outbox are checked.
     async function catchUpRelay() {
       const cfg = loadChatRelayConfig();
-      if (!cfg || !cfg.channels || relayedKeys.size === 0) return;
+      if (!cfg || !cfg.channels || relay.relayedCount() === 0) return;
       const raw = await evalAwait("window.__ccChatRelay && window.__ccChatRelay.rescan ? JSON.stringify(window.__ccChatRelay.rescan()) : '[]'", false).catch(() => '[]');
       let events = [];
       try { events = JSON.parse(raw || '[]'); } catch (e) { events = []; }
       if (!Array.isArray(events) || !events.length) return;
       let last = -1;
-      events.forEach((e, i) => { if (isRelayed(e)) last = i; });
-      const queued = new Set(outbox.map(relayKey));
-      const missed = events.slice(last + 1).filter((e) => !isRelayed(e) && !queued.has(relayKey(e)));
+      const seenKeys = relay.relayedKeys();
+      events.forEach((e, i) => { if (seenKeys.has(RelayEvents.rawKey(e))) last = i; });
+      const queued = new Set(); relay.outbox().forEach((x) => (x.rawKeys || []).forEach((k) => queued.add(k)));
+      const missed = events.slice(last + 1).filter((e) => !seenKeys.has(RelayEvents.rawKey(e)) && !queued.has(RelayEvents.rawKey(e)));
       if (!missed.length) return;
       log(`Relay catch-up: ${missed.length} event(s) from the game's chat history were never relayed -- sending now`);
       const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
       const eff = applyPluginOverridesToChatCfg(cfg, plugin);
       const stamped = missed.map((e, i) => Object.assign({ id: 'catchup-' + Date.now() + '-' + i, queuedAt: Date.now() }, e));
-      accumulateForDigest(stamped);
-      await relayEvents(stamped, eff);
+      await ingestDrained(stamped, eff);
     }
 
     function startChatRelayPolling() {
       stopChatRelayPolling();
+      leaseMgr.resumeAll();
+      let leasePaused = false;
+      leaseTimer = setInterval(() => {
+        // "Always" / "Never" post: this PC takes no part in the lease, and must not sit on a leadership that keeps the others from relaying
+        if (relayRole !== 'auto') { if (!leasePaused) { leasePaused = true; leaseMgr.releaseAll().catch(() => {}); } return; }
+        if (leasePaused) { leasePaused = false; leaseMgr.resumeAll(); }
+        leaseMgr.tickAll().then(noteNewerVersion).catch(() => {});
+      }, 3000);
       chatRelayTimer = setInterval(async () => {
         const cfg = loadChatRelayConfig(); // re-read each tick so config edits take effect live
         if (!cfg || !cfg.channels) return;
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
         const effectiveCfg = applyPluginOverridesToChatCfg(cfg, plugin);
+        if (plugin) setRelayRole(plugin.relayRole);
+        if (!ownPlayerName) { try { ownPlayerName = String(await evalAwait("(document.querySelector('.ingame-hud-name') || {}).textContent || ''", false) || '').trim().slice(0, 24); } catch (e) { /* page not ready */ } }
+        ensureLeases();
+        { const dgc = loadDigestConfig(); if (dgc && dgc.enabled && dgc.webhookUrl && relayRole === 'auto' && relayGate(dgc.webhookUrl) === 'standby') syncDigestWithLease(dgc.webhookUrl); }
         processOutbox(effectiveCfg).catch(() => {}); // retry / recover anything still pending first
         const drainId = send('Runtime.evaluate', {
           expression: `window.__ccChatRelay ? JSON.stringify(window.__ccChatRelay.drain()) : '[]'`,
@@ -1628,18 +1958,23 @@ function connectAndWatch(target) {
       stopClanHiscoresPolling();
       STATUS.clanHiscores.nextPollAt = Date.now() + delayMs;
       clanHiscoresTimer = setTimeout(async () => {
+        let polled = false;
         const rawCfg = loadClanHiscoresConfig();
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
         const cfg = applyPluginOverridesToHiscoresCfg(rawCfg, plugin);
-        if (cfg && cfg.enabled && cfg.webhookUrl && Array.isArray(cfg.members) && cfg.members.length) {
+        if (cfg && cfg.enabled && cfg.webhookUrl && Array.isArray(cfg.members) && cfg.members.length && relayGate(cfg.webhookUrl) !== 'send') {
+          log('Clan hiscores: another ScapeLite instance posts the clan rank for this channel (or the shared lease cannot be read yet) -- not polling from this PC.');
+        } else if (cfg && cfg.enabled && cfg.webhookUrl && Array.isArray(cfg.members) && cfg.members.length) {
           try {
             await pollClanHiscores(evalAwait, cfg);
           } catch (e) {
             log('Clan hiscores: poll error --', e.message || String(e));
           }
+          polled = true;
         }
         const intervalMs = Math.max(5, (cfg && cfg.pollMinutes) || 20) * 60 * 1000;
-        scheduleClanHiscoresPoll(intervalMs);
+        // The game did not answer: look again in a few minutes (twice at most) instead of leaving a 20-minute hole.
+        scheduleClanHiscoresPoll(polled && hiscoresMisses > 0 && hiscoresMisses <= HISCORES_EARLY_RETRIES ? Math.min(HISCORES_EARLY_RETRY_MS, intervalMs) : intervalMs);
       }, delayMs);
     }
 
@@ -1649,7 +1984,12 @@ function connectAndWatch(target) {
 
     function startRaidSummaryPolling() {
       stopRaidSummaryPolling();
-      raidSummaryTimer = setInterval(async () => {
+      raidSummaryTimer = setInterval(() => {
+        if (raidTickBusy) return;
+        raidTickBusy = true;
+        raidSummaryTick().catch((e) => log('Raid summary: error --', e.message || String(e))).finally(() => { raidTickBusy = false; });
+      }, RAID_SUMMARY_POLL_MS);
+      async function raidSummaryTick() {
         const rawCfg = loadRaidSummaryConfig();
         if (!rawCfg || !rawCfg.enabled || !rawCfg.webhookUrl) return;
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
@@ -1662,23 +2002,34 @@ function connectAndWatch(target) {
             false
           );
         } catch (e) {
+          await flushRaidPending(cfg);
           return; // ws-hook not active yet (needs a game reload) -- same as clan hiscores, just skip this tick
         }
-        if (!Array.isArray(entries) || !entries.length) return;
-        const minMembers = cfg.minMembers != null ? cfg.minMembers : 2;
+        if (!Array.isArray(entries)) entries = [];
+        let ended = [];
+        try { ended = await evalAwait('(window.__ccEndedRuns || []).splice(0)', false); } catch (e) { ended = []; }
+        // A run the game socket already reported (a finished raid / dungeon) is not posted a second time from the ended-run memory.
+        if (Array.isArray(ended)) ended.forEach((en) => { if (!entries.some((x) => x.kind === 'dungeon' && Math.abs((x.ts || 0) - (en.ts || 0)) < 120000)) entries.push(en); });
+        if (!entries.length) { await flushRaidPending(cfg); return; }
+        const lobby = await evalAwait('window.__ccLastLobby || null', false).catch(() => null);
         for (const entry of entries) {
-          if ((entry.memberCount || 0) < minMembers) {
-            log(`Raid summary: skipping solo/small run (${entry.memberCount} member(s), need ${minMembers}) --`, entry.raidName);
+          // The roster the socket saw is the party at the end; the bridge's last lobby sample says who in it is a guild mate.
+          const fresh = lobby && entry.ts && Math.abs(entry.ts - lobby.at) < 20 * 60 * 1000 ? lobby : null;
+          entry.guildCount = fresh ? fresh.guild : 0;
+          const size = Math.max(entry.memberCount || 0, fresh ? fresh.size : 0);
+          entry.memberCount = size;
+          const verdict = evaluateRaidSummaryRules(plugin, { kind: entry.kind || 'raid', size, guild: entry.guildCount, wave: entry.wave });
+          STATUS.raidSummary.lastDecision = `${entry.raidName}${entry.wave ? ' wave ' + entry.wave : ''}: ${verdict.post ? 'posted' : 'not posted'} (${verdict.why}; ${size} in party, ${entry.guildCount} guild)`;
+          if (!verdict.post) {
+            log(`Raid summary: not posting ${entry.raidName} (${verdict.why}) --`, `${size} in party, ${entry.guildCount} guild`);
             STATUS.raidSummary.totalSkippedSolo += 1;
             continue;
           }
-          log('  -> raid summary:', entry.raidName, `(${entry.memberCount} members)`);
-          await postToDiscord(cfg.webhookUrl, buildRaidSummaryPayload(entry));
-          STATUS.raidSummary.lastPostAt = Date.now();
-          STATUS.raidSummary.totalPosted += 1;
-          await new Promise((r) => setTimeout(r, DISCORD_POST_SPACING_MS));
+          raidPending.push({ entry, firstAt: Date.now(), tries: 0, nextAt: 0 });   // kept on disk until Discord accepted it
+          saveRaidPending();
         }
-      }, RAID_SUMMARY_POLL_MS);
+        await flushRaidPending(cfg);
+      }
     }
 
     function stopDigestPosting() {
@@ -1698,9 +2049,7 @@ function connectAndWatch(target) {
       if ((cfg.postTimes || []).join(',') === times.join(',')) return;
       cfg.postTimes = times;
       try {
-        const tmp = DIGEST_CONFIG_PATH + '.tmp';
-        fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2));
-        fs.renameSync(tmp, DIGEST_CONFIG_PATH);
+        writeJsonAtomic(DIGEST_CONFIG_PATH, JSON.stringify(cfg, null, 2), { backup: false });
         log('Activity digest: fixed post times now ' + (times.length ? times.join(', ') : 'none') + '.');
         const intervalMs = Math.max(1, cfg.intervalHours || 6) * 3600000;
         const left = Math.max(30000, intervalMs - (Date.now() - digestBuffer.sinceAt));
@@ -1715,13 +2064,26 @@ function connectAndWatch(target) {
         const rawCfg = loadDigestConfig();
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
         const cfg = applyPluginOverridesToDigestCfg(rawCfg, plugin);
-        if (cfg && cfg.enabled && cfg.webhookUrl) {
-          const payload = buildDigestPayload(digestBuffer);
+        let digestFailed = false, digestWait = false;
+        const digestGate = cfg && cfg.enabled && cfg.webhookUrl ? relayGate(cfg.webhookUrl) : 'send';
+        if (digestGate === 'standby') { syncDigestWithLease(cfg.webhookUrl); log('Activity digest: another ScapeLite instance posts the digest for this channel -- not posting from this PC.'); }
+        else if (digestGate === 'unsure') { digestWait = true; log('Activity digest: the shared relay lease cannot be read yet -- waiting before posting.'); }
+        else if (cfg && cfg.enabled && cfg.webhookUrl) {
+          // The buffer is only emptied for what Discord has ACCEPTED: a failed or half-delivered digest keeps the rest and is retried soon.
+          const blocks = buildDigestBlocks(digestBuffer);
+          const payload = blocks.length ? { blocks } : null;
           if (payload) {
-            await postToDiscord(cfg.webhookUrl, payload);
+            const chunks = chunkBlocks(blocks, { max: 1900, head: digestHead(digestBuffer) });
+            const dr = await deliverChunks(sender, 'digest', cfg.webhookUrl, chunks,
+              (c, i) => ({ username: 'Activity Digest', content: (i ? '📋 **Activity Digest** -- continued\n\n' : '') + c.text }),
+              (c) => { c.blocks.forEach((b) => subtractDigestSnapshot(digestBuffer, b.name, b.snap)); saveDigestBuffer(digestBuffer); });
+            if (!dr.ok) {
+              digestFailed = true;
+              log('Activity digest: NOT delivered (' + dr.sent + ' of ' + dr.total + ' message(s) accepted: ' + (dr.last && dr.last.error || 'unknown error') + ') -- the activity stays in the buffer, trying again soon.');
+            } else {
             STATUS.digest.lastPostAt = Date.now();
             STATUS.digest.totalPosted += 1;
-            log('  -> activity digest posted,', Object.keys(digestBuffer.players).length, 'player(s) with activity');
+            log('  -> activity digest posted,', blocks.length, 'player(s) with activity,', chunks.length, 'message(s)');
             // Reset the reporting window (sinceAt/players) but deliberately
             // KEEP seenKeys/digestSeenKeys across the flush -- that dedup
             // guards against restart+DOM-rebuild re-drains independent of
@@ -1729,14 +2091,17 @@ function connectAndWatch(target) {
             // exact duplicate-counting window it exists to close (a
             // message seen just before this post, then re-drained just
             // after, would otherwise look "new" again for the next period).
-            digestBuffer = { sinceAt: Date.now(), players: {}, seenKeys: digestBuffer.seenKeys };
+            const dgAt = Date.now();
+            if (relayRole === 'auto') { const l = leaseMgr.forWebhook(cfg.webhookUrl); if (l) l.setShared({ dg: dgAt }); }   // followers empty their copy when they see this
+            digestBuffer = { sinceAt: dgAt, players: {}, seenKeys: digestBuffer.seenKeys, lastDg: dgAt };
             saveDigestBuffer(digestBuffer);
+            }
           } else {
             log('Activity digest: nothing notable since last digest -- skipped.');
           }
         }
         const intervalMs = Math.max(1, (cfg && cfg.intervalHours) || 6) * 3600000;
-        scheduleDigestPost(nextDigestDelay(cfg, intervalMs));
+        scheduleDigestPost(digestWait ? 120000 : digestFailed ? Math.min(10 * 60000, nextDigestDelay(cfg, intervalMs)) : nextDigestDelay(cfg, intervalMs));
       }, delayMs);
     }
 
@@ -1758,14 +2123,16 @@ function connectAndWatch(target) {
       activeConn = { call, evalAwait, registered: {}, loaded: new Set(toInject.map((x) => x.def.id)) };
       // Used by gracefulShutdown: drain the page's queued chat events right now
       // (also feeding the digest), then post everything pending.
+      activeConn.drainLogs = () => drainPageLogs(evalAwait);
       activeConn.flushRelay = async () => {
+        await drainPageLogs(evalAwait);
         const cfg = loadChatRelayConfig();
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
         const eff = cfg && cfg.channels ? applyPluginOverridesToChatCfg(cfg, plugin) : null;
         const raw = await evalAwait("window.__ccChatRelay ? JSON.stringify(window.__ccChatRelay.drain()) : '[]'", false).catch(() => '[]');
         let events = [];
         try { events = JSON.parse(raw || '[]'); } catch (e) { events = []; }
-        if (Array.isArray(events) && events.length) { accumulateForDigest(events); outbox.push(...events); saveOutbox(); }
+        if (Array.isArray(events) && events.length) { const typed = relay.typed(events); accumulateForDigest(typed); relay.enqueue(typed); }
         if (eff) await processOutbox(eff);
       };
       refreshPluginStatus();
@@ -1805,7 +2172,8 @@ function connectAndWatch(target) {
       }
       seedPluginSettings(evalAwait);
       if (secretsTimer) clearInterval(secretsTimer);
-      secretsTimer = setInterval(() => { collectSecrets(evalAwait); syncDigestTimes(); handleUpdateRequest(evalAwait); syncLogSettings(evalAwait); }, 3000);
+      secretsTimer = setInterval(() => { global.__wdLoopAt = Date.now(); handleReloadRequest(evalAwait); collectSecrets(evalAwait); syncDigestTimes(); handleUpdateRequest(evalAwait); handleCommandRequests(evalAwait); syncLogSettings(evalAwait); drainPageLogs(evalAwait); drainOptionLog(evalAwait); }, 3000);
+      setTimeout(() => recoverTaskLog(evalAwait), 20000);
       if (perfTimer) clearInterval(perfTimer);
       perfTimer = setInterval(async () => {
         if (perfBusy) return;
@@ -1813,7 +2181,7 @@ function connectAndWatch(target) {
         try { want = !!(await evalAwait('!!(window.__ccStatusIndicator && window.__ccStatusIndicator.wantPerf && window.__ccStatusIndicator.wantPerf())', false)); } catch (e) { /* page busy */ }
         if (Date.now() - perfLast < (want ? 4000 : 60000)) return;
         perfBusy = true;
-        try { const r = await perfBurst(call, 3000, STATUS.plugins || []); if (r) STATUS.perf = r; } catch (e) { if (!perfWarned) { perfWarned = true; log('Performance sampling failed:', e.message); } }
+        try { const r = await perfBurst(call, 3000, STATUS.plugins || []); if (r) { STATUS.perf = r; logPerfSample(r); } } catch (e) { if (!perfWarned) { perfWarned = true; log('Performance sampling failed:', e.message); } }
         finally { perfLast = Date.now(); perfBusy = false; }
       }, 4000);
     });
@@ -1854,11 +2222,8 @@ function connectAndWatch(target) {
         let events;
         try { events = JSON.parse(value); } catch (err) { return; }
         if (Array.isArray(events) && events.length) {
-          relayEvents(events, cfg);
-          // Independent of relayEvents' own per-channel enabled gate --
-          // the digest should keep accumulating even if live Discord
-          // pings are turned off entirely, see "Activity digest" above.
-          accumulateForDigest(events);
+          // typed once; the digest takes every event (even with live Discord posts turned off), the relay takes what its channel settings and the lease allow
+          ingestDrained(events, cfg);
         }
         return;
       }
@@ -1900,13 +2265,21 @@ function connectAndWatch(target) {
 
 async function main() {
   log('Scapewatch panel-resize watcher started. Waiting for the game on CDP port', String(CDP_PORT), '...');
+  STATE_MOVE.notes.forEach((n) => log('State folder:', n));
   refreshPluginStatus();
+  // Heartbeat for the tray watchdog (docs/WATCHDOG.md): a tiny file touched every 30 s; loopAt = last tick of the 3 s page loop, so "alive but loops stopped" is visible.
+  { const wd = require('./watchdog'), hbFile = P.state(wd.HEARTBEAT_FILE); const hb = () => wd.beat(hbFile, { cdp: !!STATUS.cdp.connected, loopAt: global.__wdLoopAt || 0 }); hb(); setInterval(hb, wd.HEARTBEAT_EVERY_MS); }
   if (SUPERVISED) {
     // The supervisor hosts the dashboard; push it our state and take its commands.
     setInterval(() => { try { process.send({ type: 'status', status: Object.assign({}, STATUS, { recentLog: undefined }) }); } catch (e) {} }, 1000);
     process.on('message', async (m) => {
       if (!m || typeof m !== 'object') return;
       if (m.type === 'shutdown') { gracefulShutdown('stop requested'); return; }
+      if (m.type === 'discord-test') {
+        const r = await discordTest(String(m.feature || '')).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+        try { process.send({ type: 'reply', reqId: m.reqId, result: r }); } catch (e) {}
+        return;
+      }
       if (m.type === 'plugin') {
         const r = await setPluginEnabled(m.id, !!m.enabled).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
         try { process.send({ type: 'reply', reqId: m.reqId, result: r }); } catch (e) {}
@@ -1915,11 +2288,14 @@ async function main() {
     process.on('disconnect', () => process.exit(0)); // supervisor died -- don't linger as an orphan
     log('Running under the supervisor (dashboard + Stop/Start/Restart are served by it).');
   } else {
-    startStatusServer(STATUS_SERVER_PORT, () => STATUS, { plugin: setPluginEnabled });
+    startStatusServer(STATUS_SERVER_PORT, () => STATUS, { plugin: setPluginEnabled, discordTest });
     log(`Status dashboard: http://${STATUS_SERVER_FRIENDLY_HOST}/ (or http://localhost:${STATUS_SERVER_PORT}/ if port 80 wasn't free)`);
   }
-  loadRelayedKeys();
-  log(`Chat relay: loaded ${relayedKeys.size} previously-relayed message key(s) from disk.`);
+  relay.load();
+  log(`Chat relay: loaded ${relay.relayedCount()} previously-relayed message key(s) and ${relay.outbox().length} pending event(s) from disk. Instance ${leaseMgr.instanceId}.`);
+  loadRaidPending();
+  setTimeout(() => { boardTick(); setInterval(boardTick, 15000); }, 20000);
+  if (raidPending.length) log(`Raid summary: ${raidPending.length} finished run(s) still waiting to be posted from the last session.`);
   loadPlayerIconCache();
   log(`Chat relay: loaded ${Object.keys(playerIconCache).length} cached player avatar(s) from disk.`);
   if (!loadChatRelayConfig()) {

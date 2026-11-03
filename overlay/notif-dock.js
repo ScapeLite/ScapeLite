@@ -16,7 +16,7 @@
   const T = [
     { id: 'invites', label: 'Invites', sel: '.invite-tray', w: 300, h: 70, base: (z) => ({ y: 57 * z }), centre: true },
     { id: 'popups', label: 'Task popups', sel: '.celebration-container', w: 420, h: 90, base: () => ({ y: 8 }), centre: false },
-    { id: 'toasts', label: 'Toasts', sel: '.dash-toast', w: 320, h: 50, base: (z, h) => ({ y: innerHeight - 80 * z - h }), centre: false },
+    { id: 'toasts', label: 'Toasts', sel: '.dash-toast', w: 320, h: 50, base: (z, h) => ({ y: (window.__ccVH ? window.__ccVH() : window.innerHeight) - 80 * z - h }), centre: false },
   ];
   let pos = {};
   try { pos = JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { pos = {}; }
@@ -30,19 +30,20 @@
 .cc-nd-grip{position:fixed;z-index:${Z + 1};height:16px;padding:0 8px;display:flex;align-items:center;gap:6px;background:rgba(20,20,26,.92);border:1px solid #2a2a38;border-bottom:0;
   border-radius:6px 6px 0 0;color:#8f8fa0;font:11px/1 system-ui,sans-serif;cursor:grab;user-select:none;opacity:.55;transition:opacity .15s}
 .cc-nd-grip:hover,.cc-nd-grip.drag{opacity:1}.cc-nd-grip.drag{cursor:grabbing}
-.cc-nd-frame{position:fixed;z-index:${Z + 2};box-sizing:border-box;border:2px dashed #ffd24a;background:rgba(255,210,74,.10);border-radius:8px;color:#ffd24a;
+.cc-nd-frame{position:fixed;z-index:${Z + 2};box-sizing:border-box;border:2px dashed #ffd24a;background:rgba(255,210,74,.10);border-radius:8px;color:var(--cc-accent,#ffd24a);
   font:600 13px/1 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;text-shadow:0 1px 3px #000}
 .cc-nd-frame.drag{cursor:grabbing;background:rgba(255,210,74,.2)}
 .cc-nd-bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:${Z + 3};display:flex;gap:8px;align-items:center;padding:8px 12px;
   background:#16161e;border:1px solid rgba(255,255,255,.2);border-radius:10px;color:#ddd;font:13px/1.3 system-ui,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.6)}
 .cc-nd-bar button{font:inherit;color:#ddd;background:#23232f;border:1px solid #3a3a4a;border-radius:7px;padding:4px 12px;cursor:pointer}
-.cc-nd-bar button:hover{border-color:#8a8aa0}.cc-nd-bar button.primary{border-color:#b8962f;color:#ffd24a;background:#2c2a18}`;
+.cc-nd-bar button:hover{border-color:#8a8aa0}.cc-nd-bar button.primary{border-color:#b8962f;color:var(--cc-accent,#ffd24a);background:#2c2a18}`;
 
   let editing = false, lastCss = '';
   function css() {
     if (!enabled()) return '';
     const z = uiZoom();
-    return T.map((t) => {
+    // The game can leave its invite tray on screen with no invite in it: an empty dark pill. Hide it until an invite arrives.
+    return '.invite-tray:empty{display:none !important}\n' + T.map((t) => {
       const o = off(t.id);
       const tr = (o.x || o.y) ? `translate:${(o.x / z).toFixed(1)}px ${(o.y / z).toFixed(1)}px !important;` : '';
       // The invite tray is centred (it ships in the top-left); the other two are already centred by the game / panel-resize.
@@ -58,10 +59,13 @@
     const cx = innerWidth / 2;
     return { left: cx - (t.w * z) / 2 + o.x, top: b.y + o.y, width: t.w * z, height: t.h * z };
   }
+  // The Info Bars (top and bottom) are a real screen edge: a notification must never sit under them, whatever position was saved or dragged to
+  const edges = () => { try { const e = window.__ccBar && window.__ccBar.edge && window.__ccBar.edge(); return { top: (e && e.top) || 0, bottom: (e && e.bottom) || 0 }; } catch (er) { return { top: 0, bottom: 0 }; } };
+  const viewH = () => (window.__ccVH ? window.__ccVH() : window.innerHeight);
   function clampOff(t, o, r0) {
-    // keep at least 60x24 px of the frame on screen
-    const left = r0.left + o.x, top = r0.top + o.y;
-    const nl = Math.min(innerWidth - 60, Math.max(60 - r0.width, left)), nt = Math.min(innerHeight - 24, Math.max(0, top));
+    // keep at least 60x24 px of the frame on screen, and out from under the bars
+    const left = r0.left + o.x, top = r0.top + o.y, ed = edges();
+    const nl = Math.min(innerWidth - 60, Math.max(60 - r0.width, left)), nt = Math.min(viewH() - ed.bottom - 24, Math.max(ed.top + 4, top));
     return { x: nl - r0.left, y: nt - r0.top };
   }
   function startDrag(t, e, el, rect0) {
@@ -80,17 +84,33 @@
   document.addEventListener('pointerup', end, true);
   document.addEventListener('pointercancel', end, true);
 
+  // Self-healing: a saved or dragged position that puts a notification under (or behind) a bar is moved back out. Measured on the real element while it is on screen; the invite tray
+  // (hidden most of the time) is also checked from its frame, so an old saved position cannot hide the next invite.
+  function keepClear() {
+    const ed = edges(), vh = viewH(); let moved = false;
+    T.forEach((t) => {
+      const o = pos[t.id]; if (!o || !(o.x || o.y)) return;
+      const el = document.querySelector(t.sel), r = el && el.getBoundingClientRect();
+      let dy = 0;
+      if (r && r.width > 0 && r.height > 0) {
+        if (r.top < ed.top - 1) dy = (ed.top + 4) - r.top; else if (r.bottom > vh - ed.bottom + 1) dy = (vh - ed.bottom - 4) - r.bottom;
+      } else if (t.id === 'invites' && o.y < 0) { const f = frameRect(t); if (f.top < ed.top) dy = (ed.top + 4) - f.top; }
+      if (dy) { pos[t.id] = { x: o.x, y: o.y + dy }; moved = true; }
+    });
+    if (moved) save();
+  }
   function render() {
     if (!document.head) return;
     if (!style.isConnected) document.head.appendChild(style);
     if (!base.isConnected) document.head.appendChild(base);
+    if (!drag && !editing && enabled()) keepClear();
     const c = css(); if (c !== lastCss) { lastCss = c; style.textContent = c; }
     const on = enabled();
     // Strip above the invite tray (only while it is on screen).
     const tray = on && !editing ? document.querySelector('.invite-tray') : null;
     const tr = tray ? tray.getBoundingClientRect() : null;
     const t0 = T[0];
-    if (tr && tr.width > 0 && tr.height > 0) {
+    if (tr && tr.width > 0 && tr.height > 0 && tray.children.length) {
       let g = grips.invites;
       if (!g) {
         g = grips.invites = document.createElement('div'); g.className = 'cc-nd-grip'; g.textContent = '⠇⠇ move'; g.title = 'Drag to move invites · double-click to reset';
@@ -124,6 +144,7 @@
         ['mousedown', 'click', 'contextmenu'].forEach((ev) => bar.addEventListener(ev, (e) => e.stopPropagation()));
         document.body.appendChild(bar);
       }
+      bar.style.bottom = (edges().bottom + 24) + 'px';
     } else {
       Object.keys(frames).forEach((k) => { frames[k].remove(); delete frames[k]; });
       if (bar) { bar.remove(); bar = null; }

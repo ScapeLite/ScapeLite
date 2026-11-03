@@ -44,9 +44,9 @@
 //   - Docked (non-floating) panels get no handle -- they're CSS-anchored
 //     to screen edges. Drag one out by its titlebar (game feature) first.
 //
-// Controls: drag the dot-grip to scale (50%-200%, capped so the panel never
+// Controls: drag the dot-grip to scale (from 50% of the game's base size, capped so the panel never
 // grows past the window's right/bottom edge); double-click it to reset to
-// 100%. Console: __ccPanelScale.scales / .reset('tasks') / .reset().
+// the game's default size. Percentages shown are on-screen (stored scale x the game's UI zoom), 100% = base size. Console: __ccPanelScale.scales / .reset('tasks') / .reset().
 // Scales persist in localStorage key `cc-panel-scale-v2` (our own key).
 // Re-inject after every game reload/relaunch. Re-injecting is safe: the
 // previous instance is torn down first. Full teardown:
@@ -56,7 +56,12 @@
   'use strict';
   const NS = '__ccPanelScale';
   const LS_KEY = 'cc-panel-scale-v2';
-  const MIN_S = 0.5, MAX_S = 2.0, SNAP_TO_1 = 0.03;
+  const MAX_S = 2.0, SNAP_TO_1 = 0.03;
+  // Stored scales are relative to the game's own panel size, which the game already zooms to fit the window (UI zoom). Everything the user SEES is
+  // stored x UI zoom, so 100% on screen is the game's base size. The floor is 50% of base (a stored 0.5 when the zoom is 1 or less).
+  const MIN_S_BASE = 0.5;
+  const minS = () => MIN_S_BASE / Math.max(1, uiZoom());
+  const pct = (s) => Math.round(s * uiZoom() * 100);
   const HANDLE = 14;         // px, viewport pixels (handle lives outside the UI zoom)
   const OCCLUDE_EVERY = 6;    // frames between occlusion hit-tests
 
@@ -182,7 +187,7 @@
       const left = r.left - c.fx * w * (1 - k), top = r.top - c.fy * h * (1 - k);
       const clamp01 = v => Math.max(0, Math.min(1, v));
       const fx = innerWidth - w > 1 ? clamp01(left / (innerWidth - w)) : 0;
-      const fy = innerHeight - h > 1 ? clamp01(top / (innerHeight - h)) : 0;
+      const fy = (window.__ccVH ? window.__ccVH() : window.innerHeight) - h > 1 ? clamp01(top / ((window.__ccVH ? window.__ccVH() : window.innerHeight) - h)) : 0;
       origins[id] = 'cont';
       if (!r.width || !r.height) return false;
       if (!cont[id] || Math.abs(fx - c.fx) > 0.002 || Math.abs(fy - c.fy) > 0.002) { cont[id] = { fx, fy }; saveCont(); return true; }
@@ -207,7 +212,7 @@
     const rightTol = anchorRight ? EDGE_TOL_EXIT : EDGE_TOL_ENTER;
     const bottomTol = anchorBottom ? EDGE_TOL_EXIT : EDGE_TOL_ENTER;
     const atRight = unscaledRight > innerWidth - rightTol;
-    const atBottom = unscaledBottom > innerHeight - bottomTol;
+    const atBottom = unscaledBottom > (window.__ccVH ? window.__ccVH() : window.innerHeight) - bottomTol;
     const next = (atRight ? 'r' : 'l') + (atBottom ? 'b' : 't');
     const key = next[1] + next[0]; // -> 'tl'/'tr'/'bl'/'br' to match origins' existing values
     if (key === prev) { delete pendingFlip[id]; return false; }
@@ -239,6 +244,8 @@
 .cc-ps-handle.cc-ps-bl .cc-ps-label{right:auto;left:${HANDLE + 4}px}
 .cc-ps-handle:hover,.cc-ps-handle.cc-ps-drag{border-color:rgba(255,255,255,.7)}
 .cc-ps-handle[hidden]{display:none!important}
+.cc-ps-handle{opacity:0;transition:opacity .15s,border-color .15s}
+.cc-ps-handle.cc-ps-show,.cc-ps-handle:hover,.cc-ps-handle.cc-ps-drag{opacity:1}
 .cc-ps-label{position:absolute;right:${HANDLE + 4}px;bottom:0;padding:1px 5px;border-radius:3px;
   font:12px/16px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.7);white-space:nowrap;
   pointer-events:none;display:none}
@@ -249,7 +256,7 @@
   border:1px solid #555;color:#ddd;font:12px/16px system-ui,sans-serif;white-space:nowrap}
 .cc-ps-badge.drag{border-color:#4ea3ff;color:#fff}
 .cc-ps-badge.eq{border-color:#4caf50;color:#7dff8a}
-.cc-ps-badge.near{border-color:#ffaa00;color:#ffd24a}
+.cc-ps-badge.near{border-color:#ffaa00;color:var(--cc-accent,#ffd24a)}
 /* Game bug, not ours: .celebration-container (the task-complete popup)
    renders with left:~1620px inside a 2020px-wide #ui-container at a width
    of ~800px -- right edge lands ~400px past the container's own edge,
@@ -285,7 +292,7 @@
 .cc-pm .pm-sep{height:1px;margin:4px 2px;background:rgba(255,255,255,.1)}
 .cc-pm .pm-chips{display:flex;flex-wrap:wrap;gap:4px;padding:2px 6px 4px}
 .cc-pm .pm-chip{padding:2px 8px;border-radius:5px;border:1px solid #3a3a48;background:#22222c;cursor:pointer}
-.cc-pm .pm-chip:hover,.cc-pm .pm-chip.on{border-color:#ffd24a;color:#ffd24a}
+.cc-pm .pm-chip:hover,.cc-pm .pm-chip.on{border-color:var(--cc-accent,#ffd24a);color:var(--cc-accent,#ffd24a)}
 .celebration-container{left:50% !important;right:auto !important;transform:translateX(-50%) !important}
 /* Same class of game bug as .celebration-container above: .xp-drops-container
    (the floating "+14 XP" readout) renders with left:2020px -- exactly the
@@ -310,43 +317,44 @@
    own .panel-tab-bar variants, which have their own rules). Everything is
    scoped under body.cc-vmenu, which sync() sets/clears from the Plugins
    tab's "Vertical Bottom-Right Menu" toggle. */
-body.cc-vmenu #ui-container>.panel-tab-bar{flex-direction:column !important;width:42px !important;
+body.cc-menu-hidden :is(#ui-container,#hud-layer)>.panel-tab-bar{display:none !important}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar{flex-direction:column !important;width:42px !important;
   right:0 !important;bottom:0 !important;top:auto !important}
-body.cc-vmenu #ui-container>.panel-tab-bar>.panel-tab-btn{flex:none !important;width:42px !important;height:42px !important}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{flex:none !important;width:42px !important;height:42px !important}
 /* Vertical mode: the game's buttons only round their BOTTOM corners (made for a bar hanging under a panel).
    Round the side facing away from the screen edge the bar is attached to; all four when it floats free.
    Active = solid outline + a slightly enlarged button (no glow: it was clipped/overdrawn by neighbours and the HP bar). */
-body.cc-vmenu #ui-container>.panel-tab-bar>.panel-tab-btn{border-radius:6px !important}
-body.cc-vmenu.cc-vm-r #ui-container>.panel-tab-bar>.panel-tab-btn{border-radius:6px 0 0 6px !important}
-body.cc-vmenu.cc-vm-l #ui-container>.panel-tab-bar>.panel-tab-btn{border-radius:0 6px 6px 0 !important}
-body.cc-vmenu.cc-vm-t #ui-container>.panel-tab-bar>.panel-tab-btn{border-radius:0 0 6px 6px !important}
-body.cc-vmenu.cc-vm-b #ui-container>.panel-tab-bar>.panel-tab-btn{border-radius:6px 6px 0 0 !important}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{border-radius:6px !important}
+body.cc-vmenu.cc-vm-r :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{border-radius:6px 0 0 6px !important}
+body.cc-vmenu.cc-vm-l :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{border-radius:0 6px 6px 0 !important}
+body.cc-vmenu.cc-vm-t :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{border-radius:0 0 6px 6px !important}
+body.cc-vmenu.cc-vm-b :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{border-radius:6px 6px 0 0 !important}
 /* The game's buttons have NO top border (they hang under a panel), so the active outline/glow was open at the top. */
-body.cc-vmenu #ui-container>.panel-tab-bar>.panel-tab-btn{border-top:1.58px solid #2a2a38 !important}
-body.cc-vmenu #ui-container>.panel-tab-bar>.panel-tab-btn{box-shadow:none !important}
-body.cc-vmenu #ui-container>.panel-tab-bar>.panel-tab-btn.active{position:relative;z-index:3;border-color:#5580c0 !important;
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{border-top:1.58px solid #2a2a38 !important}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn{box-shadow:none !important}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn.active{position:relative;z-index:3;border-color:#5580c0 !important;
   box-shadow:none !important;transform:scale(1.09);transform-origin:50% 50%}
-body.cc-vmenu.cc-vm-r #ui-container>.panel-tab-bar>.panel-tab-btn.active{transform-origin:100% 50%}
+body.cc-vmenu.cc-vm-r :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn.active{transform-origin:100% 50%}
 /* The rounded button corners left see-through wedges next to the HP bar (and between buttons): back the whole bar with the
    buttons' own dark colour so the column reads as one solid piece, and, on sides where the dock is fused to something, tighten the rounding (3px) instead of squaring it off. */
-body.cc-vmenu #ui-container>.panel-tab-bar{background:#141418 !important}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar{background:#141418 !important}
 /* (fused sides keep the same rounding as everywhere else; only the dark backing hides the wedges) */
-body.cc-vmenu.cc-vm-l #ui-container>.panel-tab-bar>.panel-tab-btn.active{transform-origin:0 50%}
-body.cc-vmenu #ui-container>.panel-tab-bar>.panel-tab-btn:hover{z-index:4}
-body.cc-vmenu #ui-container>.panel-tab-bar{overflow:visible !important;z-index:2}
-body.cc-vmenu #ui-container>.panel-tab-bar .panel-tab-tooltip{bottom:auto !important;top:50% !important;
+body.cc-vmenu.cc-vm-l :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn.active{transform-origin:0 50%}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar>.panel-tab-btn:hover{z-index:4}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar{overflow:visible !important;z-index:2}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.panel-tab-bar .panel-tab-tooltip{bottom:auto !important;top:50% !important;
   left:auto !important;right:calc(100% + 34px) !important;transform:translateY(-50%) !important}
-body.cc-vmenu #ui-container>.hp-bar{width:calc(var(--cc-menu-n,8) * 42px) !important;height:24px !important;
+body.cc-vmenu :is(#ui-container,#hud-layer)>.hp-bar{width:calc(var(--cc-menu-n,8) * 42px) !important;height:24px !important;
   right:calc(42px - var(--cc-menu-n,8) * 42px) !important;bottom:0 !important;
   transform-origin:0 100% !important;transform:rotate(-90deg) !important;border-radius:0 !important}
 /* The content block is counter-rotated back to upright and turned into a
    column (24px wide, bar-length tall): heart on top, then the text wrapped
    one word per line -- "52" / "/" / "52" -- so it reads normally. */
-body.cc-vmenu #ui-container>.hp-bar .hp-bar-content{position:absolute !important;left:50% !important;top:50% !important;
+body.cc-vmenu :is(#ui-container,#hud-layer)>.hp-bar .hp-bar-content{position:absolute !important;left:50% !important;top:50% !important;
   width:24px !important;height:calc(var(--cc-menu-n,8) * 42px) !important;
   transform:translate(-50%,-50%) rotate(90deg) !important;
   flex-direction:column !important;justify-content:center !important;align-items:center !important;gap:2px !important}
-body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:normal;text-align:center;line-height:1.05;font-size:15px}
+body.cc-vmenu :is(#ui-container,#hud-layer)>.hp-bar .hp-bar-text{width:min-content;white-space:normal;text-align:center;line-height:1.05;font-size:15px}
 `;
   // "Recenter Camera" button: the game pins it 80px above the bottom edge, which lands it on top of the bottom
   // panels. Keep it horizontally centred but drop it into the lowest gap not covered by a panel. Done with a
@@ -389,6 +397,11 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
   const TB_REF = 0.72; // reference scale the title font is normalised to
   let tbFontOn = true;
   const shifts = {}; // panelId -> {x,y} css-px translate that keeps the panel inside the viewport
+  // Align (right-click a title bar > Align): a saved translate that moves a panel, or a whole fused group, to a preset place on the screen.
+  const ALIGN_LS = 'cc-panel-align';
+  let aligns = {};
+  try { aligns = JSON.parse(localStorage.getItem(ALIGN_LS) || '{}') || {}; } catch (e) { aligns = {}; }
+  const saveAligns = () => { try { localStorage.setItem(ALIGN_LS, JSON.stringify(aligns)); } catch (e) { /* storage blocked */ } };
   const extraOn = {}; // id -> Plugins toggle state for each EXTRA panel (default on)
   function renderCss() {
     let css = BASE_CSS;
@@ -416,10 +429,11 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     // Keep-on-screen corrections (see keepOnScreen): `translate` composes with
     // the game's own transform and our `scale`, and is applied in the parent's
     // (zoomed) px, so values are stored in css px.
-    for (const id of Object.keys(shifts)) {
-      const sh = shifts[id];
-      if (!sh || (Math.abs(sh.x) < 0.05 && Math.abs(sh.y) < 0.05)) continue;
-      css += `${panelSel(id)}{translate:${sh.x.toFixed(2)}px ${sh.y.toFixed(2)}px !important}
+    for (const id of Array.from(new Set(Object.keys(shifts).concat(Object.keys(aligns))))) {
+      const sh = shifts[id] || { x: 0, y: 0 }, al = aligns[id] || { x: 0, y: 0 };
+      const tx = (sh.x || 0) + (al.x || 0), ty = (sh.y || 0) + (al.y || 0);
+      if (Math.abs(tx) < 0.05 && Math.abs(ty) < 0.05) continue;
+      css += `${panelSel(id)}{translate:${tx.toFixed(2)}px ${ty.toFixed(2)}px !important}
 `;
     }
     css += recenterRule;
@@ -433,7 +447,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
 
   // "W x H px" (the real on-screen size, so two panels can be matched to the
   // pixel) plus the scale to one decimal.
-  const sizeLabel = (r, s) => Math.round(r.width) + '\u00d7' + Math.round(r.height) + ' px \u00b7 ' + (s * 100).toFixed(1) + '%';
+  const sizeLabel = (r, s) => Math.round(r.width) + '\u00d7' + Math.round(r.height) + ' px \u00b7 ' + (s * uiZoom() * 100).toFixed(1) + '%';
 
   function visiblePanels() {
     const out = [];
@@ -473,6 +487,21 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     for (const [pid, b] of badgeEls) if (!seen.has(pid)) { b.remove(); badgeEls.delete(pid); }
   }
 
+  // A handle is only visible while the pointer is over its own panel (or the handle itself, or while dragging it).
+  let hvRaf = 0, hvX = -1, hvY = -1;
+  const hvMove = (e) => {
+    hvX = e.clientX; hvY = e.clientY;
+    if (hvRaf) return;
+    hvRaf = requestAnimationFrame(() => {
+      hvRaf = 0;
+      for (const [pid, h] of handles) {
+        const p = findPanel(pid); let over = false;
+        if (p) { const r = p.getBoundingClientRect(); over = hvX >= r.left && hvX <= r.right && hvY >= r.top && hvY <= r.bottom; }
+        h.el.classList.toggle('cc-ps-show', over);
+      }
+    });
+  };
+  document.addEventListener('mousemove', hvMove, true);
   function createHandle(id) {
     const el = document.createElement('div');
     el.className = 'cc-ps-handle' + (EXTRA[id] && EXTRA[id].corner === 'bl' ? ' cc-ps-bl' : '');
@@ -512,19 +541,19 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
           if (f > 0) m = Math.min(m, 1 + pos / (f * len));
           return m;
         };
-        sFit = Math.min(axis(left, fx, w, innerWidth), axis(top, fy, h, innerHeight));
+        sFit = Math.min(axis(left, fx, w, innerWidth), axis(top, fy, h, (window.__ccVH ? window.__ccVH() : window.innerHeight)));
       } else {
         const anchorRight = origins[id] === 'tr' || origins[id] === 'br';
         const anchorBottom = origins[id] === 'bl' || origins[id] === 'br';
         const availW = anchorRight ? r.right : innerWidth - r.left;
-        const availH = anchorBottom ? r.bottom : innerHeight - r.top;
+        const availH = anchorBottom ? r.bottom : (window.__ccVH ? window.__ccVH() : window.innerHeight) - r.top;
         sFit = Math.min(availW / (r.width / s0), availH / (r.height / s0));
       }
       // Plugins-tab size options, read once per gesture.
       const opts = {
         whole: settingOn('panelSizeWholePx'),    // snap the visual HEIGHT to whole pixels
         badges: settingOn('panelSizeBadges'),    // show every panel's W x H while resizing
-        match: !!(window.__ccPluginSettings && window.__ccPluginSettings.get('panelSizeMatchSnap')), // snap to another panel's height
+        match: !(window.__ccPluginSettings && window.__ccPluginSettings.get('panelSizeMatchSnap') === false), // snap to another panel's height (on unless you turned it off)
       };
       // Fused group: scale every member by the same factor around the group's top-left.
       let grp = null;
@@ -539,9 +568,9 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
             const rj = pj.getBoundingClientRect();
             R0[j] = rj; S0[j] = scales[j] || 1;
             ax = Math.min(ax, rj.left); ay = Math.min(ay, rj.top); ur = Math.max(ur, rj.right); ub = Math.max(ub, rj.bottom);
-            kMin = Math.max(kMin, MIN_S / S0[j]); kMax = Math.min(kMax, MAX_S / S0[j]);
+            kMin = Math.max(kMin, minS() / S0[j]); kMax = Math.min(kMax, MAX_S / S0[j]);
           });
-          kMax = Math.min(kMax, (innerWidth - ax) / (ur - ax), (innerHeight - ay) / (ub - ay));
+          kMax = Math.min(kMax, (innerWidth - ax) / (ur - ax), ((window.__ccVH ? window.__ccVH() : window.innerHeight) - ay) / (ub - ay));
           if (Object.keys(R0).length > 1) grp = { ids: Object.keys(R0), R0, S0, ax, ay, kMin, kMax: Math.max(1, kMax) };
         }
       }
@@ -572,7 +601,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
           if (Math.abs(H0 * s - o.rect.height) <= 3) { s = o.rect.height / H0; break; }
         }
       }
-      s = Math.min(drag.sMax, Math.max(MIN_S, s));
+      s = Math.min(drag.sMax, Math.max(minS(), s));
       if (drag.grp) {
         const g = drag.grp;
         s = Math.min(drag.s0 * g.kMax, Math.max(drag.s0 * g.kMin, s));
@@ -622,10 +651,16 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     return h;
   }
 
+  // cached per id: this runs on every pointer move and frame of a drag, and a document-wide query each time was the cost of dragging a panel.
+  // A cached element is used while it is still in the page (the game re-creates a panel when it closes and reopens it, which drops the cache).
+  const panelCache = new Map();
   function findPanel(id) {
-    if (EXTRA[id]) return document.querySelector(EXTRA[id].sel);
-    const tb = document.querySelector(`.panel-floating > .panel-titlebar[data-panel-id="${CSS.escape(id)}"]`);
-    return tb ? tb.parentElement : null;
+    const c = panelCache.get(id); if (c && c.isConnected) return c;
+    let p = null;
+    if (EXTRA[id]) p = document.querySelector(EXTRA[id].sel);
+    else { const tb = window.__ccDom.q(`.panel-floating > .panel-titlebar[data-panel-id="${CSS.escape(id)}"]`); p = tb ? tb.parentElement : null; }
+    if (p) panelCache.set(id, p); else panelCache.delete(id);
+    return p;
   }
 
   function isOccluded(panel, x, y) {
@@ -645,6 +680,8 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
   function syncSettings() {
     const v = settingOn('verticalMenuEnabled');
     if (v !== vmenuOn && document.body) { vmenuOn = v; document.body.classList.toggle('cc-vmenu', v); }
+    const hid = !!(window.__ccPluginSettings && window.__ccPluginSettings.get('menuBarHidden'));   // the menu bar is not shown at all (the Info Bar buttons and the hotkeys still open panels)
+    if (document.body && document.body.classList.contains('cc-menu-hidden') !== hid) document.body.classList.toggle('cc-menu-hidden', hid);
     // Edge snapping is opt-in: unlike the toggles above this is OFF unless the
     // Plugins tab says otherwise, and it's applied here (not only when the
     // Settings panel is built) so it holds from page load.
@@ -672,7 +709,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     return el;
   }
   function syncMenuCount() {
-    const tb = qc('#ui-container>.panel-tab-bar');
+    const tb = qc(':is(#ui-container,#hud-layer)>.panel-tab-bar');
     if (!tb) return;
     let n = 0;
     for (const c of tb.children) if (getComputedStyle(c).display !== 'none') n++;
@@ -681,7 +718,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     const r = tb.getBoundingClientRect();
     if (r.width > 0 && document.body) {
       const E = 6, cl = document.body.classList;
-      const near = { r: innerWidth - r.right <= E, l: r.left <= E, t: r.top <= E, b: innerHeight - r.bottom <= E };
+      const near = { r: innerWidth - r.right <= E, l: r.left <= E, t: r.top <= E, b: (window.__ccVH ? window.__ccVH() : window.innerHeight) - r.bottom <= E };
       const pick = near.r ? 'r' : near.l ? 'l' : near.t ? 't' : near.b ? 'b' : '';
       ['r', 'l', 't', 'b'].forEach(k => cl.toggle('cc-vm-' + k, pick === k));
     }
@@ -696,7 +733,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
   function titlebars() {
     const now = performance.now();
     if (now - tbCacheAt > 1000 || tbCache.some(t => !t.isConnected)) {
-      tbCache = [...document.querySelectorAll('.panel-floating > .panel-titlebar[data-panel-id]')];
+      tbCache = [...window.__ccDom.qa('.panel-floating > .panel-titlebar[data-panel-id]')];
       tbCacheAt = now;
     }
     return tbCache;
@@ -723,7 +760,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     let dx = 0, dy = 0;
     if (nr > innerWidth + KEEP_TOL) dx = innerWidth - nr;
     if (nl + dx < -KEEP_TOL) dx = -nl;
-    if (nb > innerHeight + KEEP_TOL) dy = innerHeight - nb;
+    if (nb > (window.__ccVH ? window.__ccVH() : window.innerHeight) + KEEP_TOL) dy = (window.__ccVH ? window.__ccVH() : window.innerHeight) - nb;
     if (nt + dy < -KEEP_TOL) dy = -nt;
     const nx = dx / z, ny = dy / z;
     if (Math.abs(nx - cur.x) > 0.3 || Math.abs(ny - cur.y) > 0.3) {
@@ -743,7 +780,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
   const LOCK_SVG = '<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M4 7V5a4 4 0 0 1 8 0v2h1v7H3V7h1zm2 0h4V5a2 2 0 0 0-4 0v2z"></path></svg>';
   function setLock(id, on) { if (on) locks[id] = true; else delete locks[id]; saveLocks(); decorateTitlebars(); }
   function labelOf(id) {
-    const tb = document.querySelector(`.panel-floating > .panel-titlebar[data-panel-id="${CSS.escape(id)}"]`);
+    const tb = window.__ccDom.q(`.panel-floating > .panel-titlebar[data-panel-id="${CSS.escape(id)}"]`);
     const l = tb && tb.querySelector('.panel-titlebar-label');
     return (l && l.textContent.trim()) || id;
   }
@@ -763,11 +800,27 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     if (c.textContent !== txt) c.textContent = txt;
     c.classList.toggle('full', used >= slots.length);
   }
+  // Tasks title: "[8]" = how many tasks you have (the running one plus the queued rows); it grows as you unlock more slots.
+  function taskCount(tb) {
+    let c = tb.querySelector('.cc-task-count');
+    if (!settingOn('taskCountInTitle')) { if (c) c.remove(); return; }
+    const panel = tb.parentElement; if (!panel) return;
+    const n = panel.querySelectorAll('.uq-row').length;
+    if (!n) return;
+    const txt = '[' + n + ']';
+    if (!c) {
+      c = document.createElement('span'); c.className = 'cc-inv-count cc-task-count';
+      const l = tb.querySelector('.panel-titlebar-label'); if (!l) return;
+      l.insertAdjacentElement('afterend', c);
+    }
+    if (c.textContent !== txt) c.textContent = txt;
+  }
   function decorateTitlebars() {
     for (const tb of titlebars()) {
       if (!tb.isConnected) continue;
       const id = tb.dataset.panelId, btns = tb.querySelector('.panel-titlebar-btns');
       if (id === 'inventory') invCount(tb);
+      if (id === 'tasks') taskCount(tb);
       let b = tb.querySelector('.cc-lock-btn');
       if (!menuOn) { if (b) b.remove(); continue; }
       if (!b && btns) {
@@ -786,14 +839,63 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     const t = e.target && e.target.closest ? e.target.closest('.panel-titlebar[data-panel-id]') : null;
     return t && !e.target.closest('.panel-titlebar-btns') ? t : null;
   };
+  // A panel that was aligned (right-click > Align) carries an extra offset on top of its own position; dragging it by hand then could never reach the very edge (the offset stayed).
+  // When a drag starts the offset is folded into the panel's own left/top (same place on screen) and cleared, so the drag is a plain drag again.
+  function bakeAlign(id) {
+    const al = aligns[id]; if (!al || (Math.abs(al.x) < 0.05 && Math.abs(al.y) < 0.05)) return;
+    const el = panelElOf(id); if (!el || EXTRA[id]) return;
+    const l = parseFloat(el.style.left), t = parseFloat(el.style.top); if (!isFinite(l) || !isFinite(t)) return;
+    el.style.left = (l + al.x) + 'px'; el.style.top = (t + al.y) + 'px'; delete aligns[id]; saveAligns(); renderCss();
+  }
   const onLockPress = (e) => {
-    if (!menuOn) return;
     const tb = inTitlebarDrag(e);
+    if (tb && e.button === 0 && !locks[tb.dataset.panelId]) { try { bakeAlign(tb.dataset.panelId); } catch (er) { /* keep dragging */ } }
+    if (!menuOn) return;
     if (tb && locks[tb.dataset.panelId] && e.button === 0) { e.stopPropagation(); e.preventDefault(); }
   };
+  // ---- hide a panel (right-click its title bar > Hide this panel). Kept in `cc-hidden-panels`; Settings > Plugins > Panels lists every hidden panel to restore.
+  const HID_LS = 'cc-hidden-panels';
+  const HID_NAMES = { tasks: 'Tasks', slay: 'Slay tasks', skills: 'Skills', quests: 'Quests', inventory: 'Inventory', diary: 'Diary', equipment: 'Equipment', friends: 'Friends', barter: 'Barter', chat: 'Chat', taskhud: 'Current Task', population: 'Info', raiddps: 'Raid DPS', gauntlet: 'Fortress' };
+  // things that are not title-bar panels but can be hidden the same way (key -> { label, css })
+  const HID_EXTRA = { 'x:potions': { label: 'Active potions (pill and list)', css: '.active-potions-pill,.active-potions-panel', match: '.active-potions-pill,.active-potions-panel' } };
+  let hiddenPanels = {};
+  try { hiddenPanels = JSON.parse(localStorage.getItem(HID_LS) || '{}') || {}; } catch (e) { hiddenPanels = {}; }
+  const hidStyle = document.createElement('style'); hidStyle.id = 'cc-hidden-panels-style'; document.head.appendChild(hidStyle);
+  function renderHidden() {
+    hidStyle.textContent = Object.keys(hiddenPanels).map((id) => (HID_EXTRA[id] ? HID_EXTRA[id].css.split(',').map((q) => q + '{display:none !important}').join('\n') : '#ui-container :has(> .panel-titlebar[data-panel-id="' + CSS.escape(id) + '"]){display:none !important}')).join('\n');
+    try { localStorage.setItem(HID_LS, JSON.stringify(hiddenPanels)); } catch (e) { /* storage blocked */ }
+  }
+  renderHidden();
+  const hideNameOf = (id) => (HID_EXTRA[id] && HID_EXTRA[id].label) || HID_NAMES[id] || labelOf(id);
+  function hidePanel(id) { hiddenPanels[id] = hideNameOf(id); renderHidden(); }
+  function unhidePanel(id) { delete hiddenPanels[id]; renderHidden(); }
+  function panelElOf(id) {
+    if (EXTRA[id]) return document.querySelector(EXTRA[id].sel);
+    const tb = window.__ccDom.q(`.panel-titlebar[data-panel-id="${CSS.escape(id)}"]`);
+    return tb ? tb.parentElement : null;
+  }
+  // hx / vy: 0 = start edge, 0.5 = middle, 1 = end edge. A fused group moves as one block, so its links stay intact.
+  function alignPanel(id, hx, vy) {
+    let ids = [id]; try { const F = window.__ccPanelFuse; const g = F && F.group ? F.group(id) : null; if (g && g.length > 1) ids = g; } catch (e) { /* not fused */ }
+    const els = ids.map((m) => ({ m, el: panelElOf(m) })).filter((o) => o.el && o.el.getClientRects().length);
+    if (!els.length) return;
+    let L = Infinity, T = Infinity, R = -Infinity, B = -Infinity;
+    els.forEach((o) => { const r = o.el.getBoundingClientRect(); L = Math.min(L, r.left); T = Math.min(T, r.top); R = Math.max(R, r.right); B = Math.max(B, r.bottom); });
+    const W = window.innerWidth, E = (window.__ccEdge && window.__ccEdge.top) || 0, VH = window.__ccVH ? window.__ccVH() : window.innerHeight, M = 0;   // flush with the screen edges and the bars (a 6 px margin left a visible gap under the top bar)
+    const bw = R - L, bh = B - T;
+    const wantL = M + hx * Math.max(0, W - 2 * M - bw), wantT = E + M + vy * Math.max(0, VH - E - 2 * M - bh);
+    const gs = window.__ccGameScale || { x: 1, y: 1 }, z = uiZoom();
+    const dx = (wantL - L) / (z * gs.x), dy = (wantT - T) / (z * gs.y);
+    els.forEach((o) => { const a = aligns[o.m] || { x: 0, y: 0 }; aligns[o.m] = { x: a.x + dx, y: a.y + dy }; });
+    saveAligns(); renderCss();
+  }
+  function resetAlign(id) {
+    let ids = [id]; try { const F = window.__ccPanelFuse; const g = F && F.group ? F.group(id) : null; if (g && g.length > 1) ids = g; } catch (e) { /* not fused */ }
+    ids.forEach((m) => { delete aligns[m]; }); saveAligns(); renderCss();
+  }
   function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
   function setScaleFor(id, s) {
-    s = Math.min(MAX_S, Math.max(MIN_S, s));
+    s = Math.min(MAX_S, Math.max(minS(), s));
     if (Math.abs(s - 1) < 1e-6) delete scales[id]; else scales[id] = Math.round(s * 1e6) / 1e6;
     save(); renderCss();
   }
@@ -809,20 +911,33 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     add('pm-i', anyUnlocked ? '🔒 Lock all panels' : '🔓 Unlock all panels', () => { all.forEach(p => { if (anyUnlocked) locks[p] = true; else delete locks[p]; }); saveLocks(); decorateTitlebars(); });
     const sep = () => { const d = document.createElement('div'); d.className = 'pm-sep'; m.appendChild(d); };
     sep();
+    add('pm-i', '\uD83D\uDE48 Hide this panel (restore it in Settings > Plugins > Panels)', () => hidePanel(id));
+    sep();
+    { // Align: nine places on the screen (a fused group moves together)
+      const ah = document.createElement('div'); ah.className = 'pm-h'; ah.textContent = 'Align'; m.appendChild(ah);
+      const grid = document.createElement('div'); grid.className = 'pm-chips'; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:4px;';
+      [['\u2196', 0, 0, 'Top left'], ['\u2191', 0.5, 0, 'Top centre'], ['\u2197', 1, 0, 'Top right'], ['\u2190', 0, 0.5, 'Middle left'], ['\u25CF', 0.5, 0.5, 'Centre'], ['\u2192', 1, 0.5, 'Middle right'], ['\u2199', 0, 1, 'Bottom left'], ['\u2193', 0.5, 1, 'Bottom centre'], ['\u2198', 1, 1, 'Bottom right']].forEach(([ch, hx, vy, tip]) => {
+        const c = document.createElement('div'); c.className = 'pm-chip'; c.textContent = ch; c.title = tip; c.style.textAlign = 'center';
+        c.addEventListener('click', (e) => { e.stopPropagation(); alignPanel(id, hx, vy); closeMenu(); }); grid.appendChild(c);
+      });
+      m.appendChild(grid);
+      const rs = document.createElement('div'); rs.className = 'pm-i' + (aligns[id] ? '' : ' dis'); rs.textContent = 'Reset alignment'; rs.addEventListener('click', (e) => { e.stopPropagation(); resetAlign(id); closeMenu(); }); m.appendChild(rs);
+    }
+    sep();
     const panel = findPanel(id), r = panel ? panel.getBoundingClientRect() : null;
     if (!panel) { // a title bar that is not a standard floating panel (e.g. the Current Task): lock only
       document.body.appendChild(m); menuEl = m;
       const mr0 = m.getBoundingClientRect();
-      m.style.left = Math.max(4, Math.min(innerWidth - mr0.width - 4, x)) + 'px'; m.style.top = Math.max(4, Math.min(innerHeight - mr0.height - 4, y)) + 'px';
+      m.style.left = Math.max(4, Math.min(innerWidth - mr0.width - 4, x)) + 'px'; m.style.top = Math.max(4, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - mr0.height - 4, y)) + 'px';
       return;
     }
     const cur = scales[id] || 1;
-    add('pm-i' + (scales[id] ? '' : ' dis'), 'Reset size (100%)', () => setScaleFor(id, 1));
+    add('pm-i' + (scales[id] ? '' : ' dis'), 'Reset size (' + pct(1) + '%, game default)', () => setScaleFor(id, 1));
     const sh = document.createElement('div'); sh.className = 'pm-h'; sh.textContent = 'Size'; m.appendChild(sh);
     const chips = document.createElement('div'); chips.className = 'pm-chips';
     [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.25, 1.5].forEach(v => {
-      const c = document.createElement('div'); c.className = 'pm-chip' + (Math.abs(cur - v) < 0.005 ? ' on' : ''); c.textContent = Math.round(v * 100) + '%';
-      c.addEventListener('click', e => { e.stopPropagation(); setScaleFor(id, v); closeMenu(); }); chips.appendChild(c);
+      const c = document.createElement('div'); c.className = 'pm-chip' + (Math.abs(cur * uiZoom() - v) < 0.005 ? ' on' : ''); c.textContent = Math.round(v * 100) + '%'; // v = on-screen size, 100% = the game's base size
+      c.addEventListener('click', e => { e.stopPropagation(); setScaleFor(id, v / uiZoom()); closeMenu(); }); chips.appendChild(c);
     });
     m.appendChild(chips);
     // Match another panel's on-screen height (the pixel-perfect alignment case).
@@ -837,10 +952,24 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     menuEl = m;
     const mr = m.getBoundingClientRect();
     m.style.left = Math.max(4, Math.min(innerWidth - mr.width - 4, x)) + 'px';
-    m.style.top = Math.max(4, Math.min(innerHeight - mr.height - 4, y)) + 'px';
+    m.style.top = Math.max(4, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - mr.height - 4, y)) + 'px';
   }
   const onContext = (e) => {
     if (!menuOn) return;
+    // The game's own right-click menu of the Active Potions panel (filters, food and auto-eat settings) must stay reachable: ScapeLite's "hide" menu only
+    // opens on Shift + right-click.
+    const pot = e.shiftKey && e.target && e.target.closest ? e.target.closest(HID_EXTRA['x:potions'].match) : null;
+    if (pot) {
+      e.preventDefault(); e.stopPropagation(); closeMenu();
+      const m = document.createElement('div'); m.className = 'cc-pm';
+      const hd = document.createElement('div'); hd.className = 'pm-h'; hd.textContent = 'Active potions'; m.appendChild(hd);
+      const it = document.createElement('div'); it.className = 'pm-i'; it.textContent = '\uD83D\uDE48 Hide the active potions (restore in Settings > Plugins > Panels). A plain right-click opens the game’s own filter menu.';
+      it.addEventListener('click', (ev) => { ev.stopPropagation(); hidePanel('x:potions'); closeMenu(); }); m.appendChild(it);
+      document.body.appendChild(m); menuEl = m;
+      const mr = m.getBoundingClientRect();
+      m.style.left = Math.max(4, Math.min(innerWidth - mr.width - 4, e.clientX)) + 'px'; m.style.top = Math.max(4, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - mr.height - 4, e.clientY)) + 'px';
+      return;
+    }
     const tb = e.target && e.target.closest ? e.target.closest('.panel-titlebar[data-panel-id]') : null;
     if (!tb) return;
     e.preventDefault(); e.stopPropagation();
@@ -868,8 +997,8 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
   const guidePool = [];
   const mvStyle = document.createElement('style');
   mvStyle.id = 'cc-pmove-style';
-  mvStyle.textContent = `.cc-snap-guide{position:fixed;z-index:100000;pointer-events:none;background:#ffd24a;box-shadow:0 0 8px rgba(255,210,74,.9);border-radius:1px}
-.cc-snap-chip{position:fixed;z-index:100001;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;border:1px solid #ffd24a;background:rgba(20,20,26,.96);color:#ffd24a;font:600 12px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.6);animation:ccChipIn .18s ease-out}
+  mvStyle.textContent = `.cc-snap-guide{position:fixed;z-index:100000;pointer-events:none;background:var(--cc-accent,#ffd24a);box-shadow:0 0 8px rgba(255,210,74,.9);border-radius:1px}
+.cc-snap-chip{position:fixed;z-index:100001;display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:14px;border:1px solid #ffd24a;background:rgba(20,20,26,.96);color:var(--cc-accent,#ffd24a);font:600 12px/1 system-ui,sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.6);animation:ccChipIn .18s ease-out}
 .cc-snap-chip:hover{background:#2c2a18}
 @keyframes ccChipIn{from{opacity:0;transform:translate(-50%,-50%) scale(.85)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 .cc-snap-chip{transform:translate(-50%,-50%)}`;
@@ -900,7 +1029,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     const tx = (d, kind, o, pen) => { if (Math.abs(d) + (pen || 0) < Math.abs(bx.d) + (bx.pen || 0)) bx = { d, kind, o, pen: pen || 0 }; };
     const ty = (d, kind, o, pen) => { if (Math.abs(d) + (pen || 0) < Math.abs(by.d) + (by.pen || 0)) by = { d, kind, o, pen: pen || 0 }; };
     tx(0 - Vx, 'screen', null, 0); tx(innerWidth - (Vx + bw), 'screen', null, 0);
-    ty(0 - Vy, 'screen', null, 0); ty(innerHeight - (Vy + bh), 'screen', null, 0);
+    ty(0 - Vy, 'screen', null, 0); ty((window.__ccVH ? window.__ccVH() : window.innerHeight) - (Vy + bh), 'screen', null, 0);
     for (const o of others) {
       const r = o.r;
       const vNear = Math.min(Vy + bh, r.bottom) - Math.max(Vy, r.top) > -SNAP_T;
@@ -918,7 +1047,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
       if (sx.kind === 'edge') contacts.push({ o: sx.o, axis: 'x' });
     }
     if (sy) {
-      const lineY = sy.kind === 'screen' ? (Math.abs(sy.d) === Math.abs(0 - Vy) ? 0 : innerHeight - 2) : (Math.abs(sy.d - (sy.o.r.top - (Vy + bh))) < 0.01 ? sy.o.r.top : Math.abs(sy.d - (sy.o.r.bottom - Vy)) < 0.01 ? sy.o.r.bottom : (Math.abs(sy.d - (sy.o.r.top - Vy)) < 0.01 ? sy.o.r.top : sy.o.r.bottom));
+      const lineY = sy.kind === 'screen' ? (Math.abs(sy.d) === Math.abs(0 - Vy) ? 0 : (window.__ccVH ? window.__ccVH() : window.innerHeight) - 2) : (Math.abs(sy.d - (sy.o.r.top - (Vy + bh))) < 0.01 ? sy.o.r.top : Math.abs(sy.d - (sy.o.r.bottom - Vy)) < 0.01 ? sy.o.r.bottom : (Math.abs(sy.d - (sy.o.r.top - Vy)) < 0.01 ? sy.o.r.top : sy.o.r.bottom));
       const left = sy.o ? Math.min(x, sy.o.r.left) : x, right = sy.o ? Math.max(x + bw, sy.o.r.right) : x + bw;
       guides.push({ x: left, y: lineY, w: right - left, h: 2 });
       if (sy.kind === 'edge') contacts.push({ o: sy.o, axis: 'y' });
@@ -964,7 +1093,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
       const X = Math.max(0, Math.min(room, (V - extra) / den));
       return { X, f: clamp01(X / room) };
     };
-    const sx = solve(Vx, m.extraX, m.w, innerWidth), sy = solve(Vy, m.extraY, m.h, innerHeight);
+    const sx = solve(Vx, m.extraX, m.w, innerWidth), sy = solve(Vy, m.extraY, m.h, (window.__ccVH ? window.__ccVH() : window.innerHeight));
     el.style.left = (sx.X / m.z).toFixed(3) + 'px';
     el.style.top = (sy.X / m.z).toFixed(3) + 'px';
     if (m.k !== 1 && origins[m.id] === 'cont') { cont[m.id] = { fx: sx.f, fy: sy.f }; renderCss(); }
@@ -981,7 +1110,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     setTimeout(() => {
       try {
         if (settingTrue('panelAutoFuse')) { F.fuseIds(m.id, partner); return; }
-        const a = m.el.getBoundingClientRect(), pe = document.querySelector(`.panel-floating > .panel-titlebar[data-panel-id="${CSS.escape(partner)}"]`);
+        const a = m.el.getBoundingClientRect(), pe = window.__ccDom.q(`.panel-floating > .panel-titlebar[data-panel-id="${CSS.escape(partner)}"]`);
         const b = pe && pe.parentElement.getBoundingClientRect(); if (!b || !(a.width > 0)) return;
         const ox0 = Math.max(a.left, b.left), ox1 = Math.min(a.right, b.right), oy0 = Math.max(a.top, b.top), oy1 = Math.min(a.bottom, b.bottom);
         const side = m.contacts[0].axis;
@@ -1032,14 +1161,14 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
       // corner hugging the panel's own bottom-right corner, drawn inside it.
       // Clamped to the viewport so it always stays grabbable.
       const x = Math.round(Math.min(r.right - HANDLE, innerWidth - HANDLE));
-      const y = Math.round(Math.min(r.bottom - HANDLE, innerHeight - HANDLE));
+      const y = Math.round(Math.min(r.bottom - HANDLE, (window.__ccVH ? window.__ccVH() : window.innerHeight) - HANDLE));
       const key = x + ',' + y;
       if (h.last !== key) { h.el.style.transform = `translate(${x}px,${y}px)`; h.last = key; }
       if (drag && drag.id === id) { h.el.hidden = false; continue; }
       if (checkOcclusion || h.el.hidden) {
         // Probe a point just inside the panel's corner: if something else
         // (another panel, a tooltip, a modal) is on top there, hide the grip.
-        h.el.hidden = isOccluded(panel, Math.min(r.right - 6, innerWidth - 2), Math.min(r.bottom - 6, innerHeight - 2));
+        h.el.hidden = isOccluded(panel, Math.min(r.right - 6, innerWidth - 2), Math.min(r.bottom - 6, (window.__ccVH ? window.__ccVH() : window.innerHeight) - 2));
       }
     }
     for (const id of Object.keys(EXTRA)) {
@@ -1051,13 +1180,13 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
       if (extraOn[id] === false || !r || !(r.width > 0 && r.height > 0) || getComputedStyle(panel).visibility === 'hidden') { h.el.hidden = true; continue; }
       const brc = EXTRA[id].corner === 'br';
       const x = brc ? Math.round(Math.min(r.right - HANDLE, innerWidth - HANDLE)) : Math.round(Math.max(r.left, 0));
-      const y = Math.round(Math.min(r.bottom - HANDLE, innerHeight - HANDLE));
+      const y = Math.round(Math.min(r.bottom - HANDLE, (window.__ccVH ? window.__ccVH() : window.innerHeight) - HANDLE));
       const key = x + ',' + y;
       if (h.last !== key) { h.el.style.transform = `translate(${x}px,${y}px)`; h.last = key; }
       if (drag && drag.id === id) { h.el.hidden = false; continue; }
       // Same occlusion probe as floating panels, just inside the handle's
       // corner: the strip sits at z-index -1, so an open panel covers it.
-      if (checkOcclusion || h.el.hidden) h.el.hidden = isOccluded(panel, brc ? Math.min(r.right - 6, innerWidth - 2) : Math.max(r.left + 6, 2), Math.min(r.bottom - 6, innerHeight - 2));
+      if (checkOcclusion || h.el.hidden) h.el.hidden = isOccluded(panel, brc ? Math.min(r.right - 6, innerWidth - 2) : Math.max(r.left + 6, 2), Math.min(r.bottom - 6, (window.__ccVH ? window.__ccVH() : window.innerHeight) - 2));
     }
     for (const [id, h] of handles) if (!seen.has(id)) h.el.hidden = true;
   }
@@ -1075,7 +1204,8 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     frameQueued = true;
     rafId = requestAnimationFrame(() => { frameQueued = false; runSync(++frame % OCCLUDE_EVERY === 0); if (pointerDown) queueFrame(); });
   }
-  const onPointerDown = () => { pointerDown = true; queueFrame(); };
+  const ownUi = (e) => !!(e && e.target && e.target.closest && e.target.closest('.cc-panel,#cc-route-panel,#cc-xp-tracker,#cc-treeadv,.cc-bar,#cc-alertbell'));   // dragging one of ScapeLite's own panels is not a game panel move: skip the per-frame game-panel passes
+  const onPointerDown = (e) => { if (ownUi(e)) return; pointerDown = true; queueFrame(); };
   const onPointerUp = () => { pointerDown = false; setTimeout(() => runSync(true), 60); };
   const onResize = () => { tbCacheAt = -1e9; runSync(true); };
   document.addEventListener('pointerdown', onPointerDown, true);
@@ -1085,12 +1215,12 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
   let tickN = 0;
   function tick() {
     if (!alive) return;
-    if (!document.hidden && !pointerDown) runSync(++tickN % 5 === 0); // heavy checks (occlusion, titlebar decoration) once a second
+    if (!(document.hidden || window.__ccEcoOn) && !pointerDown) runSync(++tickN % 5 === 0); // heavy checks (occlusion, titlebar decoration) once a second
     timerId = setTimeout(tick, 200);
   }
 
   function teardown(opts) {
-    alive = false;
+    alive = false; hidStyle.remove();
     cancelAnimationFrame(rafId); clearTimeout(timerId);
     document.removeEventListener('pointerdown', onPointerDown, true);
     document.removeEventListener('pointerup', onPointerUp, true);
@@ -1107,6 +1237,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     window.removeEventListener('pointerup', onMoveEnd);
     window.removeEventListener('pointercancel', onMoveEnd);
     dropChip(); showGuides([]); guidePool.forEach(g => g.remove()); mvStyle.remove();
+    document.removeEventListener('mousemove', hvMove, true);
     document.removeEventListener('contextmenu', onContext, true);
     document.removeEventListener('mousedown', onDocClose, true);
     document.removeEventListener('keydown', onKeyClose, true);
@@ -1115,7 +1246,7 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     style.remove();
     document.documentElement.style.removeProperty('--cc-menu-n');
     if (document.body) document.body.classList.remove('cc-vmenu');
-    if (!(opts && opts.keepStorage)) { try { localStorage.removeItem(LS_KEY); } catch (e) {} }
+    if (opts && opts.clearStorage) { try { localStorage.removeItem(LS_KEY); } catch (e) {} }   // saved panel sizes are only deleted when asked to
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc panel-scale torn down';
   }
@@ -1125,10 +1256,16 @@ body.cc-vmenu #ui-container>.hp-bar .hp-bar-text{width:min-content;white-space:n
     teardown,
     get stats() { return Object.assign({}, STATS); },
     get scales() { return Object.assign({}, scales); },
+    // For the Layout Editor's ready-made layout: set the scale of some windows (id -> factor, same unit as the size menu stores), or put a saved set back exactly. Display only.
+    setScales(map, replace) { if (replace) scales = {}; Object.keys(map || {}).forEach((id) => { const s = Number(map[id]); if (s > 0) { const c = Math.min(MAX_S, Math.max(minS(), s)); if (Math.abs(c - 1) < 1e-6) delete scales[id]; else scales[id] = Math.round(c * 1e6) / 1e6; } }); save(); renderCss(); },
     // reset('tasks') -> one panel back to 100%; reset() -> all panels.
     reset(id) { if (id) delete scales[id]; else scales = {}; save(); renderCss(); },
     // Controlled from the in-game Plugins settings tab (plugins-settings-ui.js).
     setEdgeSnapEnabled(v) { edgeSnapEnabled = !!v; },
+    hiddenList() { return Object.keys(hiddenPanels).map((id) => ({ id, label: hiddenPanels[id] || id })); },
+    hide: hidePanel,
+    unhide: unhidePanel,
+    unhideAll() { hiddenPanels = {}; renderHidden(); },
   };
 
   renderCss();

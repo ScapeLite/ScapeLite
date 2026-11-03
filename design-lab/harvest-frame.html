@@ -1,0 +1,8 @@
+<!doctype html><html data-cc-density="cozy"><head><meta charset="utf-8"><title>harvest</title></head><body class="cc-themed"><div id="ui-container"></div>
+<script>
+// the lab never talks to the game, the dashboard or any site: cross-origin and /status requests from the real plugin code fail at once
+(function () { var f = window.fetch; window.fetch = function (u) { try { var a = new URL(String(u && u.url || u), location.href); if (a.origin !== location.origin) return Promise.reject(new TypeError('blocked by Design Lab')); } catch (e) {} return f.apply(this, arguments); }; window.WebSocket = function () { throw new Error('blocked by Design Lab'); }; })();
+</script>
+<script src="stub-settings.js"></script>
+<script src="harvest-frame.js"></script>
+</body></html>

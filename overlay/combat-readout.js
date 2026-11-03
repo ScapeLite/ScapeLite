@@ -1,101 +1,56 @@
-// ScapeLite Combat Readout: exact numbers for the combat screen. Display only.
-// For you and your target: HP and Spirit as numbers on their bars, an attack timer counting down (3 decimals), the unrounded
-// attack interval and attacks per second, and your expected DPS (the game's own formula: hit chance x average damage with crits / interval).
-// Reads the combat scene through the Game Data Bridge; draws its own small card, drag it anywhere.
+// ScapeLite Combat Readout: exact numbers drawn ON the combat scene's own bars. Display only.
+// HP and Spirit as "57 / 80" on their bars, the attack timer counting down on its bar, and under your bars the unrounded attack
+// interval, attacks per second and expected DPS (the game's own formula, for the loadout the fight really uses).
+// It asks the Game Data Bridge to add text after the scene paints each bar; nothing in the game is changed or clicked.
 (function () {
   'use strict';
   const NS = '__ccCombatReadout';
   try { window[NS] && window[NS].teardown && window[NS].teardown(); } catch (e) {}
-  const LS = 'cc-combat-readout-pos';
   const on = () => { try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('combatReadoutEnabled'); return v === undefined ? true : !!v; } catch (e) { return true; } };
 
-  const style = document.createElement('style');
-  style.id = 'cc-combat-readout-style';
-  style.textContent = `
-#cc-combat-readout{position:fixed;z-index:2147483000;left:50%;top:64px;transform:translateX(-50%);display:none;gap:14px;padding:8px 12px;border-radius:10px;
-  background:rgba(14,14,22,.88);border:1px solid rgba(255,255,255,.14);box-shadow:0 4px 16px rgba(0,0,0,.5);font:12px/1.3 system-ui,sans-serif;color:#dcdce8;cursor:grab;user-select:none}
-#cc-combat-readout.drag{cursor:grabbing}
-#cc-combat-readout .col{width:168px;display:flex;flex-direction:column;gap:4px}
-#cc-combat-readout .nm{font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#9a9ab0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#cc-combat-readout .bar{position:relative;height:15px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
-#cc-combat-readout .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
-#cc-combat-readout .bar b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 11px/1 system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px #000,0 0 3px #000;font-variant-numeric:tabular-nums}
-#cc-combat-readout .hp i{background:#c0392b}#cc-combat-readout .sp i{background:#7d3c98}#cc-combat-readout .at i{background:#b87a1e}
-#cc-combat-readout .sub{display:flex;justify-content:space-between;color:#a8a8bc;font-size:11px;font-variant-numeric:tabular-nums}
-#cc-combat-readout .sub strong{color:#f0d890;font-weight:700}
-`;
-  document.head.appendChild(style);
-
-  const el = document.createElement('div');
-  el.id = 'cc-combat-readout';
-  document.body.appendChild(el);
-  try { const p = JSON.parse(localStorage.getItem(LS) || 'null'); if (p) { el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; el.style.transform = 'none'; } } catch (e) {}
-
-  const f = (n, d) => (Number.isFinite(n) ? n.toFixed(d) : '-');
-  const whole = (n) => (Number.isFinite(n) ? String(Math.round(n)) : '-');
-  function bar(cls, frac, text) {
-    const w = Math.max(0, Math.min(1, Number.isFinite(frac) ? frac : 0)) * 100;
-    return '<div class="bar ' + cls + '"><i style="width:' + w + '%"></i><b>' + text + '</b></div>';
-  }
-  function col(title, u, dps) {
-    const iv = u.interval > 0 ? u.interval : 0;
-    const left = Math.max(0, u.timer || 0);
-    const rows = [
-      '<div class="nm">' + title + '</div>',
-      bar('hp', u.maxHp > 0 ? u.hp / u.maxHp : 0, whole(u.hp) + ' / ' + whole(u.maxHp)),
-      u.maxSpirit > 0 ? bar('sp', u.spirit / u.maxSpirit, whole(u.spirit) + ' / ' + whole(u.maxSpirit)) : '',
-      iv ? bar('at', 1 - left / iv, f(left, 2) + 's / ' + f(iv, 3) + 's') : '',
-      iv ? '<div class="sub"><span>' + f(1 / iv, 3) + ' attacks/s</span>' + (dps != null ? '<span>DPS <strong>' + f(dps, 2) + '</strong></span>' : '') + '</div>' : '',
-    ];
-    return '<div class="col">' + rows.join('') + '</div>';
-  }
-
-  let lastHtml = '';
+  const KEYS = ['meHp', 'meSpirit', 'meTimer', 'meDps', 'enemyHp', 'enemySpirit', 'enemyTimer', 'allyHp', 'allySpirit', 'allyTimer'];
+  const flag = (k) => { try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('combat_' + k); return v === undefined ? true : !!v; } catch (e) { return true; } };
+  let cache = null, cacheAt = 0;
+  const flags = () => { if (!on()) return false; const n = performance.now(); if (!cache || n - cacheAt > 500) { cache = {}; KEYS.forEach((k) => { cache[k] = flag(k); }); cacheAt = n; } return cache; };
+  let hooked = false, zoomAt = 0;
   function tick() {
     const b = window.__ccBridge;
-    const enc = document.querySelector('.combat-encounter');
-    const shown = !!(enc && enc.getClientRects().length && getComputedStyle(enc).display !== 'none');
-    const d = on() && shown && b && b.combat ? b.combat() : null;
-    if (!d) { if (el.style.display !== 'none') el.style.display = 'none'; return; }
-    const alive = d.mobs.filter((m) => m.alive);
-    const mob = d.selected >= 0 && d.mobs[d.selected] ? d.mobs[d.selected] : alive[0] || d.mobs[0];
-    const html = col('You', d.player, d.dps) + (mob && !d.raid ? col(mob.name || 'Target', mob, null) : '');
-    if (html !== lastHtml) { el.innerHTML = html; lastHtml = html; }
-    if (el.style.display !== 'flex') el.style.display = 'flex';
+    if (!b || !b.barLabels) { hooked = false; return; }
+    if (!hooked) hooked = !!b.barLabels(flags);
+    if (hooked && on()) { try { b.combat(); } catch (e) {} } // keeps the DPS figure fresh
+    try { if (hooked && b.fitScene && !flag('autoZoom')) b.fitReset(); } catch (e) {}
   }
-  const timer = setInterval(tick, 100);
-
-  // Drag the card anywhere; the spot is remembered.
-  let drag = null;
-  el.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    const r = el.getBoundingClientRect();
-    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-    el.classList.add('drag');
-    e.preventDefault();
-  });
-  const onMove = (e) => {
-    if (!drag) return;
-    el.style.transform = 'none';
-    el.style.left = Math.max(0, Math.min(innerWidth - 60, e.clientX - drag.dx)) + 'px';
-    el.style.top = Math.max(0, Math.min(innerHeight - 30, e.clientY - drag.dy)) + 'px';
-  };
-  const onUp = () => {
-    if (!drag) return;
-    drag = null; el.classList.remove('drag');
-    try { const r = el.getBoundingClientRect(); localStorage.setItem(LS, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch (e) {}
-  };
-  document.addEventListener('mousemove', onMove, true);
-  document.addEventListener('mouseup', onUp, true);
-
+  // The camera fit runs often and moves only a little each time, so the zoom and pan glide instead of jumping.
+  function fitTick() { try { const b = window.__ccBridge; if (hooked && b && b.fitScene && flag('autoZoom')) b.fitScene(); } catch (e) {} }
+  // Food-eaten pop-ups ("[food] +39 HP" above the kill count). The game fades and removes each one with two timers that it keeps in a list, and it clears that whole list at certain
+  // moments (a new wave or encounter) WITHOUT removing the pop-ups that already exist: they then sit there for good, stacked on one spot, never floating up or fading. This gives every
+  // new pop-up the same schedule as the game's own (fade after 1.5 s, gone 0.6 s later) with timers of its own, which nothing clears; if the game's timers did their job the pop-up is
+  // already gone and these do nothing. Anything left over from before is cleared too. Switch: Plugins > Combat Readout > Clean Up Food Pop-ups.
+  let eatObs = null, eatHud = null, eatSeen = new WeakSet();
+  const eatFlag = () => { try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('combat_eatFix'); return v === undefined ? true : !!v; } catch (e) { return true; } };
+  function eatSchedule(n) {
+    if (!n || eatSeen.has(n) || !(n.classList && n.classList.contains('eat-indicator'))) return; eatSeen.add(n);
+    setTimeout(() => { try { if (n.isConnected && !n.classList.contains('fading')) n.classList.add('fading'); } catch (e) { /* gone */ } setTimeout(() => { try { if (n.isConnected) n.remove(); } catch (e) { /* gone */ } }, 700); }, 1700);
+  }
+  function eatWatch() {
+    try {
+      if (!on() || !eatFlag()) { if (eatObs) { eatObs.disconnect(); eatObs = null; eatHud = null; } return; }
+      const hud = document.querySelector('.combat-hud') || null; if (hud === eatHud && eatObs) return;
+      if (eatObs) eatObs.disconnect(); eatHud = hud; eatObs = null; if (!hud) return;
+      hud.querySelectorAll('.eat-indicator').forEach((n) => { if (!eatSeen.has(n)) { eatSeen.add(n); n.classList.add('fading'); setTimeout(() => { try { n.remove(); } catch (e) { /* gone */ } }, 700); } });   // left over from before
+      eatObs = new MutationObserver((ms) => { ms.forEach((m) => m.addedNodes.forEach(eatSchedule)); }); eatObs.observe(hud, { childList: true });
+    } catch (e) { /* never break the page */ }
+  }
+  const eatTimer = setInterval(eatWatch, 1500); eatWatch();
+  const fitTimer = setInterval(fitTick, 70);
+  const timer = setInterval(tick, 500);
+  tick();
   function teardown() {
-    clearInterval(timer);
-    document.removeEventListener('mousemove', onMove, true);
-    document.removeEventListener('mouseup', onUp, true);
-    el.remove(); style.remove();
+    clearInterval(timer); clearInterval(fitTimer); clearInterval(eatTimer); try { if (eatObs) eatObs.disconnect(); } catch (e) { /* gone */ }
+    try { window.__ccBridge && window.__ccBridge.unbarLabels && window.__ccBridge.unbarLabels(); } catch (e) {}
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc combat-readout torn down';
   }
-  window[NS] = { version: 1, teardown };
+  window[NS] = { version: 2, teardown };
   return 'cc combat-readout loaded';
 })();

@@ -50,10 +50,20 @@ const PAGE = `<!doctype html>
   details.plugbox > summary::before { content:'\\25B8'; color:#888; font-size:12px; transition:transform .12s; }
   details.plugbox[open] > summary::before { transform:rotate(90deg); }
   details.plugbox > summary .cnt { color:#888; font-weight:400; font-size:12px; }
-  .plugins { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:2px 18px; padding:4px 14px 10px; border-top:1px solid #2a2a35; }
+  .plugins { display:flex; flex-direction:column; gap:8px; padding:10px 14px 12px; border-top:1px solid #2a2a35; }
+  .pk { border:1px solid #2a2a38; border-radius:10px; background:rgba(255,255,255,.025); padding:4px 12px; }
+  .pk > .plug { padding:7px 0; }
+  .pk > .plug .n { font-size:14px; font-weight:600; }
   .plug { display:flex; align-items:center; gap:10px; padding:4px 0; }
   .plug .n { flex:1; min-width:0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .plug .d { color:#888; font-size:11px; margin-left:6px; }
+  .plug .chev { cursor:pointer; color:#8a8a9a; width:16px; text-align:center; user-select:none; flex:none; }
+  .plug .chev:hover { color:#fff; }
+  .parts { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:2px 22px; margin:2px 0 8px 26px; padding:8px 0 2px; border-top:1px solid #2a2a38; }
+  .parts .plug { padding:3px 0; }
+  .parts .plug .n { font-size:12px; color:#b8b8c8; }
+  .sw.part { background:#8a6d1e; }
+  .sw.sm { width:30px; height:16px; }
   .sw { position:relative; width:38px; height:20px; border-radius:10px; background:#3a3a48; cursor:pointer; flex:none; transition:background .15s; }
   .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#ddd; transition:left .15s; }
   .sw.on { background:#2e7d32; } .sw.on::after { left:20px; }
@@ -78,8 +88,13 @@ const PAGE = `<!doctype html>
   .log .line.dup { opacity:.6; }
   .log .ts { color:#667; margin-right:8px; }
   .chip { display:inline-block; font:600 10px/14px system-ui,sans-serif; letter-spacing:.03em; padding:0 6px; margin-right:7px; border-radius:8px; color:#0b0b10; vertical-align:1px; }
-  .s-relay { background:#7289ff; } .s-hiscores { background:#ffb74d; } .s-raid { background:#ef7a70; } .s-digest { background:#4dd0e1; }
+  .s-board { background:#9b84ee; } .s-relay { background:#7289ff; } .s-hiscores { background:#ffb74d; } .s-raid { background:#ef7a70; } .s-digest { background:#4dd0e1; }
   .s-plugin { background:#81c784; } .s-connection { background:#4fc3f7; } .s-config { background:#a8b0b8; } .s-supervisor { background:#ce93d8; } .s-error { background:#ff5252; color:#fff; }
+  .dh { display:flex; align-items:center; gap:8px; padding:3px 0; font-size:13px; }
+  .dh .nm { flex:1; min-width:0; }
+  .dh .st { color:#999; font-size:12px; text-align:right; max-width:60%; }
+  .dh .st.bad { color:#ff8a80; }
+  .dh button { padding:1px 9px; font-size:11px; }
   .legend { display:flex; flex-wrap:wrap; gap:4px 14px; align-items:center; margin:0 0 8px; font-size:11px; color:#8a8a96; }
   .legend .grp { display:flex; align-items:center; gap:4px; }
   .legend .grp b { font-weight:600; color:#aab; margin-right:2px; }
@@ -106,7 +121,7 @@ const PAGE = `<!doctype html>
 </style>
 </head>
 <body>
-  <h1><img src="/logo.svg" alt="" style="width:26px;height:26px;vertical-align:-6px;margin-right:8px">ScapeLite <a href="http://localhost:9222/" target="_blank" class="devtools-link">DevTools &#8599;</a> <a href="/marketplace" class="devtools-link">Plugins &#9656;</a> <a href="/site/" id="siteLink" class="devtools-link" target="_blank" rel="noopener" data-site="1">Website &#8599;</a></h1>
+  <h1><img src="/logo.svg" alt="" style="width:26px;height:26px;vertical-align:-6px;margin-right:8px">ScapeLite <a href="http://localhost:9222/" target="_blank" class="devtools-link">DevTools &#8599;</a> <a href="/marketplace" class="devtools-link">Plugins &#9656;</a> <a href="/site/" id="siteLink" class="devtools-link" target="_blank" rel="noopener" data-site="1">Website &#8599;</a> <a href="/roadmap" id="roadmapLink" class="devtools-link" style="display:none">Roadmap &#9656;</a></h1>
   <div id="game" style="margin:6px 0"></div>
   <div id="upd" style="display:none;margin:6px 0"></div>
   <div class="sub" id="updated">loading... <button id="clockFmtBtn" class="clock-fmt-btn"></button></div>
@@ -116,7 +131,7 @@ const PAGE = `<!doctype html>
     <summary><span>Plugins</span><span class="cnt" id="plugCount"></span></summary>
     <div class="plugins" id="plugins"></div>
   </details>
-  <h3 class="section">Logs</h3>
+  <h3 class="section">Logs <a href="/logs" style="font-size:12px;font-weight:normal;margin-left:10px">Browse log files</a></h3>
   <div class="tabs" id="tabs"></div>
   <div class="legend" id="legend"></div>
   <div id="logArea"></div>
@@ -194,25 +209,63 @@ var plugBox = document.getElementById('plugBox');
 try { plugBox.open = localStorage.getItem('cc-status-plugins-open') === '1'; } catch (e) {}
 plugBox.addEventListener('toggle', function () { try { localStorage.setItem('cc-status-plugins-open', plugBox.open ? '1' : '0'); } catch (e) {} });
 
+var CAT_OF = /*__CAT_MAP__*/{};
+var BUNDLE_NAME = { 'Core': 'ScapeLite Core', 'User Interface': 'User Interface Improvements', 'Planning and Routes': 'Planning and Routes', 'Notifications and Discord': 'Notifications and Discord' };
+var BUNDLE_ORDER = ['Core', 'User Interface', 'Planning and Routes', 'Notifications and Discord'];
+var openBundles = {};
+try { openBundles = JSON.parse(localStorage.getItem('cc-dash-bundles') || '{}') || {}; } catch (e) {}
+function setPlugin(id, on) {
+  return post('/api/plugin', { id: id, enabled: on });
+}
 function renderPlugins(d) {
   var el = document.getElementById('plugins');
   var raw = d.plugins || [];
-  // Same grouping as the marketplace: all always-on essentials appear as ONE "ScapeLite Core" entry.
-  var coreParts = raw.filter(function (p) { return p.core; });
-  var list = raw.filter(function (p) { return !p.core; });
-  if (coreParts.length) list.unshift({ id: 'core', label: 'ScapeLite Core', core: true, enabled: true, loaded: coreParts.every(function (p) { return p.loaded; }), desc: 'Always on: ' + coreParts.map(function (p) { return p.label; }).join(', ') });
-  var on = list.filter(function (p) { return p.enabled; }).length;
-  document.getElementById('plugCount').textContent = list.length ? on + ' of ' + list.length + ' enabled' : 'watcher not running';
-  el.innerHTML = list.map(function (p) {
-    return '<div class="plug" title="' + esc(p.desc || '') + '"><div class="n">' + dot(p.enabled ? (p.loaded ? true : null) : false) + esc(p.label) + (p.core ? '<span class="d">core</span>' : '') + '</div>' +
-      '<div class="sw' + (p.enabled ? ' on' : '') + (p.core ? ' locked' : '') + '" data-id="' + esc(p.id) + '" title="' + (p.core ? 'Required' : (p.enabled ? 'Click to disable' : 'Click to enable')) + '"></div></div>';
-  }).join('') || '<div class="d" style="padding:6px 0">No plugin info yet (watcher not running?)</div>';
-  el.querySelectorAll('.sw').forEach(function (sw) {
+  // One entry (one switch) per package: Core, User Interface Improvements, Planning and Routes, Notifications and Discord.
+  // Each package lists its parts underneath (small switches) for people who want to turn one part off.
+  var by = {};
+  raw.forEach(function (p) {
+    var cat = p.core ? 'Core' : (CAT_OF[p.id] || 'User Interface');
+    (by[cat] = by[cat] || []).push(p);
+  });
+  var cats = BUNDLE_ORDER.filter(function (c) { return by[c]; }).concat(Object.keys(by).filter(function (c) { return BUNDLE_ORDER.indexOf(c) < 0; }));
+  var onParts = raw.filter(function (p) { return p.enabled; }).length;
+  document.getElementById('plugCount').textContent = raw.length ? cats.length + ' packages, ' + onParts + ' of ' + raw.length + ' parts on' : 'watcher not running';
+  var html = cats.map(function (c) {
+    var parts = by[c], locked = c === 'Core', toggl = parts.filter(function (p) { return !p.core; });
+    var nOn = toggl.filter(function (p) { return p.enabled; }).length;
+    var state = locked ? 'on' : nOn === toggl.length ? 'on' : nOn === 0 ? '' : 'part';
+    var loaded = parts.every(function (p) { return !p.enabled || p.loaded; });
+    var open = !!openBundles[c];
+    var head = '<div class="plug"><div class="chev" data-b="' + esc(c) + '" title="Show parts">' + (open ? '\u25be' : '\u25b8') + '</div><div class="n">' + dot(state ? (loaded ? true : null) : false) + esc(BUNDLE_NAME[c] || c) +
+      '<span class="d">' + (locked ? 'always on' : nOn + ' of ' + toggl.length + ' on') + '</span></div>' +
+      '<div class="sw ' + state + (locked ? ' locked' : '') + '" data-bundle="' + esc(c) + '" title="' + (locked ? 'Required' : (state === 'on' ? 'Click to turn the whole package off' : 'Click to turn the whole package on')) + '"></div></div>';
+    var list = open ? '<div class="parts">' + parts.map(function (p) {
+      return '<div class="plug" title="' + esc(p.desc || '') + '"><div class="n">' + dot(p.enabled ? (p.loaded ? true : null) : false) + esc(p.label) + '</div>' +
+        '<div class="sw sm' + (p.enabled ? ' on' : '') + (p.core ? ' locked' : '') + '" data-id="' + esc(p.id) + '"></div></div>';
+    }).join('') + '</div>' : '';
+    return '<div class="pk">' + head + list + '</div>';
+  }).join('');
+  el.innerHTML = html || '<div class="d" style="padding:6px 0">No plugin info yet (watcher not running?)</div>';
+  el.querySelectorAll('.chev').forEach(function (ch) {
+    ch.onclick = function () { var b = ch.getAttribute('data-b'); openBundles[b] = !openBundles[b]; try { localStorage.setItem('cc-dash-bundles', JSON.stringify(openBundles)); } catch (e) {} renderPlugins(d); };
+  });
+  el.querySelectorAll('.sw[data-bundle]').forEach(function (sw) {
+    if (sw.classList.contains('locked')) return;
+    sw.onclick = function () {
+      var c = sw.getAttribute('data-bundle'), on = !sw.classList.contains('on');
+      var ids = (by[c] || []).filter(function (p) { return !p.core; }).map(function (p) { return p.id; });
+      sw.className = 'sw' + (on ? ' on' : '');
+      ids.reduce(function (pr, id) { return pr.then(function () { return setPlugin(id, on); }); }, Promise.resolve()).then(function () {
+        toast((BUNDLE_NAME[c] || c) + (on ? ' turned on' : ' turned off')); refresh();
+      }).catch(function () { toast('Request failed'); refresh(); });
+    };
+  });
+  el.querySelectorAll('.sw[data-id]').forEach(function (sw) {
     if (sw.classList.contains('locked')) return;
     sw.onclick = function () {
       var id = sw.getAttribute('data-id'), on = !sw.classList.contains('on');
       sw.classList.toggle('on', on);
-      post('/api/plugin', { id: id, enabled: on }).then(function (r) {
+      setPlugin(id, on).then(function (r) {
         toast(r.ok ? (id + (on ? ' enabled' : ' disabled') + (r.applied ? '' : ' (applies when the game connects)')) : (r.error || 'failed'));
         refresh();
       }).catch(function () { toast('Request failed'); refresh(); });
@@ -223,7 +276,7 @@ function renderPlugins(d) {
 var logMode = 'split'; // side by side by default; 'tabs' = one pane with All / Discord / System tabs
 try { logMode = localStorage.getItem('cc-status-logmode') || 'split'; } catch (e) {}
 
-var SUB_LABEL = { relay: 'Chat relay', hiscores: 'Hi-scores', raid: 'Raid', digest: 'Digest', plugin: 'Plugin', connection: 'Connection', config: 'Config', supervisor: 'Supervisor', error: 'Error' };
+var SUB_LABEL = { board: 'Board', relay: 'Chat relay', hiscores: 'Hi-scores', raid: 'Raid', digest: 'Digest', plugin: 'Plugin', connection: 'Connection', config: 'Config', supervisor: 'Supervisor', error: 'Error' };
 function logLines(logs, filter) {
   return logs.filter(filter).map(function (l) {
     var fam = l.cat === 'discord' ? 'discord' : 'system';
@@ -235,7 +288,7 @@ function logLines(logs, filter) {
 }
 function legendHtml() {
   function g(title, subs) { return '<span class="grp"><b>' + title + '</b>' + subs.map(function (s) { return '<span class="chip s-' + s + '">' + SUB_LABEL[s] + '</span>'; }).join('') + '</span>'; }
-  return g('Discord', ['relay', 'hiscores', 'raid', 'digest']) + g('System', ['plugin', 'connection', 'config', 'supervisor', 'error']);
+  return g('Discord', ['relay', 'hiscores', 'raid', 'digest', 'board']) + g('System', ['plugin', 'connection', 'config', 'supervisor', 'error']);
 }
 // Re-render a scrollable log box without losing the scroll position (stick to
 // the bottom only if it was already there).
@@ -288,6 +341,36 @@ function renderLogs(d) {
   }
 }
 
+function discordCard(dc) {
+  var list = (dc && dc.features) || [];
+  var shown = list.filter(function (f) { return f.configured; });
+  var html = '<div class="card"><h2>Discord health</h2>';
+  if (!shown.length) html += '<div class="row"><span class="k">' + dot(null) + 'No Discord webhook is set up</span><span class="v">Off</span></div>';
+  shown.forEach(function (f) {
+    var ok = f.broken ? false : (f.lastError && (!f.lastOkAt || f.lastErrorAt > f.lastOkAt)) ? false : f.lastOkAt ? true : null;
+    var txt;
+    if (f.broken) txt = 'BROKEN: ' + esc(f.brokenReason || 'webhook not accepted');
+    else if (f.rateLimitedUntil && f.rateLimitedUntil > Date.now()) txt = 'rate limited, waiting';
+    else if (ok === false) txt = 'last error ' + fmtAgo(f.lastErrorAt) + ': ' + esc(f.lastError || '');
+    else if (f.lastOkAt) txt = 'ok, last sent ' + fmtAgo(f.lastOkAt);
+    else txt = 'nothing sent yet';
+    if (f.queueLength) txt += ' (' + f.queueLength + ' waiting)';
+    html += '<div class="dh"><span class="nm">' + dot(ok) + esc(f.label) + '</span><span class="st' + (ok === false ? ' bad' : '') + '">' + txt + '</span>' +
+      '<button data-dtest="' + esc(f.id) + '" title="Sends one harmless message that says ScapeLite test message">Test send</button></div>';
+  });
+  return html + '</div>';
+}
+function wireDiscordTests() {
+  document.querySelectorAll('[data-dtest]').forEach(function (b) {
+    b.onclick = function () {
+      b.disabled = true;
+      post('/api/discord/test', { feature: b.getAttribute('data-dtest') }).then(function (r) {
+        toast(r.ok ? 'Test message sent' : (r.error || 'failed')); refresh();
+      }).catch(function () { toast('Request failed'); b.disabled = false; });
+    };
+  });
+}
+
 function refresh() {
   return fetch('/status').then(function (r) { return r.json(); }).then(function (data) {
     last = data;
@@ -318,14 +401,28 @@ function refresh() {
       '<div class="row"><span class="k">' + dot(rs.configured) + 'Configured</span><span class="v">' + (rs.configured ? 'Yes' : 'No') + '</span></div>' +
       '<div class="row"><span class="k">Last posted</span><span class="v">' + fmtAgo(rs.lastPostAt) + '</span></div>' +
       '<div class="row"><span class="k">Posted this session</span><span class="v">' + rs.totalPosted + '</span></div>' +
-      '<div class="row"><span class="k">Solo runs skipped</span><span class="v">' + rs.totalSkippedSolo + '</span></div></div>');
+      '<div class="row"><span class="k">Runs skipped by the rules</span><span class="v">' + rs.totalSkippedSolo + '</span></div>' +
+      '<div class="row"><span class="k">Last run seen</span><span class="v" style="max-width:70%;text-align:right">' + (rs.lastDecision ? esc(rs.lastDecision) : 'none yet') + '</span></div></div>');
     var dg = data.digest;
     cards.push('<div class="card"><h2>Activity digest</h2>' +
       '<div class="row"><span class="k">' + dot(dg.configured) + 'Configured</span><span class="v">' + (dg.configured ? 'Yes' : 'No') + '</span></div>' +
       '<div class="row"><span class="k">Last posted</span><span class="v">' + fmtAgo(dg.lastPostAt) + '</span></div>' +
       '<div class="row"><span class="k">Next post</span><span class="v">' + (dg.nextPostAt ? fmtAgo(dg.nextPostAt) : '--') + '</span></div>' +
       '<div class="row"><span class="k">Posted this session</span><span class="v">' + dg.totalPosted + '</span></div></div>');
+    var cb = data.clanBoard;
+    if (cb) {
+      var cbOn = cb.enabled && cb.configured;
+      cards.push('<div class="card"><h2>Clan status board</h2>' +
+        '<div class="row"><span class="k">' + dot(!cb.enabled ? null : !cb.configured ? false : cb.lastError ? false : true) + 'Status</span><span class="v">' + (!cb.enabled ? 'Off' : !cb.configured ? 'No webhook set' : cb.lastError ? 'Error' : cb.state === 'offline' ? 'Offline card' : cb.state === 'idle' ? 'Idle' : 'Live') + '</span></div>' +
+        (cb.lastError && cbOn ? '<div class="row"><span class="k">Last error</span><span class="v" style="max-width:70%;text-align:right">' + esc(cb.lastError) + '</span></div>' : '') +
+        '<div class="row"><span class="k">Card</span><span class="v">' + (cb.hasMessage ? 'posted' : 'not posted yet') + '</span></div>' +
+        '<div class="row"><span class="k">Last edit</span><span class="v">' + fmtAgo(cb.lastEditAt) + '</span></div>' +
+        '<div class="row"><span class="k">Edits / cards created (session)</span><span class="v">' + cb.edits + ' / ' + cb.creates + '</span></div>' +
+        '<div class="row"><span class="k">Level-ups, last 24 h</span><span class="v">' + cb.levelUps24h + '</span></div></div>');
+    }
+    cards.push(discordCard(data.discord));
     document.getElementById('cards').innerHTML = cards.join('');
+    wireDiscordTests();
     renderPlugins(data);
     renderLogs(data);
   }).catch(function () {
@@ -348,6 +445,7 @@ var ft=el('div','bn-ft');var lab=el('label','bn-auto');var cb=document.createEle
 if(gdata){var gd=el('span','bn-gd','Game data: '+(gdata.message||gdata.phase)+(gdata.error?' ('+gdata.error+')':'')+' ');var rb=el('button','bn-link','Refresh');rb.onclick=function(){rb.disabled=true;rb.textContent='Reading\u2026';post('/api/gamedata/refresh').then(function(){load()})};gd.appendChild(rb);ft.appendChild(gd)}
 box.appendChild(ft)}
 function load(){fetch('/api/gamedata').then(function(r){return r.json()}).then(function(d){gdata=d}).catch(function(){}).then(function(){return fetch('/api/game')}).then(function(r){return r.json()}).then(show).catch(function(){})}load();setInterval(function(){if(!busy)load()},6000)})();
+(function(){fetch('/api/roadmap/history').then(function(r){if(r.ok){var a=document.getElementById('roadmapLink');if(a)a.style.display=''}}).catch(function(){})})();
 (function(){fetch('/api/site').then(function(r){return r.json()}).then(function(d){var a=document.getElementById('siteLink');if(a&&d.url)a.href=d.url}).catch(function(){})})();
 (function(){fetch('/status').then(function(r){return r.json()}).then(function(d){document.querySelectorAll('.devtools-link[target]:not([data-site])').forEach(function(a){a.style.display=d.devMode?'':'none'})}).catch(function(){});})();
 (function(){var box=document.getElementById('upd');function post(u){return fetch(u,{method:'POST',headers:{'content-type':'application/json','x-cc-control':'1'},body:'{}'}).then(function(r){return r.json()})}
@@ -373,6 +471,15 @@ function originOk(req) {
   const o = req.headers.origin;
   if (!o) return true; // same-origin navigations / curl send none
   try { const u = new URL(o); return u.protocol === 'http:' && ALLOWED_HOSTS.has(u.host.toLowerCase()); } catch (e) { return false; }
+}
+// The Discord test-send button is stricter than the other controls: it sends a real message, so only the dashboard page itself may call it.
+// A browser always sends Origin on a fetch POST; a missing Origin (curl, a script) is refused, and so are the game page and every other site.
+function testSendAllowed(req) {
+  if (!hostOk(req)) return false;
+  if (req.headers['x-cc-control'] !== '1') return false;
+  const o = req.headers.origin;
+  if (!o) return false;
+  try { const u = new URL(o); return u.protocol === 'http:' && ALLOWED_HOSTS.has(u.host.toLowerCase()) && u.host.toLowerCase() === String(req.headers.host || '').toLowerCase(); } catch (e) { return false; }
 }
 
 // ---- Plugin marketplace data (catalog.json + drop-in plugins/<id>/plugin.json) ----
@@ -431,10 +538,19 @@ function readBody(req, limit) {
   });
 }
 
+let DESIGN_LAB = null; try { DESIGN_LAB = require('../design-lab/serve'); } catch (e) { /* release build: no lab */ }
+let ROADMAP = null; try { ROADMAP = require('../roadmap/server'); } catch (e) { /* release build: no roadmap */ }
 async function handleRequest(getStatus, control, req, res) {
   if (!hostOk(req)) { res.writeHead(403, { 'content-type': 'text/plain' }); res.end('Forbidden host'); return; }
   const url = (req.url || '/').split('?')[0];
 
+  // Design Lab (dev checkout only: design-lab/ is not shipped in the installer). Read-only static files, see design-lab/serve.js.
+  if (req.method === 'GET' && DESIGN_LAB && (url === '/design-lab' || url.startsWith('/design-lab/') || url.startsWith('/overlay/') || url.startsWith('/assets/icons/') || url.startsWith('/docs/') && url.endsWith('.md'))) {
+    if (url === '/design-lab') { res.writeHead(302, { location: '/design-lab/' }); res.end(); return; }
+    if (DESIGN_LAB.handle(req, res, url)) return;
+  }
+  // Roadmap / checklist page (dev checkout only: roadmap/ is not shipped in the installer). Data in roadmap/roadmap.json, see roadmap/README.md.
+  if (ROADMAP && (url === '/roadmap' || url === '/roadmap/' || url.startsWith('/api/roadmap'))) { if (await ROADMAP.handle(req, res, url, ALLOWED_HOSTS)) return; }
   if (req.method === 'GET' && url === '/status') {
     res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
     let dev = false; try { dev = !!JSON.parse(fsx.readFileSync(P.state('local-config.json'), 'utf8')).devMode; } catch (e) { /* no local config: release mode */ }
@@ -465,6 +581,21 @@ async function handleRequest(getStatus, control, req, res) {
     if (html) { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(html); } else { res.writeHead(404); res.end('Not found'); }
     return;
   }
+  // Log viewer (read-only): Logs/<Channel>/ browse, tail, search; the Task Log rebuilt from Logs/Tasks/*.jsonl.
+  if (req.method === 'GET' && url === '/logs') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' }); res.end(require('./logs-page')); return; }
+  if (req.method === 'GET' && url.startsWith('/api/logs/')) {
+    const ls = require('./logstore'), qs = new URL(req.url, 'http://localhost').searchParams;
+    if (url === '/api/logs/overview') { sendJson(res, 200, ls.reader.overview()); return; }
+    if (url === '/api/logs/tail') { sendJson(res, 200, ls.reader.tail(qs.get('ch'), qs.get('file'), { lines: qs.get('lines'), q: qs.get('q'), level: qs.get('level') })); return; }
+    if (url === '/api/logs/search') { sendJson(res, 200, ls.reader.search(qs.get('q'), { channel: qs.get('ch') })); return; }
+    if (url === '/api/logs/export/tasks') {
+      const tasks = ls.reader.taskRecords();
+      res.writeHead(200, { 'content-type': 'application/json', 'content-disposition': 'attachment; filename="scapelite-task-log-from-files.json"' });
+      res.end(JSON.stringify({ app: 'ScapeLite task log', exported: new Date().toISOString(), source: 'log files', tasks }, null, 1));
+      return;
+    }
+    sendJson(res, 404, { ok: false, error: 'unknown log endpoint' }); return;
+  }
   if (req.method === 'GET' && url === '/api/gamedata') { sendJson(res, 200, gamedata.snapshot()); return; }
   if (req.method === 'GET' && url === '/api/game') { sendJson(res, 200, Object.assign(await launcher.status(), { auto: launcher.config().autoRelaunch })); return; }
   if (req.method === 'GET' && url === '/api/update') { sendJson(res, 200, updater.snapshot()); return; }
@@ -484,7 +615,9 @@ async function handleRequest(getStatus, control, req, res) {
   }
   if (req.method === 'GET' && (url === '/' || url === '/index.html')) {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-    res.end(PAGE);
+    let cmap = {};
+    try { JSON.parse(fsx.readFileSync(CATALOG_PATH, 'utf8')).plugins.forEach((p) => { cmap[p.id] = p.category; }); } catch (e) { /* no catalog */ }
+    res.end(PAGE.replace('/*__CAT_MAP__*/{}', () => JSON.stringify(cmap)));
     return;
   }
   if (req.method === 'POST' && url.startsWith('/api/')) {
@@ -495,13 +628,34 @@ async function handleRequest(getStatus, control, req, res) {
       if (url === '/api/plugins/preview') { try { sendJson(res, 200, await pluginInstall.preview(body.url)); } catch (e) { sendJson(res, 200, { ok: false, error: String(e.message || e) }); } return; }
       if (url === '/api/plugins/install') { try { const r = await pluginInstall.install(body.url); if (control && control.watcher) await control.watcher.restart(); sendJson(res, 200, r); } catch (e) { sendJson(res, 200, { ok: false, error: String(e.message || e) }); } return; }
       if (url === '/api/plugins/remove') { try { const r = pluginInstall.remove(body.id); if (control && control.watcher) await control.watcher.restart(); sendJson(res, 200, r); } catch (e) { sendJson(res, 200, { ok: false, error: String(e.message || e) }); } return; }
+      if (url === '/api/logs/open') { try { const ls = require('./logstore'); fsx.mkdirSync(ls.LOG_DIR, { recursive: true }); require('child_process').spawn('explorer.exe', [ls.LOG_DIR], { detached: true, stdio: 'ignore' }).unref(); sendJson(res, 200, { ok: true }); } catch (e) { sendJson(res, 200, { ok: false, error: String(e.message || e) }); } return; }
       if (url === '/api/plugins/open-folder') { sendJson(res, 200, pluginInstall.openFolder()); return; }
       if (url === '/api/gamedata/refresh') { const r = await gamedata.ensure(null, true); sendJson(res, 200, Object.assign({}, gamedata.snapshot(), { result: r })); return; }
       if (url === '/api/game/auto') { sendJson(res, 200, { ok: true, auto: launcher.setAuto(!!body.enabled).autoRelaunch }); return; }
       if (url === '/api/game/launch') { sendJson(res, 200, await launcher.launch()); return; }
       if (url === '/api/game/restart') { sendJson(res, 200, await launcher.restart()); return; }
+      if (url === '/api/service/stop') { sendJson(res, 200, { ok: true }); setTimeout(() => process.exit(0), 400); return; }
+      if (url === '/api/service/restart') {
+        sendJson(res, 200, { ok: true, restarting: true });
+        setTimeout(() => {
+          try {
+            const sup = require('path').join(__dirname, 'supervisor.js');
+            const cp = require('child_process');
+            // A tiny helper outlives us and starts the replacement once the port is free.
+            cp.spawn(process.execPath, ['-e', "setTimeout(function(){require('child_process').spawn(process.argv[1],[process.argv[2]],{detached:true,stdio:'ignore',windowsHide:true,cwd:process.argv[3]}).unref()},2500)", process.execPath, sup, __dirname], { detached: true, stdio: 'ignore', windowsHide: true, env: Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' }) }).unref();
+          } catch (e) { /* if this fails the old service just keeps running */ return; }
+          setTimeout(() => process.exit(0), 300);
+        }, 200);
+        return;
+      }
       if (url === '/api/update/check') { await updater.check(); sendJson(res, 200, updater.snapshot()); return; }
       if (url === '/api/update/apply') { await updater.apply(); sendJson(res, 200, updater.snapshot()); return; }
+      if (url === '/api/discord/test') {
+        if (!testSendAllowed(req)) { sendJson(res, 403, { ok: false, error: 'forbidden' }); return; }
+        if (!control || !control.discordTest || typeof body.feature !== 'string') { sendJson(res, 200, { ok: false, error: 'not available right now (is the watcher running?)' }); return; }
+        sendJson(res, 200, await control.discordTest(body.feature));
+        return;
+      }
       if (url === '/api/plugin' && control && control.plugin) {
         if (typeof body.id !== 'string' || typeof body.enabled !== 'boolean') { sendJson(res, 400, { ok: false, error: 'bad args' }); return; }
         sendJson(res, 200, await control.plugin(body.id, body.enabled));
@@ -536,4 +690,4 @@ function startStatusServer(port, getStatus, control) {
   return { primary, port80 };
 }
 
-module.exports = { startStatusServer };
+module.exports = { startStatusServer, testSendAllowed };

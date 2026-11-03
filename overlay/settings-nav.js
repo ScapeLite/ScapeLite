@@ -7,22 +7,23 @@
   'use strict';
   const NS = '__ccSettingsNav';
   try { window[NS] && window[NS].teardown && window[NS].teardown(); } catch (e) {}
+  const life = window.__ccLife.scope('settings-nav');   // listeners and timers go through it: a re-inject cannot leave a second copy
   const enabled = () => { try { const s = window.__ccPluginSettings; return !(s && s.get && s.get('settingsNavMenu') === false); } catch (e) { return true; } };
 
   const style = document.createElement('style');
   style.id = 'cc-settings-nav-style';
   style.textContent = `
-.cc-sn-menu{position:fixed;z-index:100002;min-width:190px;max-width:300px;max-height:min(70vh,520px);overflow-y:auto;padding:5px;background:#17171f;border:1px solid rgba(255,255,255,.18);
-  border-radius:8px;box-shadow:0 8px 26px rgba(0,0,0,.6);color:#ddd;font:13px/1.35 system-ui,sans-serif;scrollbar-width:thin;scrollbar-color:#464658 transparent}
+.cc-sn-menu{position:fixed;z-index:100002;min-width:190px;max-width:300px;max-height:min(70vh,520px);overflow-y:auto;padding:5px;background:var(--cc-bg-2);border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;box-shadow:0 8px 26px rgba(0,0,0,.6);color:var(--cc-text);font:13px/1.35 system-ui,sans-serif;scrollbar-width:thin;scrollbar-color:var(--cc-border-strong) transparent}
 .cc-sn-menu .sn-i{padding:5px 10px;border-radius:5px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cc-sn-menu .sn-i:hover{background:rgba(255,255,255,.1);color:#fff}
-.cc-sn-menu .sn-i.sn-set{padding-left:20px;font-size:12px;color:#9a9aa6}
+.cc-sn-menu .sn-i:hover{background:rgba(255,255,255,.1);color:var(--cc-text)}
+.cc-sn-menu .sn-i.sn-set{padding-left:20px;font-size:12px;color:var(--cc-text-dim)}
 .cc-sn-menu .sn-i.sn-grp{display:flex;align-items:center;justify-content:space-between;gap:14px}
-.cc-sn-menu .sn-i.sn-grp::after{content:'\\203a';color:#8a8a9a;font-size:15px}
-.cc-sn-menu .sn-i.sn-grp.sn-open{background:rgba(255,255,255,.1);color:#fff}
+.cc-sn-menu .sn-i.sn-grp::after{content:'\\203a';color:var(--cc-text-dim);font-size:15px}
+.cc-sn-menu .sn-i.sn-grp.sn-open{background:rgba(255,255,255,.1);color:var(--cc-text)}
 .cc-sn-menu.cc-sn-sub{z-index:100003}
-.cc-sn-menu .sn-h{padding:4px 10px 2px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#7f7f8e;font-weight:700}
-@keyframes ccSnFlash{0%,60%{outline:2px solid #ffd24a;outline-offset:3px;background:rgba(255,210,74,.12)}100%{outline:2px solid transparent;background:transparent}}
+.cc-sn-menu .sn-h{padding:4px 10px 2px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cc-text-faint);font-weight:700}
+@keyframes ccSnFlash{0%,60%{outline:2px solid var(--cc-accent);outline-offset:3px;background:color-mix(in srgb,var(--cc-accent) 12%,transparent)}100%{outline:2px solid transparent;background:transparent}}
 .cc-sn-flash{animation:ccSnFlash 1.8s ease-out}`;
   const attach = () => { if (document.head && !style.isConnected) document.head.appendChild(style); };
   attach();
@@ -108,7 +109,7 @@
       const r = d.getBoundingClientRect(), sr = s.getBoundingClientRect();
       const right = r.right + 4 + sr.width <= innerWidth - 4;
       s.style.left = Math.max(4, right ? r.right + 4 : r.left - sr.width - 4) + 'px';
-      s.style.top = Math.max(4, Math.min(innerHeight - sr.height - 4, r.top - 6)) + 'px';
+      s.style.top = Math.max(4, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - sr.height - 4, r.top - 6)) + 'px';
       sub = s;
     };
     items.forEach((it) => {
@@ -127,7 +128,7 @@
     document.body.appendChild(m);
     const r = btn.getBoundingClientRect(), mr = m.getBoundingClientRect();
     m.style.left = Math.max(4, Math.min(innerWidth - mr.width - 4, r.left)) + 'px';
-    m.style.top = Math.min(innerHeight - mr.height - 4, r.bottom + 2) + 'px';
+    m.style.top = Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - mr.height - 4, r.bottom + 2) + 'px';
     menu = m; owner = btn;
   }
 
@@ -140,17 +141,14 @@
     if (b && !(e.relatedTarget && menu && menu.contains(e.relatedTarget))) later();
   };
   const onKey = (e) => { if (e.key === 'Escape') closeMenu(); };
-  document.addEventListener('mouseover', onOver, true);
-  document.addEventListener('mouseout', onOut, true);
-  document.addEventListener('keydown', onKey, true);
-  document.addEventListener('mousedown', (e) => { if (menu && !menu.contains(e.target) && !(sub && sub.contains(e.target))) closeMenu(); }, true);
-  const guard = setInterval(() => { attach(); if (menu && !document.querySelector('.settings-nav-btn')) closeMenu(); }, 1000);
+  life.on(document, 'mouseover', onOver, true);
+  life.on(document, 'mouseout', onOut, true);
+  life.on(document, 'keydown', onKey, true);
+  life.on(document, 'mousedown', (e) => { if (menu && !menu.contains(e.target) && !(sub && sub.contains(e.target))) closeMenu(); }, true);
+  life.every(1000, () => { attach(); if (menu && !document.querySelector('.settings-nav-btn')) closeMenu(); });
 
   function teardown() {
-    clearInterval(guard); closeMenu();
-    document.removeEventListener('mouseover', onOver, true);
-    document.removeEventListener('mouseout', onOut, true);
-    document.removeEventListener('keydown', onKey, true);
+    life.dispose(); closeMenu();
     style.remove();
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc settings-nav torn down';

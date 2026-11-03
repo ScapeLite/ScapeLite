@@ -10,7 +10,7 @@
   const ORDER = ['global', 'proximity', 'friends', 'clan'];
   const on = () => { try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('chatDefaultEnabled'); return v === undefined ? true : !!v; } catch (e) { return true; } };
   const bridge = () => { const b = window.__ccBridge; return b && b.chat ? b : null; };
-  const loggedIn = () => { const lf = document.querySelector('#login-form, .login-box, .login-hero'); return !(lf && lf.getClientRects().length); };
+  const loggedIn = () => { const lf = document.getElementById('login-form'); return !(lf && lf.offsetParent !== null); }; // id lookup: a selector list would scan the whole DOM
   let applied = false, last = null, settle = 0;
 
   function pick(info) {
@@ -42,7 +42,7 @@
     }
   }
 
-  const timer = setInterval(tick, 1000);
+  const timer = setInterval(tick, 2000);
   function teardown() { clearInterval(timer); if (window[NS] && window[NS].teardown === teardown) delete window[NS]; return 'cc chat-default torn down'; }
   window[NS] = { version: 1, teardown };
   return 'cc chat-default loaded';

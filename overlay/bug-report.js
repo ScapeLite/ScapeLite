@@ -19,13 +19,6 @@
   const style = document.createElement('style');
   style.id = 'cc-bugreport-style';
   style.textContent = `
-#cc-bugreport{position:fixed;left:50%;top:9%;transform:translateX(-50%);width:460px;max-width:94vw;max-height:84vh;z-index:2147483100;display:none;flex-direction:column;background:#0f0f14;
-  border:1px solid rgba(255,255,255,.18);border-radius:10px;color:#ddd;font:13px/1.45 system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.65);overflow:hidden}
-#cc-bugreport.show{display:flex}
-#cc-bugreport .hd{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#17171f;border-bottom:1px solid rgba(255,255,255,.08);user-select:none}
-#cc-bugreport .hd b{flex:1;color:#fff;font-size:14px;font-weight:600}
-#cc-bugreport .hd button{background:none;border:0;color:#aaa;font-size:18px;cursor:pointer;line-height:1}
-#cc-bugreport .bd{padding:12px;overflow:auto;display:flex;flex-direction:column;gap:9px}
 #cc-bugreport .scope{padding:8px 10px;border-radius:8px;background:rgba(255,210,74,.08);border:1px solid #b8962f;color:#e8e0c0;font-size:12.5px}
 #cc-bugreport label{font-size:12px;color:#9a9ab0}
 #cc-bugreport select,#cc-bugreport textarea{width:100%;box-sizing:border-box;background:#1a1a24;color:#e8e8f0;border:1px solid #3a3a4a;border-radius:6px;padding:7px 8px;font:inherit}
@@ -39,17 +32,16 @@
 `;
   document.head.appendChild(style);
 
-  const root = document.createElement('div');
-  root.id = 'cc-bugreport';
-  root.innerHTML = `<div class="hd"><b>Report a ScapeLite bug</b><button type="button" class="x" title="Close">×</button></div>
-<div class="bd">
-  <div class="scope"><b>What gets fixed:</b> ScapeLite fixes bugs in its <b>Official plugins</b> (the ones tagged ScapeLite in the marketplace). Community plugins are made by other people: report problems with those to their author, they are not fixed by the ScapeLite team. Bugs in the game itself belong to the game’s developers.</div>
+  const UI = window.__ccUI;
+  if (!UI) return 'cc bug-report: UI kit not loaded';
+  const P = UI.panel({ id: 'cc-bugreport', title: 'Report a ScapeLite bug', width: 460, closable: true, pos: 'topcenter' });
+  P.body.innerHTML = `  <div class="scope"><b>What gets fixed:</b> ScapeLite fixes bugs in its <b>Official plugins</b> (the ones tagged ScapeLite in the marketplace). Community plugins are made by other people: report problems with those to their author, they are not fixed by the ScapeLite team. Bugs in the game itself belong to the game’s developers.</div>
   <div><label>Which plugin is it about?</label><select class="plug"></select></div>
   <div><label>What happened? What did you expect? How can it be repeated?</label><textarea class="desc" placeholder="For example: I opened the Bank and ..."></textarea></div>
   <div><label>Diagnostics added to the report (versions and which plugins are on; no name, no webhooks)</label><pre class="diag">Collecting…</pre></div>
   <div class="row"><span class="note">Needs a free GitHub account. Or copy it and send it however you like.</span><button type="button" class="b copy">Copy report</button><button type="button" class="b p gh">Open on GitHub</button></div>
-</div>`;
-  document.body.appendChild(root);
+`;
+  const root = P.el; root.style.zIndex = '2147483100';   // opens above the game's Settings window too
   const q = (s) => root.querySelector(s);
   const sel = q('.plug');
   [['', 'Not sure / the whole thing']].concat(OFFICIAL.map((p) => [p.id, p.name])).concat([['other', 'A community plugin (will not be fixed here)']]).forEach(([v, t]) => {
@@ -109,7 +101,7 @@
   function teardown() {
     window.removeEventListener('error', onErr); window.removeEventListener('unhandledrejection', onErr);
     document.removeEventListener('keydown', onKey, true);
-    root.remove(); style.remove();
+    P.destroy(); style.remove();
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc bug-report torn down';
   }

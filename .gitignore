@@ -32,6 +32,10 @@ overlay/digest-config.json
 
 # Activity digest's persisted accumulation buffer -- local runtime data.
 overlay/digest-state.json
+# Random id of this ScapeLite install, used by the relay lease (docs/DISCORD-RELAY-AUDIT.md).
+overlay/relay-instance.json
+# Which of the first lease version's leftovers were already removed from which webhook (hashes and message ids only), docs/DISCORD-RELAY-AUDIT.md part 8.
+overlay/relay-legacy-cleanup.json
 
 # Regenerable icon assets -- same reasoning as data/raw/. See README.
 public/assets/icons/
@@ -40,6 +44,12 @@ public/assets/icons/
 # Per-user runtime state (plugin on/off choices, relay outbox with chat text, logs)
 overlay/plugins-config.json
 overlay/chat-relay-outbox.json
+overlay/raid-summary-pending.json
+overlay/clan-board-config.json
+overlay/clan-board-state.json
+overlay/clan-board-levels.json
+overlay/*.bak
+overlay/*.corrupt
 overlay/watcher.log
 .claude/
 
@@ -60,3 +70,42 @@ overlay/launch-config.json
 dist/
 
 release.local.json
+
+# Personal notes (not project code).
+notes/
+
+overlay/*.lock
+roadmap/history/
+roadmap/*.tmp
+
+# --- Packaging hygiene: every per-user / runtime file is ignored by PATTERN, so a new one cannot slip in (docs/PACKAGING.md) ---
+# Real configs live only in the per-user folder; the committed templates are *.example.json (those names do not match).
+overlay/*-config.json
+overlay/*-state.json
+overlay/*-seen.json
+overlay/*-outbox.json
+overlay/*-pending.json
+overlay/*-levels.json
+overlay/*.local.json
+overlay/*-webhook*.json
+overlay/*.tmp
+overlay/*.bak
+overlay/*.log
+overlay/plugins/
+*.bak
+*.tmp
+*.lock
+.env
+.env.*
+nul
+# Build output and scratch folders
+dist/
+.icon-extract-tmp/
+
+# Discord webhook URL of the private TEST channel (secret): used only for live tests of the Discord features.
+overlay/discord-test-webhook.json
+
+# Runtime state folder (moved there by overlay/paths.js migrateRuntime) and the safety copies it leaves behind.
+overlay/State/
+State/
+*.moved

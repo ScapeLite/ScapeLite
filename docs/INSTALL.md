@@ -36,7 +36,7 @@ ScapeLite needs the game's reference data (items, quests, mobs, raids, constants
 In Steam: right-click **Scapewatch Idle MMO → Properties → General → Launch Options**, and paste:
 
 ```
---remote-debugging-port=9222 --remote-allow-origins=*
+--remote-debugging-port=9222 --remote-allow-origins=http://localhost:9222,http://127.0.0.1:9222
 ```
 
 This opens Chromium's debugging port on **your own machine** (localhost only) so ScapeLite can attach. Don't forward port 9222 to the internet.

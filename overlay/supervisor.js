@@ -19,15 +19,18 @@ const { fork } = require('child_process');
 const { startStatusServer } = require('./status-server');
 const logstore = require('./logstore');
 const P = require('./paths');
+// First run: hollow per-user configs from the shipped templates (never overwrites an existing file; see first-run.js).
+try { require('./first-run').ensureUserConfigs((t) => console.log('[supervisor] ' + t)); } catch (e) { console.log('[supervisor] first-run setup failed: ' + e.message); }
+// One supervisor only: a second one would run a second watcher and double every Discord post. It leaves before it starts anything.
+{ const lock = require('./single-instance').acquire('supervisor', { waitMs: 4000 });
+  if (!lock.ok) { console.log('[supervisor] another supervisor is already running (pid ' + lock.owner + '): this copy exits.'); process.exit(0); } }
 const launcher = require('./launcher');
 const gamedata = require('./gamedata');
 
 const WATCHER_PATH = path.join(__dirname, 'panel-resize-watcher.js');
 const STATUS_PORT = 7777;
 const LOG_CAP = 600;
-const AUTO_RESTART_MAX = 5;            // crashes tolerated...
-const AUTO_RESTART_WINDOW_MS = 5 * 60 * 1000; // ...per this window
-const AUTO_RESTART_DELAY_MS = 3000;
+const watchdog = require('./watchdog');   // restart policy (shared with the tray): now, +5 min, then every 10 min; docs/WATCHDOG.md
 const STOP_TIMEOUT_MS = 18000; // graceful flush budget (watcher itself caps at 12 s)
 
 let child = null;
@@ -35,13 +38,16 @@ let state = 'stopped'; // stopped | starting | running | stopping
 let startedAt = null;
 let lastExit = null;
 let manualStop = false;
-let crashTimes = [];
+let retry = { failures: 0, nextAt: 0 }; // the current failure streak (reset by a manual start or after the watcher stayed up STABLE_MS)
 let autoRestarts = 0;
 let childStatus = null;
 let restartTimer = null;
+let retryAt = 0;
 const logs = [];
 const pendingReplies = new Map();
 let replySeq = 0;
+
+const logMigration = logstore.start(); // moves old flat Logs/*.log into Logs/System/, writes Logs/README.txt
 
 function sysLog(text) {
   const entry = { t: Date.now(), cat: 'system', sub: 'supervisor', text: '[supervisor] ' + text };
@@ -51,9 +57,24 @@ function sysLog(text) {
   console.log(entry.text);
 }
 
-function startWatcher() {
+// One failure of the watcher (could not start, or exited unexpectedly): log why, then schedule the next try by the shared policy.
+function scheduleRetry(reason) {
+  const now = Date.now();
+  const wait = watchdog.retryDelay(retry.failures);   // attempts already made in this streak: 0 -> at once, 1 -> 5 min, then 10 min
+  retry = { failures: retry.failures + 1, nextAt: now + wait };
+  retryAt = now + wait; autoRestarts++;
+  const n = retry.failures;
+  const phase = n === 1 ? 'retry 1: restarting at once' : n === 2 ? 'retry 2: restarting in 5 min' : 'slow retry ' + (n - 2) + ': restarting in ' + Math.round(wait / 60000) + ' min';
+  sysLog('PROBLEM: ' + reason + ' -- ' + phase + (wait ? ' (at ' + new Date(retryAt).toLocaleTimeString() + ')' : ''));
+  clearTimeout(restartTimer);
+  restartTimer = setTimeout(() => { retryAt = 0; sysLog('restart attempt ' + n + ': starting the watcher'); startWatcher(false); }, wait || 1000);
+}
+
+function startWatcher(manual) {
   if (child) return { ok: false, error: 'already running' };
   clearTimeout(restartTimer);
+  retryAt = 0;
+  if (manual !== false) retry = { failures: 0, nextAt: 0 }; // a start from the dashboard / tray begins a fresh streak
   manualStop = false;
   state = 'starting';
   childStatus = null;
@@ -63,6 +84,7 @@ function startWatcher() {
   } catch (e) {
     state = 'stopped';
     sysLog('could not start watcher: ' + e.message);
+    if (manual === false) scheduleRetry('could not start the watcher (' + e.message + ')');
     return { ok: false, error: e.message };
   }
   child = c;
@@ -72,28 +94,28 @@ function startWatcher() {
     if (!m || typeof m !== 'object') return;
     if (m.type === 'status') { childStatus = m.status; if (state === 'starting') state = 'running'; }
     else if (m.type === 'log' && m.entry) { logs.push(m.entry); if (logs.length > LOG_CAP) logs.shift(); logstore.write(m.entry); }
+    else if (m.type === 'logbatch') { logstore.ingest(m.entries, { dropped: m.dropped }); }
+    else if (m.type === 'logcmd') { if (m.cmd === 'prune') logstore.prune(); }
     else if (m.type === 'reply' && pendingReplies.has(m.reqId)) { pendingReplies.get(m.reqId)(m.result); pendingReplies.delete(m.reqId); }
   });
   c.on('exit', (code, signal) => {
     if (child !== c) return;
     child = null;
-    lastExit = { code, signal, at: Date.now() };
+    const upMs = Date.now() - startedAt;
+    lastExit = { code, signal, at: Date.now(), upMs };
     const wasManual = manualStop || state === 'stopping';
     state = 'stopped';
     childStatus = null;
-    sysLog('watcher exited (' + (code != null ? 'code ' + code : 'signal ' + signal) + ')');
+    const how = code != null ? 'code ' + code : 'signal ' + signal;
+    sysLog('watcher exited (' + how + ') after ' + Math.round(upMs / 1000) + 's' + (wasManual ? ' -- stopped on request, not restarting' : ' -- UNEXPECTED'));
     for (const [, r] of pendingReplies) r({ ok: false, error: 'watcher stopped' });
     pendingReplies.clear();
     if (wasManual) return;
-    const now = Date.now();
-    crashTimes = crashTimes.filter((t) => now - t < AUTO_RESTART_WINDOW_MS);
-    crashTimes.push(now);
-    if (crashTimes.length > AUTO_RESTART_MAX) { sysLog('watcher crashed ' + crashTimes.length + ' times in 5 min -- not restarting automatically (use Start)'); return; }
-    autoRestarts++;
-    sysLog('unexpected exit -- restarting in ' + AUTO_RESTART_DELAY_MS / 1000 + 's');
-    restartTimer = setTimeout(startWatcher, AUTO_RESTART_DELAY_MS);
+    // Stayed up long enough = a new problem, not a continuing one: the streak starts over (so a one-off crash a day later is retried at once again).
+    if (upMs >= watchdog.STABLE_MS && retry.failures) { sysLog('watcher had been stable for ' + Math.round(upMs / 60000) + ' min -- failure streak reset'); retry = { failures: 0, nextAt: 0 }; }
+    scheduleRetry('watcher exited unexpectedly (' + how + ' after ' + Math.round(upMs / 1000) + 's)');
   });
-  c.on('error', (e) => sysLog('watcher process error: ' + e.message));
+  c.on('error', (e) => sysLog('PROBLEM: watcher process error: ' + e.message));
   return { ok: true, state };
 }
 
@@ -135,7 +157,7 @@ function setPlugin(id, enabled) {
       const set = new Set(cfg.disabled || []);
       if (enabled) set.delete(id); else set.add(id);
       cfg.disabled = [...set];
-      fs.writeFileSync(file, JSON.stringify(cfg, null, 2));
+      require('./safe-json').writeJsonAtomic(file, JSON.stringify(cfg, null, 2));
       sysLog('plugin ' + id + (enabled ? ' enabled' : ' disabled') + ' (watcher stopped -- applies on start)');
       return Promise.resolve({ ok: true, applied: false });
     } catch (e) { return Promise.resolve({ ok: false, error: e.message }); }
@@ -145,6 +167,17 @@ function setPlugin(id, enabled) {
     pendingReplies.set(reqId, resolve);
     try { child.send({ type: 'plugin', id, enabled, reqId }); } catch (e) { pendingReplies.delete(reqId); resolve({ ok: false, error: e.message }); return; }
     setTimeout(() => { if (pendingReplies.delete(reqId)) resolve({ ok: false, error: 'timed out' }); }, 15000);
+  });
+}
+
+// The dashboard's Discord "Test send": the watcher owns the webhook URLs and the sender, so the request is forwarded to it.
+function discordTest(feature) {
+  if (!child) return Promise.resolve({ ok: false, error: 'the watcher is not running' });
+  return new Promise((resolve) => {
+    const reqId = ++replySeq;
+    pendingReplies.set(reqId, resolve);
+    try { child.send({ type: 'discord-test', feature, reqId }); } catch (e) { pendingReplies.delete(reqId); resolve({ ok: false, error: e.message }); return; }
+    setTimeout(() => { if (pendingReplies.delete(reqId)) resolve({ ok: false, error: 'timed out' }); }, 45000);
   });
 }
 
@@ -160,12 +193,13 @@ function getStatus() {
   };
   return Object.assign({}, base, {
     recentLog: logs,
-    supervisor: { managed: true, state, pid: child ? child.pid : null, startedAt: child ? startedAt : null, lastExit, restarts: autoRestarts },
+    supervisor: { managed: true, state, pid: child ? child.pid : null, startedAt: child ? startedAt : null, lastExit, restarts: autoRestarts, manualStop, retryAt: retryAt || null, failures: retry.failures },
   });
 }
 
 startStatusServer(STATUS_PORT, getStatus, {
   plugin: setPlugin,
+  discordTest,
   watcher: {
     start: async () => startWatcher(),
     stop: () => stopWatcher(),
@@ -173,6 +207,7 @@ startStatusServer(STATUS_PORT, getStatus, {
   },
 });
 launcher.startGuard(sysLog);
+if (logMigration && logMigration.moved) sysLog('logs: moved ' + logMigration.moved + ' old run log(s) into Logs/System/');
 sysLog('dashboard: http://scapelite.localhost/ (or http://localhost:' + STATUS_PORT + '/)');
 // Game data first (first run / after a game update), so the watcher starts with fresh reference data; then re-check every
 // 15 minutes and restart the watcher if the game was patched meanwhile.
@@ -182,4 +217,4 @@ setInterval(() => { gamedata.ensure(sysLog).then((r) => { if (r && r.extracted) 
 function shutdown() { stopWatcher().then(() => process.exit(0), () => process.exit(0)); setTimeout(() => process.exit(0), STOP_TIMEOUT_MS + 2000); }
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
-process.on('exit', () => { try { if (child) child.kill(); } catch (e) {} });
+process.on('exit', () => { try { if (child) child.kill(); } catch (e) {} try { logstore.flushSync(); } catch (e) {} });

@@ -1,12 +1,10 @@
 {
- "version": "0.3.0",
+ "version": "0.4.0",
  "categories": [
-  "Interface",
-  "Planning",
-  "Info",
-  "Notifications",
-  "Social",
-  "Core"
+  "Core",
+  "User Interface",
+  "Planning and Routes",
+  "Notifications and Discord"
  ],
  "plugins": [
   {
@@ -15,22 +13,27 @@
    "category": "Core",
    "core": true,
    "default": true,
-   "version": "1.0.0",
+   "version": "1.1.0",
    "author": "Wulf",
    "includes": [
     "ws-hook",
     "plugins-settings-ui",
     "status-indicator",
     "welcome-tour",
+    "presets",
     "settings-nav",
     "hover-info",
     "sidebar-tabs",
     "panel-resize",
     "panel-fuse",
-    "xp-tracker"
+    "xp-tracker",
+    "ui-scale",
+    "scapelite-menu",
+    "bug-report",
+    "alert-bell"
    ],
-   "tagline": "Everything essential, always on: settings, status light, panel tools, tooltips, XP tracker.",
-   "description": "The ScapeLite essentials in one always-on bundle: the Plugins tab inside Settings, the pulsing status light with live performance breakdown, the first-run welcome tour, Settings quick-jump menus, hover info on tooltips, the side-menu tab controls, panel resizing / locking / fusing with the vertical menu, and the XP/hr tracker with its live graph. Individual options live under Settings > Plugins.",
+   "tagline": "Everything essential, always on: settings, status light, panel tools, ScapeLite menu, tooltips, XP tracker.",
+   "description": "The ScapeLite essentials in one always-on bundle: the Plugins tab inside Settings, the pulsing status light with live performance breakdown, the first-run welcome tour, Settings quick-jump menus, hover info on tooltips, the side-menu tab controls, panel resizing / locking / fusing with the vertical menu, and the XP/hr tracker with its live graph. Individual options live under Settings > Plugins. It also contains the Game Data Bridge: a read-only view of the game’s own numbers that the Route Advisor, Bank Tools, Crafting Potential, Combat Readout and Task Log rely on.",
    "features": [
     "Plugins tab in Settings (switches, options, secret fields with an eye)",
     "Status light: health, FPS and a per-plugin CPU breakdown on hover",
@@ -41,7 +44,10 @@
     "Panel fuse: snap panels together, move and resize them as one",
     "XP/hr tracker with a live graph, time frames, per-skill icons and level ETAs",
     "Network hook for hiscores / raid summaries (read-only)",
-    "Saved logs: one file per run in the Logs folder, auto-cleaned (set how long to keep them)"
+    "Saved logs: one file per run in the Logs folder, auto-cleaned (set how long to keep them)",
+    "ScapeLite button in the icon strip that opens your ScapeLite panels",
+    "Panels scale with the game window",
+    "Panels keep their place at the screen edges when the window is resized"
    ],
    "tags": [
     "core",
@@ -63,7 +69,7 @@
   {
    "id": "walking-countdown",
    "name": "Walking Countdown",
-   "category": "Info",
+   "category": "Planning and Routes",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -85,13 +91,11 @@
   {
    "id": "route-advisor",
    "name": "Route Advisor",
-   "category": "Planning",
+   "category": "Planning and Routes",
    "default": true,
    "version": "2.0.0",
    "author": "Wulf",
-   "requires": [
-    "game bridge"
-   ],
+   "requires": "Game Data Bridge",
    "tagline": "Finds a faster order for your task queue, with or without teleports.",
    "description": "Simulates your queue with the game's real teleport-crystal rules and recommends the quickest order (keeping your option picks), both with and without teleports. Optimise for steps, XP/hr, tasks/hr or quest progress, preview routes on a map, and get an optional notification when a big saving appears. Display-only: you apply suggestions yourself.",
    "features": [
@@ -136,7 +140,7 @@
   {
    "id": "map-routes",
    "name": "Map Route Lanes",
-   "category": "Planning",
+   "category": "Planning and Routes",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -157,7 +161,7 @@
   {
    "id": "notify-always",
    "name": "Notify While Focused",
-   "category": "Notifications",
+   "category": "Notifications and Discord",
    "default": false,
    "version": "1.0.0",
    "author": "Wulf",
@@ -185,7 +189,7 @@
   {
    "id": "chat-relay",
    "name": "Chat Relay (Discord)",
-   "category": "Social",
+   "category": "Notifications and Discord",
    "default": false,
    "version": "1.0.0",
    "author": "Wulf",
@@ -240,9 +244,55 @@
    ]
   },
   {
+   "id": "clan-board",
+   "name": "Clan Status Board (Discord)",
+   "category": "Notifications and Discord",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "requires": [
+    "Discord webhook (from your clan leader)"
+   ],
+   "tagline": "One live card per clan member in a Discord channel: what they are doing, level-ups, total level.",
+   "description": "Posts one Discord card under your in-game name and keeps it up to date every 1 to 5 minutes: your current task with a progress bar and a finish time, level-ups from the last 24 hours, total level, and optionally XP per hour, HP, Slayer task, Fortress run, online-since and today's totals. Grey when you are offline (\"last seen 20 minutes ago\"), amber when idle. Off until you switch it on in Settings > Plugins > Clan Status Board; every field is its own switch and the settings page shows a live preview of the card. Display only: it reads your own state, never acts in the game. Read docs/CLAN-STATUS-BOARD.md for the setup and the privacy note.",
+   "features": [
+    "One card per player, edited in place",
+    "Every field opt-in, with a live preview",
+    "Offline and idle states",
+    "Level-ups of the last 24 hours",
+    "Works with a plain Discord webhook, no bot"
+   ],
+   "tags": [
+    "discord",
+    "clan",
+    "status"
+   ],
+   "guide": {
+    "title": "Clan Status Board setup",
+    "steps": [
+     {
+      "title": "What it does",
+      "body": "<p>Every clan member who joins the board gets <b>one card</b> in a Discord channel, under their in-game name. The card shows what they are doing right now, level-ups from the last day and more, and is edited in place every few minutes (no flood of messages).</p><p>It is display only: ScapeLite reads your own state and never acts in the game. Everything is off until you switch it on.</p>"
+     },
+     {
+      "title": "Clan leader: make the board channel",
+      "body": "<p>Create a channel (for example <b>#clan-board</b>) that members can read but not write in. In Discord open the channel <b>Edit Channel → Integrations → Webhooks → New Webhook</b>, name it, and press <b>Copy Webhook URL</b>.</p><p class=\"w-warn\"><b>Who can change what:</b> everyone who has this URL could, in principle, edit or delete any card posted through it. ScapeLite only ever edits <b>its own</b> card (it remembers the message id on your PC), but the URL itself is a shared key. You, the leader, decide who gets it: hand it only to members you trust, and make a new webhook (deleting the old one) if it ever leaks.</p>"
+     },
+     {
+      "title": "Everyone: paste the URL and choose fields",
+      "body": "<p>In the game open <b>Settings → Plugins → Clan Status Board</b>, paste the URL into <b>Board Webhook URL</b>, tick the <b>fields</b> you are happy to show (the preview below them is exactly what Discord gets), then switch on <b>Show My Card On The Clan Board</b>.</p><p>The URL is stored only on this PC. Switch the board off again at any time; delete your card in Discord yourself if you want it gone.</p>"
+     },
+     {
+      "title": "What is sent",
+      "body": "<p>Only the ticked fields, built from your own game state, plus your in-game name: no account id, no gold or bank values, no chat, nothing about other players. Default fields: what you are doing, progress and time left, level-ups, total level. The more personal ones (HP, where you are, Slayer, Fortress, today's totals) are off until you tick them.</p>"
+     }
+    ]
+   }
+  },
+  {
    "id": "raid-alert",
    "name": "Raid Lobby Alert",
-   "category": "Notifications",
+   "category": "Notifications and Discord",
    "default": false,
    "version": "0.9.0",
    "author": "Wulf",
@@ -263,7 +313,7 @@
   {
    "id": "menu-dock",
    "name": "Menu + HP Bar Dock",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -290,7 +340,7 @@
   {
    "id": "modal-resize",
    "name": "Resizable Windows",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -313,7 +363,7 @@
   {
    "id": "notif-dock",
    "name": "Notification Dock",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -338,7 +388,7 @@
   {
    "id": "bank-tools",
    "name": "Bank Tools",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -358,12 +408,13 @@
    ],
    "screenshots": [
     "bank-tools.png"
-   ]
+   ],
+   "requires": "Game Data Bridge"
   },
   {
    "id": "window-dock",
    "name": "Window Buttons Dock",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -387,7 +438,7 @@
   {
    "id": "layouts",
    "name": "Layout Presets",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -410,7 +461,7 @@
   {
    "id": "craft-potential",
    "name": "Crafting Potential",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -430,12 +481,13 @@
    ],
    "screenshots": [
     "craft-potential.png"
-   ]
+   ],
+   "requires": "Game Data Bridge"
   },
   {
    "id": "chat-default",
    "name": "Chat Default Channel",
-   "category": "Interface",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
@@ -455,20 +507,61 @@
    ]
   },
   {
-   "id": "combat-readout",
-   "name": "Combat Readout",
-   "category": "Interface",
+   "id": "mechanics-explainer",
+   "name": "Mechanics Explainer",
+   "category": "User Interface",
    "default": true,
    "version": "1.0.0",
    "author": "Wulf",
-   "tagline": "Exact HP, Spirit, attack timer and DPS on the combat screen.",
-   "description": "A small movable card on the combat screen showing, for you and your target: HP and Spirit as numbers on their bars, the attack timer counting down in seconds, the unrounded attack interval and attacks per second, and your expected DPS using the game's own damage formula (hit chance, average damage with crits, attack interval). Display only.",
+   "tagline": "Hover a lever and get a plain explanation of what the step does.",
+   "description": "The weight and quantity levers in the Skills and Slay Customization windows only show a number and a cost. This adds a short explanation under the game's own tooltip: each step is 1.25 times as likely or as many, odds are shared with the other entries, and the cost doubles with each step away from zero. It uses the numbers already in the tooltip. Display only.",
    "features": [
-    "HP and Spirit numbers",
-    "Attack timer countdown with 3 decimals",
-    "Unrounded attacks per second",
-    "Expected DPS from the game's own formula",
-    "Drag it anywhere"
+    "Explains weight and quantity levers on hover",
+    "Shows the multiplier now and after the step",
+    "Display only"
+   ],
+   "tags": [
+    "tooltip",
+    "levers"
+   ],
+   "screenshots": []
+  },
+  {
+   "id": "material-shortage",
+   "name": "Material Shortage Warning",
+   "category": "Quality of Life",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "requires": "Game Data Bridge",
+   "tagline": "Warns before a task runs out of materials and falls back to scrap.",
+   "description": "Checks the running task and every queued Smith, Craft, Imbue, Brew, Cook and Barter task against what you hold (bank plus inventory). Earlier tasks in the queue use materials first. Your chance to save materials is counted conservatively: only half of it by default, so a stretch of bad luck does not leave you short. A small panel appears only when something is at risk: red when you will probably run short (with the missing amount and the scrap that would be used), yellow when it only works out if your saves come in. Display only.",
+   "features": [
+    "Checks the running task and the whole queue",
+    "Counts only part of your material-save chance (adjustable)",
+    "Shares stock between queued tasks that use the same material",
+    "Panel is hidden when everything is fine"
+   ],
+   "tags": [
+    "queue",
+    "materials"
+   ],
+   "screenshots": []
+  },
+  {
+   "id": "combat-readout",
+   "name": "Combat Readout",
+   "category": "User Interface",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "tagline": "Exact HP, Spirit, attack timer and DPS drawn on the combat scene's own bars.",
+   "description": "Adds exact numbers to the combat scene's own bars: HP and Spirit as 57 / 80 for you and your target, the attack timer counting down on its bar, and under your bars the exact attack interval, attacks per second and your expected DPS using the game's own damage formula for the loadout the fight really uses (Auto Loadout included). Display only.",
+   "features": [
+    "HP and Spirit numbers on the bars",
+    "Attack timer countdown on the bar",
+    "Exact interval and attacks per second",
+    "Expected DPS from the game's own formula"
    ],
    "tags": [
     "combat",
@@ -476,7 +569,8 @@
    ],
    "screenshots": [
     "combat-readout.png"
-   ]
+   ],
+   "requires": "Game Data Bridge"
   },
   {
    "id": "usage-ping",
@@ -499,11 +593,352 @@
    "screenshots": [
     "usage-ping.png"
    ]
+  },
+  {
+   "id": "task-log",
+   "name": "Task Log",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "tagline": "Records every task you run so the Route Advisor can be checked against real results.",
+   "description": "Logs each task you complete: what it was, how long it took split into walking, acting and banking, the XP it really paid, and what the game's dashboard and the Route Advisor predicted. Everything stays in this browser profile; nothing is sent anywhere. Download it from Settings > Plugins > Route Advisor. The data is used to calibrate the advisor's time estimates, especially for combat.",
+   "features": [
+    "Time split into walking / acting / banking",
+    "Real XP per task",
+    "Predicted vs actual time",
+    "Local only, downloadable as JSON"
+   ],
+   "tags": [
+    "planning",
+    "data"
+   ],
+   "screenshots": [],
+   "requires": "Game Data Bridge"
+  },
+  {
+   "id": "task-tip",
+   "name": "Task History Tooltips",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "tagline": "Rich hover tooltips on the Skills Customization history lists, and a Slay History that is never empty.",
+   "description": "Hover a row of the history list in the Skills Customization window to see the real lifetime task number, how long the task took split into walking, acting and banking, the XP it paid per skill, what it dropped, which materials it used up, potion charges spent, gold, and planned versus actual. The game keeps no slay history (its Slay History view always says 0 tasks completed); this fills it from the Task Log. Display only.",
+   "features": [
+    "Real task number, time split, XP per skill",
+    "Drops, materials used, potion charges, gold",
+    "Planned vs actual",
+    "Slay History filled from the Task Log"
+   ],
+   "tags": [
+    "planning",
+    "data"
+   ],
+   "screenshots": [],
+   "requires": "Task Log"
+  },
+  {
+   "id": "lever-advisor",
+   "name": "Lever Advisor",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "requires": "Game Data Bridge",
+   "tagline": "Yellow outlines on the skill and slay levers worth pulling, by route, within your credits.",
+   "description": "Opens beside the Skills Customization window. Choose a route (your skill priorities, melee, ranged or magic gear first, vigor first, even progress for skills; best XP per hour, XP-boost drops or unfinished collections for slay mobs) and the levers worth pulling get a yellow outline with the number of steps, while levers that cost more than they give get an orange outline on their minus button. It counts your credits, including the refund when you lower a lever, and shows the expected gain. Nothing is pressed for you.",
+   "features": [
+    "Routes for skills and for slay mobs",
+    "Yellow outline and step count on the levers to pull",
+    "Respects your credits and refunds",
+    "Display only: you press the levers"
+   ],
+   "tags": [
+    "levers",
+    "credits",
+    "planning"
+   ],
+   "screenshots": []
+  },
+  {
+   "id": "drop-luck",
+   "name": "Drop Luck Tracker",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.1.0",
+   "author": "Wulf",
+   "requires": "Game Data Bridge",
+   "tagline": "How lucky your rare drops have been, and a live Fortress run tracker.",
+   "description": "Uses the kill counts and collection log the game already keeps. For each rare drop it works out the chance you would still be without it after your kills, adds them all up to rate your luck (very lucky to very unlucky, with the share of players you are ahead of), lists the most overdue drops first, shows every mob with its drops ticked off, and covers your unlock drops and skill pets. The Fortress tab follows your Fortress runs live (wave, your share of the army, the loot chance per tier, rares expected against rares got, the chance of at least one by now) and keeps a history you can open run by run. Opens from the ScapeLite button in the icon strip. Uses the published 1-in-N rates. Display only.",
+   "features": [
+    "Luck rating from your real kill counts",
+    "Most overdue drops first",
+    "Every mob with its drops ticked off",
+    "Fortress tab: live run, luck verdict, drop log",
+    "Open any past Fortress run for its numbers",
+    "Nothing to log for mobs: uses the game's own counters"
+   ],
+   "tags": [
+    "drops",
+    "luck"
+   ],
+   "screenshots": [
+    "drop-luck.png",
+    "fortress-tracker.png"
+   ]
+  },
+  {
+   "id": "goals",
+   "name": "Goals",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.0.1",
+   "author": "Wulf",
+   "requires": "Game Data Bridge",
+   "tagline": "What you are working towards and how long it takes at your real pace.",
+   "description": "Shows the next level and the next milestone (a multiple of 5) of every skill you are training, with the XP left and the time left at your current XP per hour from the XP Tracker. It also lists unlock drops you do not have yet on mobs your Slay level lets you fight, with the expected time to get one from your real kill time; tools for skills you train come first. Pin your own skill targets and hunts to keep them on top. Opens from the ScapeLite button in the icon strip. Display only.",
+   "features": [
+    "Next level and milestone for every skill you train",
+    "Time left at your real XP per hour",
+    "Unlock drops worth hunting, with expected time",
+    "Pin your own skill targets and hunts"
+   ],
+   "tags": [
+    "goals",
+    "eta"
+   ],
+   "screenshots": [
+    "goals.png"
+   ]
+  },
+  {
+   "id": "queue-walk",
+   "name": "Queue Walking Time",
+   "category": "Quality of Life",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "requires": "Game Data Bridge",
+   "tagline": "See how long each queued task's walk takes, right on the queue.",
+   "description": "Every queued task gets a thin bar along its top edge and a small tag such as 2m 31s: the walk to that task from the one before it, from the path distance the game prints next to the task and your walking speed. Longer walks give longer bars (a full bar is 5 minutes) and warmer colours, from green to red; purple means the game would teleport for that hop. Hover the tag for the exact steps. Display only; the queue itself is never moved.",
+   "features": [
+    "Walking time on every queued task",
+    "Bar length and colour show how long the walk is",
+    "Purple for teleport hops",
+    "Never changes the queue layout"
+   ],
+   "tags": [
+    "queue",
+    "walking"
+   ],
+   "screenshots": []
+  },
+  {
+   "id": "raid-dps-extra",
+   "name": "Raid DPS Extras",
+   "category": "Quality of Life",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "tagline": "Party total DPS and a damage graph for the Raid DPS panel.",
+   "description": "Adds a Party line under the player rows (all players' damage and damage per second added together, with the run average) and a Graph tab beside DPS Current, DPS Total and Recap. The graph shows each player's DPS (averaged over 6 seconds) or total damage over time with a Party line, a hover read-out, and clickable names to hide a player. It only reads the numbers the panel already shows.",
+   "features": [
+    "Party total DPS and damage",
+    "Per-player DPS and damage graph",
+    "Hover for exact values",
+    "Display only"
+   ],
+   "tags": [
+    "raid",
+    "dps"
+   ],
+   "screenshots": []
+  },
+  {
+   "id": "tree-advisor",
+   "name": "Tree Advisor",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "requires": "Game Data Bridge",
+   "tagline": "The best Delve and Fortress tree builds for your points.",
+   "description": "Plans your Delve and Fortress (Fortify) trees. For the Delve tree it prices every node with the game's own Gear Calc damage maths on your equipped loadout, so a node's worth is shown as real DPS (and attacks per second) instead of a guess; goals for Delve XP, slayer and combat XP, balanced or your own weights are included, and the Fortress has skilling XP, Fortify XP and efficiency goals. It finds the exact best build for your points (a tree knapsack), shows what changes against your current build, the steps to get there (refund first, then take, in order), a picture of the tree with a tooltip on every node, and the option to keep your nodes and refund nothing. Builds can be saved, copied as text and imported again. Display only: it never allocates a node.",
+   "features": [
+    "Exact best build for your points",
+    "DPS and attacks per second from the Gear Calc maths",
+    "Delve XP, slayer, balanced and custom goals",
+    "Fortress goals",
+    "Steps to switch, refund cost in credits",
+    "Save, export and import builds"
+   ],
+   "tags": [
+    "delve",
+    "fortress",
+    "tree"
+   ],
+   "screenshots": []
+  },
+  {
+   "id": "ui-layout",
+   "name": "Layout Editor",
+   "category": "Panels",
+   "default": true,
+   "version": "1.0.1",
+   "author": "Wulf",
+   "tagline": "Arrange every ScapeLite panel exactly how you like, and save the layout.",
+   "description": "An edit mode for ScapeLite's own panels, opened from the ScapeLite menu. Drag any panel with snapping to the screen edges, to other panels and to a grid (hold Shift to move freely), resize it, scale it up or down, fade it with an opacity slider, or lock it so it cannot be dragged by accident. The whole arrangement is a named layout: keep several (for example one for questing and one for raids), switch between them, and export or import them as plain text. It only moves ScapeLite panels and never touches the game's windows.",
+   "features": [
+    "Drag with snapping and guide lines",
+    "Opacity, scale and resize per panel",
+    "Lock panels in place",
+    "Named layouts with export and import",
+    "Show all panels while arranging"
+   ],
+   "tags": [
+    "layout",
+    "ui",
+    "panels"
+   ],
+   "screenshots": [
+    "ui-layout.png",
+    "ui-layout-panels.png"
+   ]
+  },
+  {
+   "id": "ui-bar",
+   "name": "Info Bars",
+   "category": "Panels",
+   "default": true,
+   "version": "1.1.0",
+   "author": "Wulf",
+   "tagline": "Customisable top and bottom bars with the numbers you care about.",
+   "description": "Bars along the top and optionally the bottom of the screen, like Titan Panel. Add modules (current task with progress and time left, location, XP per hour, gold, blood coins, clock, inventory space, hit points, alerts, active potions, panel buttons), drag them to reorder or move them to the other side or bar, and right-click for everything else: per-module options, bar height and opacity, moving or hiding a bar. The Hit points module shows numbers with an icon or a real colour-coded HP bar with an adjustable width and can hide the game's own HP bar. Hovering the Alerts module opens the alert list right there (the floating bell can be hidden). The bars are a real screen edge: the game and ScapeLite's panels fit into the space that is left, so nothing is hidden under them. Display only.",
+   "features": [
+    "Task, location, XP/hr, gold, clock and more",
+    "Hit points as numbers or a coloured bar",
+    "Hover the Alerts module for the alert list",
+    "Drag modules to reorder",
+    "Right-click menus for modules and bars",
+    "Top and bottom bars; the game fits into the space left"
+   ],
+   "tags": [
+    "bar",
+    "hud",
+    "ui"
+   ],
+   "screenshots": [
+    "ui-bar.png",
+    "ui-bar-bottom.png"
+   ]
+  },
+  {
+   "id": "ui-queue",
+   "name": "Task Queue Panel",
+   "category": "Panels",
+   "default": true,
+   "version": "1.1.0",
+   "author": "Wulf",
+   "tagline": "Your task queue as compact cards: the current task plus all 7 queued ones fit at once.",
+   "description": "The game's task queue redrawn as one compact card per task: an icon tile with the task's tier, the title and place, time and XP, and a colour-coded walking pill between the cards. Point at a task and its other options slide out to the side as small icon tiles; click one to use it. Drag a card to reorder the queue. The roll controls (Skilling / Slay, slayer master, credits, Auto loadout) fold into one slim line so more of the queue shows, and the cards and gaps are tight enough that the current task and all seven queued ones fit at the usual panel size. Quest, lucky and XP-boost tasks have their own colours, and the Route Advisor's highlight and recommended order show on the cards. It opens as a hover card on the info bar's Tasks button and stays open as a panel when you click the button.",
+   "features": [
+    "Compact task cards with tiers and walking pills",
+    "Current task plus all 7 queued tasks in view",
+    "Roll controls fold into one slim line",
+    "Options slide out to the side; click to use one",
+    "Drag cards to reorder",
+    "Route Advisor highlight and recommended order"
+   ],
+   "tags": [
+    "queue",
+    "tasks",
+    "ui"
+   ],
+   "screenshots": [
+    "ui-queue.png"
+   ]
+  },
+  {
+   "id": "chat-plus",
+   "name": "Chat Panel",
+   "category": "Panels",
+   "default": true,
+   "version": "1.1.0",
+   "author": "Wulf",
+   "tagline": "A roomier chat with Raid and Nearby kept apart and a colour-coded send list.",
+   "description": "Shows everything the game's chat shows in a panel you can size as you like: channel tabs (Global, Nearby, Raid, Friends, Clan, Game) with unread counts, search, hide message types (level ups, tips, logins ...), highlight and mute words, timestamps with seconds or a 12-hour or 24-hour clock, font size, line spacing, background opacity, merged repeats and optional channel tags and badges. The game sends raid party chat on the same channel as everyone nearby; ScapeLite tells them apart by sender, so Raid messages get their own tab and colour. Hovering the channel button at the bottom opens a colour-coded list of the channels you can send to. The text you type is handed to the game's own chat when you press Enter. Messages and their channel and colour are kept across restarts.",
+   "features": [
+    "Width, text size and spacing you choose",
+    "Global, Nearby, Raid, Friends, Clan and Game tabs",
+    "Colour-coded send-to list on hover",
+    "Search, highlight words, mute words",
+    "History and channel colours kept across restarts",
+    "Hide level ups, tips, logins and more"
+   ],
+   "tags": [
+    "chat",
+    "ui"
+   ],
+   "screenshots": [
+    "chat-plus.png"
+   ]
+  },
+  {
+   "id": "card-fuse",
+   "name": "Panel Fusing",
+   "category": "Panels",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "tagline": "Snap ScapeLite panels together so they move as one.",
+   "description": "When two ScapeLite panels touch (the pinned cards, the Task Queue, the Chat) a small link button appears on their seam for a moment, and while you point at the seam. Click it and the panels fuse: they meet exactly with no gap, move together when you drag either one, keep their seam when the window is resized, and can open and close together (a switch in Settings and in each panel's title-bar menu). Unfuse the same way. Display only: it only moves ScapeLite's own panels.",
+   "features": [
+    "Exact seams, no gap",
+    "Move and open or close as one",
+    "Link button only when it is useful",
+    "Survives window resizes and restarts"
+   ],
+   "tags": [
+    "panels",
+    "ui",
+    "fuse"
+   ],
+   "screenshots": [
+    "card-fuse.png"
+   ]
+  },
+  {
+   "id": "fortress-tracker",
+   "name": "Fortress Drop Tracker",
+   "category": "Planning and Routes",
+   "default": true,
+   "version": "1.0.0",
+   "author": "Wulf",
+   "requires": "Drop Luck Tracker",
+   "tagline": "Tracks your Fortress runs and how your drops compare with the odds.",
+   "description": "Reads the Fortress HUD and the game chat and keeps its own history: every cleared wave is one roll at the loot chance the HUD showed for each tier, so it knows how many rares you were expected to see and how likely it was that you had none. Shows a live run (wave, your share against the game's 5% minimum, chances per tier), a luck verdict, a by-tier table, a drop and reward log and a history where every run opens into its own numbers. The run in progress survives reloads and restarts. Results appear on the Fortress tab of the Drop Luck Tracker. Display only.",
+   "features": [
+    "Live run with the loot chance per tier",
+    "Expected against got, chance of at least one",
+    "Drop and reward log",
+    "Every past run opens into its stats",
+    "Survives reloads and restarts"
+   ],
+   "tags": [
+    "fortress",
+    "drops",
+    "luck"
+   ],
+   "screenshots": [
+    "fortress-tracker.png"
+   ]
   }
  ],
  "authors": {
   "Wulf": {
    "handle": "@Wulf"
   }
- }
+ },
+ "updated": "2026-10-28T12:47:38.572Z"
 }

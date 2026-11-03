@@ -152,12 +152,24 @@
     toastEl.textContent = '';
     toastEl.appendChild(document.createTextNode('⚔ Raid lobby open'));
     const small = document.createElement('small'); small.textContent = text; toastEl.appendChild(small);
+    // "Open Raids" only opens the game's own Raids browser (the same left-strip button you would click); you press the game's Join yourself.
+    const ob = document.createElement('button'); ob.type = 'button'; ob.textContent = 'Open Raids';
+    ob.style.cssText = 'margin-top:6px;padding:3px 12px;border-radius:7px;border:1px solid #6b5a2a;background:#2a2518;color:var(--cc-accent,#ffd24a);font:600 13px system-ui,sans-serif;cursor:pointer';
+    ob.addEventListener('click', (e) => { e.stopPropagation(); openRaids(); if (toastEl) { toastEl.remove(); toastEl = null; } });
+    toastEl.appendChild(ob);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { if (toastEl) { toastEl.remove(); toastEl = null; } }, 12000);
   }
+  function openRaids() {
+    try { window.focus(); } catch (e) {}
+    const open = document.body.classList.contains('modal-open') && document.querySelector('.modal-tabs .tab-btn.active[data-tab="raid"], .floating-tab-btn.active[data-tab="raid"]');
+    if (open) return;
+    const b = document.querySelector('.floating-tab-btn[data-tab="raid"], .panel-tab-btn[data-tab="raid"]');
+    if (b) b.click();
+  }
   function notify(text) {
     toast(text);
-    try { if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Scapewatch', { body: 'Raid lobby: ' + text }); } catch (e) {}
+    try { if (typeof Notification !== 'undefined' && Notification.permission === 'granted') { const n = new Notification('Scapewatch', { body: 'Raid lobby: ' + text }); n.onclick = () => { openRaids(); try { n.close(); } catch (e) {} }; } } catch (e) {}
   }
 
   // --- main scan -------------------------------------------------------------------

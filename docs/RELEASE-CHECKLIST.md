@@ -12,10 +12,10 @@ Decisions and chores to finish before the first public release. Items marked **(
 ## Privacy / repo hygiene
 - [ ] Before the repo (or any release) goes public: git history still contains the commit author name/email. Publish from a **fresh repo** (or rewrite history) with a noreply identity.
 - [ ] Scrub anything personal from docs/website/catalog (grep for the GitHub username, real name, Discord).
-- [ ] Confirm no webhook URLs / tokens / config files are in the repo or the installer (the build excludes per-user files; re-check the installer contents).
+- [x] Confirm no webhook URLs / tokens / config files are in the repo or the installer: the build packs an allow-list and fails on a hit (`npm run pack`, `npm run verify:package`, see `docs/PACKAGING.md`); the publish script scans the files it publishes.
 
 ## Security
-- [ ] **Drop `--remote-allow-origins=*`** from the launch flags (the watcher connects from Node, which sends no Origin header, so it is probably unnecessary). With `*`, any web page in the user's browser could open a WebSocket to the game's debugging port. Test with the flag removed in `overlay/launcher.js` (`FLAGS`) and the README/INSTALL text.
+- [x] **Narrow `--remote-allow-origins=*`** to `http://localhost:9222,http://127.0.0.1:9222` (done: `overlay/launcher.js` `FLAGS`, README, INSTALL). Dropping it entirely is not possible without losing the dashboard's DevTools link: tested on a private Electron 37 host, a Node WebSocket (no Origin, what the watcher sends) works with no flag, a foreign Origin gets 403, and the inspector page's own Origin (`http://localhost:9222`) also gets 403 without the flag but is accepted with the narrowed list. Still to do once: confirm against the real game on a spare port (the game's wrapper Electron may differ); people who already put `*` in their Steam launch options keep working but should change it.
 - [ ] Consider a random free debugging port instead of fixed 9222 (also avoids clashes with other Chromium apps).
 
 ## Product / testing

@@ -183,7 +183,7 @@
 
   // --- install / teardown ---------------------------------------------------
   function install(canvas) {
-    cv = canvas || document.querySelector('canvas.map-overlay-canvas:not(.mrp-route)');
+    cv = canvas || window.__ccDom.q('canvas.map-overlay-canvas:not(.mrp-route)');
     if (!cv) return false;
     ctx = cv.getContext('2d'); proto = Object.getPrototypeOf(ctx);
     mine = document.createElement('canvas');
@@ -223,7 +223,7 @@
   function sync() {
     try {
       const want = settingOn('mapRouteLanes', true);
-      const canvas = document.querySelector('canvas.map-overlay-canvas:not(.mrp-route)');
+      const canvas = window.__ccDom.q('canvas.map-overlay-canvas:not(.mrp-route)');
       if (installed && (!want || !canvas || canvas !== cv || !cv.isConnected)) { teardownInner(); installed = false; }
       if (!installed && want && canvas) installed = install(canvas);
     } catch (e) { /* never break the page */ }

@@ -1,9 +1,9 @@
 {
-  "enabled": true,
-  "webhookUrl": "https://discord.com/api/webhooks/XXXXXXXXXXXXXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "enabled": false,
+  "webhookUrl": "",
   "pollMinutes": 20,
   "postIntervalMinutes": 360,
   "majorRankChange": 3,
-  "clanTag": "RAS",
-  "members": ["Rad", "Sandis", "Fly", "BoneBoiler", "Wulf"]
+  "clanTag": "",
+  "members": []
 }

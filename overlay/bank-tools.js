@@ -126,21 +126,21 @@
 .cc-bank-fold{display:none!important}
 .cc-bank-sep::before,.cc-bank-sep::after{content:'';height:1px;background:rgba(255,255,255,.14);flex:1}
 .cc-bank-sep::before{flex:0 0 10px}
-.cc-bank-sep span{font:600 10px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#8a8a9a}
+.cc-bank-sep span{font:600 10px/1 system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--cc-text-dim)}
 .cc-bank-sep.nolabel::before{flex:1}
 .cc-bank-chips{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:3px}
 .cc-bank-chips i{font-style:normal;font-size:.8em;padding:0 6px;border-radius:8px;background:rgba(255,255,255,.1);color:#cfd3dc;white-space:nowrap}
-.cc-bank-chips i.gen{background:rgba(255,255,255,.06);color:#9a9aa6}
+.cc-bank-chips i.gen{background:rgba(255,255,255,.06);color:var(--cc-text-dim)}
 .cc-bank-chips b{font-weight:400;color:#6a6a78;font-size:.8em}
-.bank-filter-btn.cc-sub-on::after{content:' \\00b7  ' attr(data-cc-sub);color:#ffd24a}
-.cc-bank-dd{position:fixed;z-index:100002;min-width:190px;background:#16161e;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:4px;box-shadow:0 8px 28px rgba(0,0,0,.65);font:13px/1.3 system-ui,sans-serif;color:#ddd}
+.bank-filter-btn.cc-sub-on::after{content:' \\00b7  ' attr(data-cc-sub);color:var(--cc-accent)}
+.cc-bank-dd{position:fixed;z-index:100002;min-width:190px;background:#16161e;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:4px;box-shadow:0 8px 28px rgba(0,0,0,.65);font:13px/1.3 system-ui,sans-serif;color:var(--cc-text)}
 .cc-bank-dd .it{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;white-space:nowrap}
 .cc-bank-dd .it:hover{background:rgba(255,255,255,.1)}
-.cc-bank-dd .it.on{background:rgba(255,210,74,.14);color:#ffd24a}
+.cc-bank-dd .it.on{background:rgba(255,210,74,.14);color:var(--cc-accent)}
 .cc-bank-dd .it img{width:20px;height:20px;image-rendering:pixelated}
 .cc-bank-dd .it span{flex:1}
-.cc-bank-dd .it em{font-style:normal;color:#8a8a9a;font-size:.88em}
-.cc-bank-dd .hd{padding:3px 8px 5px;color:#8a8a9a;font-size:11px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:3px}`;
+.cc-bank-dd .it em{font-style:normal;color:var(--cc-text-dim);font-size:.88em}
+.cc-bank-dd .hd{padding:3px 8px 5px;color:var(--cc-text-dim);font-size:11px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:3px}`;
   document.head.appendChild(style);
   const style2 = document.createElement('style'); style2.id = 'cc-bank-style2';
   style2.textContent = `
@@ -152,11 +152,11 @@
 .cc-bank-size input[type=range]{-webkit-appearance:none;appearance:none;width:96px;height:4px;border-radius:2px;background:linear-gradient(90deg,#4a90e2 var(--p,40%),rgba(255,255,255,.18) var(--p,40%));outline:none;cursor:pointer;margin:0}
 .cc-bank-size input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;border:2px solid #4a90e2;box-shadow:0 0 6px rgba(74,144,226,.7)}
 .cc-bank-size b{font-weight:500;min-width:30px;text-align:right;color:#cfd3dc;cursor:pointer}
-.cc-bank-new-clear{margin-left:8px;height:26px;padding:0 10px;border-radius:13px;border:1px solid #b8962f;background:rgba(255,210,74,.1);color:#ffd24a;font:11px/1 system-ui,sans-serif;cursor:pointer;vertical-align:middle}
+.cc-bank-new-clear{margin-left:8px;height:26px;padding:0 10px;border-radius:13px;border:1px solid #b8962f;background:rgba(255,210,74,.1);color:var(--cc-accent,#ffd24a);font:11px/1 system-ui,sans-serif;cursor:pointer;vertical-align:middle}
 .cc-bank-new-clear:hover{background:rgba(255,210,74,.2)}
 .bank-slot.cc-new{box-shadow:0 0 0 1px rgba(255,210,74,.75),0 0 10px rgba(255,210,74,.45) !important;border-radius:6px}
 .bank-slot.cc-new::after{content:'\\2726';position:absolute;top:-3px;right:-2px;font:13px/1 system-ui,sans-serif;color:#ffe27a;text-shadow:0 0 6px #ffb52a,0 0 12px rgba(255,181,42,.8);pointer-events:none;animation:ccTwinkle 1.6s ease-in-out infinite;z-index:3}
-.bank-slot.cc-new::before{content:'NEW';position:absolute;left:2px;bottom:1px;padding:0 3px;border-radius:3px;font:700 8px/10px system-ui,sans-serif;letter-spacing:.05em;color:#2a1a0a;background:#ffd24a;pointer-events:none;z-index:3}
+.bank-slot.cc-new::before{content:'NEW';position:absolute;left:2px;bottom:1px;padding:0 3px;border-radius:3px;font:700 8px/10px system-ui,sans-serif;letter-spacing:.05em;color:#2a1a0a;background:var(--cc-accent,#ffd24a);pointer-events:none;z-index:3}
 .floating-tab-btn.cc-bank-spark,.tab-btn.cc-bank-spark{position:relative}
 .floating-tab-btn.cc-bank-spark::after,.tab-btn.cc-bank-spark::after{content:'\\2726';position:absolute;top:-4px;right:-3px;font:14px/1 system-ui,sans-serif;color:#ffe27a;text-shadow:0 0 6px #ffb52a,0 0 12px rgba(255,181,42,.85);pointer-events:none;animation:ccTwinkle 1.6s ease-in-out infinite;z-index:4}
 @keyframes ccTwinkle{0%,100%{opacity:.55;transform:scale(.8) rotate(0deg)}50%{opacity:1;transform:scale(1.25) rotate(25deg)}}
@@ -217,7 +217,7 @@
     document.body.appendChild(m);
     const r = btn.getBoundingClientRect();
     m.style.left = Math.max(4, Math.min(innerWidth - m.offsetWidth - 4, r.left)) + 'px';
-    m.style.top = Math.min(innerHeight - m.offsetHeight - 4, r.bottom + 4) + 'px';
+    m.style.top = Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - m.offsetHeight - 4, r.bottom + 4) + 'px';
     document.addEventListener('mousedown', onDocDown, true);
   }
   let passClick = false;
@@ -300,16 +300,16 @@
     if (id) delete fresh[id]; else fresh = {};
     saveNew(); markSlots(); sparkle(Object.keys(fresh).length > 0);
   }
-  // Looking at a new item (hovering it) counts as seen.
+  // Looking at a new item (hovering it) counts as seen. The game rebuilds bank slots often, which fires mouseout/mouseover pairs under a
+  // still cursor, so the timer is not cancelled by those: when it fires we simply check the cursor is still over that item.
+  const seenT = {};
+  const hovering = (id) => [...document.querySelectorAll('#tab-bank .bank-slot.cc-new')].some((s) => iconOf(s.querySelector('img')) === id && s.matches(':hover'));
   function onSeen(e) {
     const slot = e.target && e.target.closest ? e.target.closest('#tab-bank .bank-slot.cc-new') : null;
     if (!slot) return;
     const id = iconOf(slot.querySelector('img'));
-    if (id && fresh[id]) { clearTimeout(seenT[id]); seenT[id] = setTimeout(() => { clearNew(id); }, 500); }
+    if (id && fresh[id] && !seenT[id]) seenT[id] = setTimeout(() => { delete seenT[id]; if (fresh[id] && hovering(id)) clearNew(id); }, 60);
   }
-  const onSeenOut = (e) => { const slot = e.target && e.target.closest ? e.target.closest('#tab-bank .bank-slot') : null; if (!slot) return; const id = iconOf(slot.querySelector('img')); if (id) clearTimeout(seenT[id]); };
-  document.addEventListener('mouseout', onSeenOut, true);
-  const seenT = {};
   document.addEventListener('mouseover', onSeen, true);
 
   // ---------------------------------------------------------------- separators + sub-filter
@@ -452,7 +452,7 @@
     document.body.appendChild(dd);
     const r = btn.getBoundingClientRect();
     dd.style.left = Math.max(4, Math.min(innerWidth - dd.offsetWidth - 4, r.left)) + 'px';
-    dd.style.top = Math.min(innerHeight - dd.offsetHeight - 4, r.bottom + 2) + 'px';
+    dd.style.top = Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - dd.offsetHeight - 4, r.bottom + 2) + 'px';
     dd.addEventListener('mouseenter', () => clearTimeout(ddTimer));
     dd.addEventListener('mouseleave', () => { ddTimer = setTimeout(closeDd, 250); });
   }
@@ -475,13 +475,37 @@
   document.addEventListener('mouseout', onBtnOut, true);
   document.addEventListener('click', onBtnClick, true);
 
-  const timer = setInterval(() => { try { if (!document.hidden) refresh(); } catch (e) { /* keep ticking */ } }, 400);
+  const timer = setInterval(() => { try { if (!(document.hidden || window.__ccEcoOn)) refresh(); } catch (e) { /* keep ticking */ } }, 400);
   const timerNew = setInterval(() => { try { trackNew(); } catch (e) { /* keep ticking */ } }, 2000);
   setTimeout(() => { try { trackNew(); } catch (e) { /* ignore */ } }, 800);
+  // Apply the layout the moment the bank's grid appears or changes (next frame), instead of waiting for the 400 ms poll: no visible gap below Coins.
+  let bankRaf = 0, lastRefreshAt = 0;
+  const bankMo = new MutationObserver((recs) => {
+    if (bankRaf || performance.now() - lastRefreshAt < 60) return;   // our own changes from the last refresh do not trigger another
+    for (const r of recs) {
+      const t = r.target;
+      const inBank = t && t.closest && (t.closest('#tab-bank') || (t.id === 'tab-bank'));
+      const added = !inBank && r.addedNodes && [...r.addedNodes].some((n) => n.nodeType === 1 && (n.id === 'tab-bank' || (n.querySelector && n.querySelector('#tab-bank, .bank-grid'))));
+      if (inBank || added) { bankRaf = requestAnimationFrame(() => { bankRaf = 0; try { if (!(document.hidden || window.__ccEcoOn)) refresh(); } catch (e) { /* ignore */ } lastRefreshAt = performance.now(); }); return; }
+    }
+  });
+  bankMo.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style'] });
   setTimeout(refresh, 300);
 
+  // Opening the bank scrolls to the first NEW item (the ones with the sparkle), so you do not have to hunt for it.
+  let bankWasOpen = false, scrollT = 0;
+  const timerOpen = setInterval(() => {
+    try {
+      const tab = document.getElementById('tab-bank'), open = !!(tab && tab.classList.contains('active') && tab.getClientRects().length);
+      if (open && !bankWasOpen && on('bankScrollNew', true)) {
+        clearTimeout(scrollT);
+        scrollT = setTimeout(() => { const n = document.querySelector('#tab-bank .cc-new'); if (n) { try { n.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* ignore */ } } }, 450);
+      }
+      bankWasOpen = open;
+    } catch (e) { /* keep ticking */ }
+  }, 400);
   function teardown() {
-    clearInterval(timer); clearInterval(timerNew); closeDd(); closeSet();
+    clearInterval(timerOpen); clearTimeout(scrollT); clearInterval(timer); try { bankMo.disconnect(); } catch (e) {} clearInterval(timerNew); closeDd(); closeSet();
     document.removeEventListener('click', onSetClick, true); style3.remove();
     const tb0 = document.querySelector('#tab-bank .bank-toolbar'); if (tb0) tb0.classList.remove('cc-tidy');
     document.removeEventListener('mouseover', onSeen, true);

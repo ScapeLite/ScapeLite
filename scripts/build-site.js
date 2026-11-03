@@ -15,6 +15,7 @@ const cat = JSON.parse(fs.readFileSync(path.join(root, 'overlay', 'catalog.json'
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 cat.authors = Object.fromEntries(Object.entries(cat.authors || {}).map(([k, a]) => [k, { handle: a.handle }])); // never publish contact links from here
 cat.version = pkg.version;
+cat.updated = new Date().toISOString();   // shown on the site as "Last update"
 fs.writeFileSync(path.join(site, 'catalog.json'), JSON.stringify(cat, null, 1));
 const imgDir = path.join(root, 'overlay', 'catalog-img');
 if (fs.existsSync(imgDir)) fs.readdirSync(imgDir).forEach((f) => copy(path.join(imgDir, f), path.join(site, 'assets', 'shots', f)));

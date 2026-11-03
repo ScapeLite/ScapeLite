@@ -1,29 +1,23 @@
 {
   "channels": {
     "clan": {
-      "enabled": true,
-      "webhookUrl": "https://discord.com/api/webhooks/XXXXXXXXXXXXXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-      "relayPlainChat": true
+      "enabled": false,
+      "webhookUrl": "",
+      "relayPlainChat": false
     },
     "global": {
       "enabled": false,
-      "webhookUrl": "https://discord.com/api/webhooks/YYYYYYYYYYYYYYYYYYYY/YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY",
+      "webhookUrl": "",
       "relayPlainChat": false
     }
   },
   "roleSelectorWebhookUrl": "",
-  "roleMentions": {
-    "rareDrop": "<@&ROLE_ID>",
-    "pet": "<@&ROLE_ID>",
-    "shinyPet": "<@&ROLE_ID>",
-    "shinyRareDrop": "<@&ROLE_ID>",
-    "unlock": "<@&ROLE_ID>",
-    "levelUp": "<@&ROLE_ID>",
-    "quest": "<@&ROLE_ID>"
-  },
-  "ultraRareKeywords": ["shiny", "lucky"],
+  "leaseWebhookUrl": "",
+  "pingRoles": [],
+  "ultraRareKeywords": [],
   "pingLevelUps": false,
-  "pingRareDrops": true,
-  "pingUnlocks": true,
-  "pingQuests": false
+  "pingRareDrops": false,
+  "pingUnlocks": false,
+  "pingQuests": false,
+  "pingPets": false
 }

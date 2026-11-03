@@ -5,7 +5,7 @@
 A plugin-based overlay and planner for **[Scapewatch: Idle MMO](https://store.steampowered.com/)** — think *RuneLite*, but for Scapewatch.
 Pick the plugins you want from a built-in **plugin marketplace**; everything else stays out of your way.
 
-> **Display-only, always.** ScapeLite changes how the game *looks* and *tells you things*. It never clicks, selects, submits or plays for you.
+> **It never plays for you.** ScapeLite changes how the game *looks* and *tells you things*. Nothing in it picks tasks, rolls, equips, trades or sends anything on its own. A few controls in ScapeLite's own windows pass *your* click on to the game's own button (one click for one click, nothing without your click), and fused panels open and close together.
 
 ## What you get
 
@@ -33,7 +33,7 @@ npm install
 npm start                # starts the supervisor + dashboard
 ```
 
-Then add `--remote-debugging-port=9222 --remote-allow-origins=*` to Scapewatch's Steam launch options and start the game.
+Then add `--remote-debugging-port=9222 --remote-allow-origins=http://localhost:9222,http://127.0.0.1:9222` to Scapewatch's Steam launch options and start the game.
 **Full, step-by-step guide: [docs/INSTALL.md](docs/INSTALL.md).**
 
 ## The plugin marketplace

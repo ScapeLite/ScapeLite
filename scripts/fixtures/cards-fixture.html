@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ScapeLite cards fixture</title>
+<!--
+  A FAKE game for scripts/test-cards.js. It reproduces only what the ScapeLite cards read and click: the markup of the Barter, Equipment, Quests and
+  queue panels (class names and structure copied from the real game's panels, all names and numbers invented) and the way the game answers a click:
+  by changing its DOM / data a moment LATER (the real game answers a Reroll, Buy, Charm or toggle after 150 ms to 1.5 s). The queue panel is only
+  redrawn when refreshQueuePanel() is called (the real game does not redraw its hidden panel). Nothing here can reach the real game or its data.
+  window.fx is the test hook: fx.calls records every click the fake game received (so a test can prove the user's click was forwarded), fx.game is its state.
+-->
+<style>
+  body { margin: 0; background: #14141c; color: #ddd; font: 13px sans-serif; }
+  #ui-container > div { display: none; }
+  .tooltip { display: none; }
+  .panel-tab-btn { display: inline-block; width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<div id="game-container"><div id="ui-container">
+  <div id="barter-panel" class="barter-panel panel-floating"><div class="panel-titlebar" data-panel-id="barter"></div></div>
+  <div id="equipment-panel" class="equipment-panel panel-floating"><div class="panel-titlebar" data-panel-id="equipment"></div></div>
+  <div id="quests-panel" class="quests-panel panel-floating"><div class="panel-titlebar" data-panel-id="quests"></div></div>
+  <div id="unified-queue-panel" class="unified-queue-panel panel-floating"><div class="panel-titlebar" data-panel-id="tasks"></div></div>
+  <div id="tabs">
+    <div class="panel-tab-btn" data-tab="tasks"><img src="data:," alt=""></div><div class="panel-tab-btn" data-tab="equipment"><img src="data:," alt=""></div>
+    <div class="panel-tab-btn" data-tab="quests"><img src="data:," alt=""></div><div class="panel-tab-btn" data-tab="barter"><img src="data:," alt=""></div>
+  </div>
+</div></div>
+<script>
+'use strict';
+const fx = window.fx = { calls: [], game: {}, hidden: true };
+const $ = (id) => document.getElementById(id);
+const later = (ms, f) => setTimeout(f, ms);
+const tt = (name, lines) => '<div class="tooltip"><div class="tt-name">' + name + '</div>' + (lines || []).map((l) => '<div class="tt-line">' + l + '</div>').join('') + '</div>';
+
+// ------------------------------------------------------------------ Barter (a game panel the card copies, with spend buttons)
+const B = fx.game.barter = { gold: 199000, budget: 3, rerolls: 4, cost: 10, slots: [
+  { type: 'RES', item: 'life_soup_t3', name: '[T3] Life Soup', tier: 'T3', price: 19, mod: '95%', good: true, held: 185, max: 5, qty: 1 },
+  { type: 'RES', locked: true, need: 'Lv 40' },
+  { type: 'EQP', item: 'mystic_potion_t1', name: '[T1] Mystic Potion', tier: 'T1', price: 7, mod: '67%', good: false, held: 42, max: 3, qty: 1 },
+  { type: 'EQP', locked: true, need: 'Lv 80' } ] };
+const ITEMS = [['life_soup_t3', '[T3] Life Soup', 'T3'], ['mystic_potion_t1', '[T1] Mystic Potion', 'T1'], ['iron_ore_t1', '[T1] Iron Ore', 'T1'], ['swordfish_t2', '[T2] Swordfish', 'T2']];
+function drawBarter() {
+  const p = $('barter-panel'), tb = p.querySelector('.panel-titlebar'); const keep = tb;   // like the game: the rows are rebuilt, the title bar stays
+  let h = '<div class="barter-header"><div class="barter-title-wrap"><span class="barter-title">BARTER</span><div class="barter-gold-wrap"><span class="barter-header-gold">' + Math.round(B.gold / 1000) + 'K</span>' + tt('Gold', ['Buy price 100%']) + '</div><div class="barter-budget-wrap"><span class="barter-header-budget">' + B.budget + '</span>' + tt('Charges', ['Charges per roll: 3']) + '</div></div>'
+    + '<button class="barter-reroll-btn' + (B.rerolls > 0 ? '' : ' disabled') + '"' + (B.rerolls > 0 ? '' : ' disabled') + '>R' + tt('Reroll (' + B.cost + ' credits)', [B.rerolls + ' available']) + '</button></div>';
+  B.slots.forEach((s, i) => {
+    if (s.locked) { h += '<div class="barter-slot-row barter-slot-locked" data-slot-index="' + i + '"><div class="barter-slot-type">' + s.type + '</div><div class="barter-slot-icon"></div><div class="barter-slot-info"><div class="barter-price"><span class="barter-price-value">' + s.need + '</span></div><div class="barter-mod-label"></div></div></div>'; return; }
+    const dis = B.budget > 0 ? '' : ' disabled';
+    h += '<div class="barter-slot-row barter-slot-active" data-slot-index="' + i + '"><div class="barter-slot-type">' + s.type + '</div><div class="barter-slot-icon"><div class="inv-slot inv-s15" data-item-id="' + s.item + '"><img src="data:," alt="' + s.name + '"><span class="inv-tier-label">' + s.tier + '</span><span class="inv-qty">' + s.held + '</span></div></div>'
+      + '<div class="barter-slot-info"><div class="barter-price"><span class="barter-price-value">' + s.price * s.qty + '</span></div><div class="barter-mod-label ' + (s.good ? 'barter-mod-good' : 'barter-mod-bad') + '">' + s.mod + '</div></div>'
+      + '<div class="barter-slot-controls"><div class="barter-qty-wrap"><span class="barter-qty-label">' + s.qty + '</span><input type="range" class="barter-qty-input" min="1" max="' + s.max + '" value="' + s.qty + '"></div><div class="barter-btn-col">'
+      + '<button class="barter-btn barter-buy-btn" data-slot-index="' + i + '"' + dis + '>Buy' + tt('Buy', ['Costs ' + s.price * s.qty + ' gold']) + '</button>'
+      + '<button class="barter-btn barter-sell-btn" data-slot-index="' + i + '" style="display:none">Sell</button>'
+      + '<button class="barter-btn barter-charm-btn" data-slot-index="' + i + '"' + (s.charmed ? ' style="visibility:hidden"' : '') + dis + '>Charm' + tt('Charm', ['Improves the price']) + '</button></div></div></div>';
+  });
+  p.innerHTML = h; p.appendChild(keep);
+  p.querySelector('.barter-reroll-btn').addEventListener('click', () => { fx.calls.push('barter:reroll'); later(1000, () => { if (B.rerolls < 1) return; B.rerolls--; B.budget = 3; B.slots.forEach((s) => { if (s.locked) return; const it = ITEMS[(Math.random() * ITEMS.length) | 0]; s.item = it[0]; s.name = it[1]; s.tier = it[2]; s.charmed = false; s.qty = 1; }); drawBarter(); }); });
+  p.querySelectorAll('.barter-buy-btn').forEach((b) => b.addEventListener('click', () => { fx.calls.push('barter:buy' + b.dataset.slotIndex); later(700, () => { const s = B.slots[+b.dataset.slotIndex]; B.budget = Math.max(0, B.budget - 1); B.gold -= s.price * s.qty; s.held += s.qty; drawBarter(); }); }));
+  p.querySelectorAll('.barter-charm-btn').forEach((b) => b.addEventListener('click', () => { fx.calls.push('barter:charm' + b.dataset.slotIndex); later(1200, () => { const s = B.slots[+b.dataset.slotIndex]; B.budget = Math.max(0, B.budget - 1); s.charmed = true; s.mod = '120%'; s.good = true; drawBarter(); }); }));
+  p.querySelectorAll('.barter-qty-input').forEach((r, k) => r.addEventListener('input', () => { const i = +r.closest('.barter-slot-row').dataset.slotIndex; B.slots[i].qty = +r.value; r.closest('.barter-slot-row').querySelector('.barter-qty-label').textContent = r.value; r.closest('.barter-slot-row').querySelector('.barter-price-value').textContent = B.slots[i].price * +r.value; }));
+}
+
+// ------------------------------------------------------------------ Equipment (display toggles + a loadout switch)
+const E = fx.game.equip = { potion: true, spirit: false, loadout: 'melee_1', family: 'melee', att: 12 };
+function drawEquip() {
+  const p = $('equipment-panel'), tb = p.querySelector('.panel-titlebar');
+  const slotHtml = (r, c, it) => '<div class="inv-slot' + (it ? '' : ' empty') + '" style="grid-row-start:' + r + ';grid-column-start:' + c + '"><img class="equip-panel-item-img" src="' + (it ? 'data:,x' : '') + '" style="' + (it ? '' : 'display:none') + '"><img class="equip-panel-sil" src="data:,"><span class="inv-tier-label">' + (it ? 'T2' : '') + '</span></div>';
+  p.innerHTML = '<div class="loadout-sel"><button class="loadout-sel-family' + (E.family === 'melee' ? ' active' : '') + '" data-family="melee">Melee</button><button class="loadout-sel-family' + (E.family === 'range' ? ' active' : '') + '" data-family="range">Ranged</button>'
+    + ['melee_1', 'melee_2', 'range_1'].map((l) => '<button class="loadout-sel-slot' + (E.loadout === l ? ' active' : '') + '" data-loadout="' + l + '"><span class="loadout-sel-slot-label">' + l.replace('_', ' ') + '</span></button>').join('') + '</div>'
+    + '<div class="equip-panel-paperdoll">' + slotHtml(1, 2, true) + slotHtml(2, 1, true) + slotHtml(2, 3, false) + '</div>'
+    + '<div class="equip-side"><div class="equip-stats-panel"><span class="style-val">Slash</span><span class="speed-val">2.4s</span><span class="maxhit-val">' + (E.potion ? 14 : 11) + '</span>'
+    + '<table class="stats-table"><tbody><tr><td>Bonus</td><td>+' + (E.potion ? E.att + 3 : E.att) + '</td><td>+8</td><td>+0</td></tr></tbody></table>'
+    + '<div class="tgl"><img class="potion-stats-toggle' + (E.potion ? ' active' : '') + '" src="data:,">' + tt('Potion boosts', ['Include potion boosts in the stats']) + '</div>'
+    + '<div class="tgl"><img class="spirit-stats-toggle' + (E.spirit ? ' active' : '') + '" src="data:,">' + tt('Spirit modifier', ['Include the spirit modifier']) + '</div></div></div>';
+  p.appendChild(tb);
+  p.querySelectorAll('.tgl').forEach((w) => w.addEventListener('click', () => { const k = w.querySelector('.potion-stats-toggle') ? 'potion' : 'spirit'; fx.calls.push('equip:' + k); later(150, () => { E[k] = !E[k]; drawEquip(); }); }));
+  p.querySelectorAll('.loadout-sel-family').forEach((b) => b.addEventListener('click', () => { fx.calls.push('equip:family:' + b.dataset.family); later(100, () => { E.family = b.dataset.family; drawEquip(); }); }));
+  p.querySelectorAll('.loadout-sel-slot').forEach((b) => b.addEventListener('click', () => { fx.calls.push('equip:loadout:' + b.dataset.loadout); later(300, () => { E.loadout = b.dataset.loadout; drawEquip(); }); }));
+}
+
+// ------------------------------------------------------------------ Quests (changes without any click: the card must follow, and wait while you point at a control)
+const Q = fx.game.quests = { list: [['Cook the Books', 'Step 2 / 5', 'Visit the Hearth'], ['Ore Another Day', 'Step 1 / 3', 'Mine 20 ore'], ['Fish Tales', 'Step 4 / 4', 'Claim your reward']] };
+function drawQuests() {
+  const p = $('quests-panel'), tb = p.querySelector('.panel-titlebar');
+  p.innerHTML = Q.list.map((q) => '<div class="quest-slot"><div class="quest-slot-name">' + q[0] + '</div><div class="quest-slot-progress">' + q[1] + '</div><div class="quest-slot-hint">' + q[2] + '</div>' + tt(q[0], []) + '</div>').join('') + '<div class="quest-slot quest-slot-empty"></div><div class="quest-slot quest-slot-empty"></div>';
+  p.appendChild(tb);
+  p.querySelectorAll('.quest-slot:not(.quest-slot-empty)').forEach((s) => s.addEventListener('click', () => fx.calls.push('quests:open:' + s.querySelector('.quest-slot-name').textContent)));
+}
+fx.setQuest = (i, progress) => { Q.list[i][1] = progress; drawQuests(); };
+
+// ------------------------------------------------------------------ the task queue: data in fx.game.queue, the panel is redrawn only by refreshQueuePanel()
+const QU = fx.game.queue = { rev: 0, slots: [
+  { sel: 0, opts: [['oak_tree', 'chop_oak', 'woodcut'], ['willow_tree', 'chop_willow', 'woodcut']] },
+  { sel: 0, opts: [['iron_rock', 'mine_iron', 'mine'], ['coal_rock', 'mine_coal', 'mine']] } ], rerolls: 0 };
+function drawQueuePanel() {
+  const p = $('unified-queue-panel'), tb = p.querySelector('.panel-titlebar');
+  p.innerHTML = '<div class="uq-current"><div class="reroll-option">skip</div></div><div class="uq-rows">' + QU.slots.map((s, i) => '<div class="uq-row" data-row-index="' + i + '">' + s.opts.map((o, k) => '<div class="icon-option' + (k === s.sel ? ' selected' : '') + '" data-option-index="' + k + '"><div class="icon-scroll-row" data-node-id="' + o[0] + '" data-activity-id="' + o[1] + '"></div></div>').join('') + '<div class="reroll-option"><span class="uq-cost-badge">10</span></div></div>').join('') + '</div>';
+  p.appendChild(tb); fx.queuePanelRev = QU.rev;
+  p.querySelectorAll('.uq-rows .uq-row').forEach((row, i) => {
+    row.querySelectorAll('.icon-option').forEach((o, k) => o.addEventListener('click', () => { fx.calls.push('queue:select:' + i + ':' + k); later(600, () => { QU.slots[i].sel = k; QU.rev++; }); }));
+    row.querySelector('.reroll-option').addEventListener('click', () => { fx.calls.push('queue:reroll:' + i); later(700, () => { const s = QU.slots[i]; s.opts = s.opts.slice().reverse(); s.sel = 0; QU.rev++; }); });
+  });
+}
+// the fake bridge: only what ui-bar.js / ui-queue.js call. project() is the game's DATA (always current); the panel is stale until refreshQueuePanel()
+const opt = (o) => ({ act: o[1], node: o[0], skill: o[2], kind: 'skill', qty: 10, timeSec: 60, totalXp: 100, xpHr: 6000, success: 1 });
+window.__ccBridge = {
+  ok: () => true, live: () => ({ task: null, state: 'idle' }), speed: () => ({ sps: 20 }), onChange: () => () => {}, hop: () => null, remain: () => 0, current: () => null, queued: () => null, queueInsert: () => null,
+  queueCtl: () => null, shortages: () => [], oddsSlay: () => null, oddsSkills: () => null, alertState: () => ({ questsReady: [] }), project: () => ({ head: null, quests: {}, slots: QU.slots.map((s, i) => ({ index: i, selected: s.sel, options: s.opts.map(opt) })) }),
+  loadouts: () => ({ current: E.loadout, families: [{ id: 'melee', label: 'Melee', slots: [{ id: 'melee_1', name: 'melee 1' }, { id: 'melee_2', name: 'melee 2' }] }, { id: 'range', label: 'Ranged', slots: [{ id: 'range_1', name: 'range 1' }] }] }),
+  gearDps: () => null, social: () => ({ friends: [], clan: { state: 'none', members: [] }, muted: [] }), chat: () => null, project_: 0,
+  refreshQueuePanel: () => { fx.calls.push('bridge:refreshQueuePanel'); drawQueuePanel(); return true; },
+};
+// the Plugins settings store (the real one lives in plugins-settings-ui.js)
+const SET = {};
+window.__ccPluginSettings = { get: (k) => SET[k], set: (k, v) => { SET[k] = v; }, getAll: () => Object.assign({}, SET), onChange: () => () => {} };
+
+drawBarter(); drawEquip(); drawQuests(); drawQueuePanel();
+fx.queueStale = () => fx.queuePanelRev !== QU.rev;
+</script>
+</body>
+</html>

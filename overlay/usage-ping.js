@@ -10,7 +10,7 @@
   const LS_DAY = 'cc-usage-day';
   const on = () => { try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('usageStatsEnabled'); return v === undefined ? true : !!v; } catch (e) { return true; } };
   const setupAnswered = () => { try { return !!localStorage.getItem('cc-setup'); } catch (e) { return false; } };
-  const loggedIn = () => { const lf = document.querySelector('#login-form, .login-box, .login-hero'); return !(lf && lf.getClientRects().length); };
+  const loggedIn = () => { const lf = document.getElementById('login-form'); return !(lf && lf.offsetParent !== null); }; // id lookup: a selector list would scan the whole DOM
   let sent = false;
 
   async function ping() {

@@ -1,0 +1,6141 @@
+{
+  "version": 1,
+  "rev": 199,
+  "updated": "2026-11-03T18:39:18.787Z",
+  "title": "ScapeLite roadmap",
+  "note": "Edit with the page (/roadmap), the CLI (npm run roadmap) or by hand. Order of items inside a list is the order here. See roadmap/README.md.",
+  "areas": [
+    {
+      "id": "feat",
+      "name": "ScapeLite Features",
+      "short": "Features",
+      "icon": "puzzle",
+      "desc": "Plugins, features and the in-game UI"
+    },
+    {
+      "id": "web",
+      "name": "ScapeLite Website",
+      "short": "Website",
+      "icon": "globe",
+      "desc": "The public site and its gallery"
+    },
+    {
+      "id": "repo",
+      "name": "ScapeLite Repo & Releases",
+      "short": "Repo & Releases",
+      "icon": "package",
+      "desc": "GitHub setup, releases, installer, marketplace"
+    },
+    {
+      "id": "lab",
+      "name": "Design Lab & Tools",
+      "short": "Design Lab",
+      "icon": "flask",
+      "desc": "Design Lab, naming scheme, dev tools"
+    },
+    {
+      "id": "log",
+      "name": "Logging & Data",
+      "short": "Logging & Data",
+      "icon": "database",
+      "desc": "Logs, local data stores, exports"
+    },
+    {
+      "id": "adv",
+      "name": "Game knowledge & Advisors",
+      "short": "Advisors",
+      "icon": "compass",
+      "desc": "Route, Lever and Tree advisors, game research"
+    }
+  ],
+  "milestones": [
+    {
+      "id": "0.2.0",
+      "status": "released",
+      "date": "2026-10-05",
+      "title": "Installer and marketplace"
+    },
+    {
+      "id": "0.3.0",
+      "status": "released",
+      "date": "2026-10-12",
+      "title": "Route Advisor v2 and public launch"
+    },
+    {
+      "id": "0.4.0",
+      "status": "current",
+      "date": "",
+      "title": "New UI, logging, Design Lab"
+    },
+    {
+      "id": "0.5.0",
+      "status": "next",
+      "date": "",
+      "title": "Next"
+    }
+  ],
+  "counters": {
+    "feat": 157,
+    "web": 9,
+    "repo": 50,
+    "lab": 10,
+    "log": 18,
+    "adv": 36
+  },
+  "items": [
+    {
+      "id": "feat-001",
+      "title": "Panel hotkeys: verify with real key presses",
+      "notes": "The hotkeys code is shipped (0.4.0) but was only read from code, never tested by pressing Z/X/C/V/B/N in the game. Pressing a key toggles game panels, so test with a backup of cc-panel-fuse.",
+      "area": "feat",
+      "status": "doing",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-002",
+      "title": "Eco mode: test with a really covered window",
+      "notes": "Eco mode (rest ScapeLite when the game cannot be seen) was only tried with a minimised window.",
+      "area": "feat",
+      "status": "planned",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "overlay/ui-scale.js"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-003",
+      "title": "Insert bar and Roll odds: test with real events",
+      "notes": "The NEW TASKS insert bar and the Roll odds tag were only tested with synthetic events.",
+      "area": "feat",
+      "status": "planned",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-004",
+      "title": "Verify unchecked 0.4.0 changes",
+      "notes": "Main-menu hiding, the window-mode close button and the new Plugins-tab rows (Eco, FPS, ratio, Logs) have not been looked at live. Also: Alt-key setting on the native window, Task Log and Potions tooltips live, filters of the muted-list menu.",
+      "area": "feat",
+      "status": "planned",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-005",
+      "title": "Remove dead Search Effort settings",
+      "notes": "routeSearchPreset and routeSearchLimit are still shown but nothing reads them. Delete both rows (plugins-settings-ui.js L288-289, SECTION_OF/ORDER).",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "cleanup"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-006",
+      "title": "Clan hiscores: stop the timeout noise",
+      "notes": "About 110 log lines \"timeout waiting for clan_hiscores_my_rank\" per day; the poll still succeeds later. Retry quietly, log one line per failed round.\nDone 2026-10-28: first miss + every 3rd in a row + recovery logged, member lookup failures one line per round, early retry after 3 min (max 2). Not seen live yet: a real timeout round.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "bug",
+        "discord"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-007",
+      "title": "Chat filters per channel",
+      "notes": "The 19 filters are one global set; the game has separate sets for Game, Clan, Nearby and Global.\nChat settings > Hide message types has an Applies-to choice (all channels or one channel), saved as hideCatCh. Live-checked the settings list only; no real mixed-channel traffic seen.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "chat"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-008",
+      "title": "Move the vertical menu into the Menu + HP Dock plugin",
+      "notes": "Looked at 2026-10-28 (subagent: onboarding): not a clean move. The vertical menu CSS (~50 lines), the body.cc-vmenu / cc-vm-r|l|t|b classes and --cc-menu-n are driven from panel-resize.js syncSettings and the menu geometry code; menu-dock.js is optional and requires panel-resize, so moving it would make the vertical menu vanish when the dock plugin is off (behaviour change) and splits one feature across plugins with load-order coupling.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "ui"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-009",
+      "title": "Queue list fits about 100 px (compact rows)",
+      "notes": "A very compact row mode so current task plus seven queued ones fit in a strip about 100 px tall.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "queue",
+        "ui"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-010",
+      "title": "Eco mode for the watcher",
+      "notes": "Slow the watcher polling when nothing is happening or the game is not visible.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "perf"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-011",
+      "title": "Hover a task or option: route preview on the World Map",
+      "notes": "A4. The game calls setRoutePreview on hover; a bridge helper could do the same behind a setting.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "queue"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-012",
+      "title": "Raid lobby blurb in an Info Bar module",
+      "notes": "B3. Difficulty, your role and member count while you sit in a lobby (bridge.lobby() exists).",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "info-bar",
+        "raids"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-013",
+      "title": "Free-to-play flag in the Online players tooltip",
+      "notes": "B5.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "info-bar"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-014",
+      "title": "Clickable chat links through a confirm dialog",
+      "notes": "C4. Linkify URLs, open only after the game or our own confirmation.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "chat"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-015",
+      "title": "Chat rules dialog: focus the game input on send failure",
+      "notes": "C5.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "chat"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-016",
+      "title": "Chat world tag and staff crown",
+      "notes": "C6.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "chat"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-017",
+      "title": "Clan card header (name, tag, member count)",
+      "notes": "D2. Leave attack toggle and invites in the game.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "cards"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-018",
+      "title": "Equipment card: show Spirit modifier state",
+      "notes": "E3. Show only; the toggle stays in the game.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "cards"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-019",
+      "title": "Quest reward line under the quest bar",
+      "notes": "F2.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "cards"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-020",
+      "title": "Auto-eat readout in the Active Potions hover",
+      "notes": "G1. \"Eats at 75% HP, wastes at most 25%\", read-only (editing stays in the game).",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "potions"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-021",
+      "title": "Separate potion filter sets in and out of combat",
+      "notes": "G2.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "potions"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-022",
+      "title": "Game Buttons module: Map, Patch notes, Fullscreen",
+      "notes": "H3. Leave Sleep and Logout out.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "info-bar"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-023",
+      "title": "Click the Hit Points module: hide or restore all docked panels",
+      "notes": "H5.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "info-bar"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-024",
+      "title": "ScapeLite menu: Task queue, Pinned cards, Lever Advisor, HP Panel entries",
+      "notes": "H6/X5. Also put Panel buttons into the default Info Bar so a new user can reach the Queue Panel.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "menu"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-025",
+      "title": "Invites alert (raid, party, friend)",
+      "notes": "I2. Read .invite-tray children; \"Show me\" ring on the tray.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "alerts"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-026",
+      "title": "Alerts for barter charges and free quest slots",
+      "notes": "I3. Off by default.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "alerts"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-027",
+      "title": "Cards on a fresh install (game panels never opened)",
+      "notes": "X3. Equipment and Barter cards say \"Open the panel once\" and the queue needs the Tasks panel DOM. Code-read risk, not reproduced. Needs a clean-profile test.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "bug",
+        "cards"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-028",
+      "title": "One name for the three HP things",
+      "notes": "X7. Hit Points Module, HP Panel and Combat Readout; two ways to hide the game HP bar.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "naming"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-029",
+      "title": "Document Sleep versus Eco mode",
+      "notes": "H7. Eco mode only rests ScapeLite, not the game.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "docs"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-030",
+      "title": "List the user-click forwards in PLUGINS.md rule 1",
+      "notes": "Section 2 of the gap list: queue reroll/skip/option/drag/insert, loadout swap, add friend, quest open, Auto Loadout, lane and master, chat send.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "docs",
+        "rules"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-031",
+      "title": "Custom \"when X happens, do Y\" notification rules",
+      "notes": "Listed as a known gap for the first release.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "L",
+      "tags": [
+        "alerts"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-032",
+      "title": "Panel hotkeys reach ScapeLite panels",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "hotkeys"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "The game's panel keys open ScapeLite's own queue, cards and panels.",
+      "reason": ""
+    },
+    {
+      "id": "feat-033",
+      "title": "Window buttons Info Bar module",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "The game's left-strip windows as buttons in an Info Bar, with hotkeys.",
+      "reason": ""
+    },
+    {
+      "id": "feat-034",
+      "title": "One stacking order for panels and game windows",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "The last panel or window you touched is on top.",
+      "reason": ""
+    },
+    {
+      "id": "feat-035",
+      "title": "Queue: queued combat/skilling dividers",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "See a task waiting behind the current one.",
+      "reason": ""
+    },
+    {
+      "id": "feat-036",
+      "title": "Queue: click and right-click pass-through",
+      "notes": "Click = map, Ctrl-click option, right-click fight = calculator, right-click Auto = defaults.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-037",
+      "title": "Current task: level bar, loadout, trained skill, kills",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Level progress and combat info on the current task card and Info Bar.",
+      "reason": ""
+    },
+    {
+      "id": "feat-038",
+      "title": "Game player menu on right-click in ScapeLite lists",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Friends, clan, muted and chat names open the game's own player menu.",
+      "reason": ""
+    },
+    {
+      "id": "feat-039",
+      "title": "Chat: 19 message-type filters",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "The game's own message types as filters.",
+      "reason": ""
+    },
+    {
+      "id": "feat-040",
+      "title": "Chat language picker",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-041",
+      "title": "Skills card: click a skill opens its window",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-042",
+      "title": "Quests card: free slots and List view",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-043",
+      "title": "Diary card: full list with sort",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-044",
+      "title": "Barter card: header tooltips and gold",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-045",
+      "title": "Alert: Thanks for playing reward ready",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Alert Bell notices the free 12-hour reward.",
+      "reason": ""
+    },
+    {
+      "id": "feat-046",
+      "title": "Info Bar module: Players online",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-047",
+      "title": "Game pop-up menus drawn above ScapeLite panels",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-048",
+      "title": "Fix: stacking code no longer scans the whole page every frame",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "perf"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-049",
+      "title": "Hiding the game's panels, menu bar and HP bar works again",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "bug"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-050",
+      "title": "Active Potions: the game's right-click menu works again",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "bug"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-051",
+      "title": "Fix: Info Bar Current task module",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "bug"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-052",
+      "title": "Lever Advisor drawer scales its window content",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-053",
+      "title": "Eco mode",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "perf"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "ScapeLite rests when the game cannot be seen.",
+      "reason": ""
+    },
+    {
+      "id": "feat-054",
+      "title": "Status Indicator counts the game's frame rate and stops animating",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "perf"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-055",
+      "title": "Single instance guard for supervisor and watcher",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "bug"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-056",
+      "title": "Game windows always movable and resizable",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Bank, Settings and the other big windows can be moved and resized; See-through replaces Float.",
+      "reason": ""
+    },
+    {
+      "id": "feat-057",
+      "title": "Queue: NEW TASKS bar, Roll odds, tray order, centred mob pictures",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-058",
+      "title": "Main menu hides everything except the Status Indicator",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-059",
+      "title": "Alt key no longer opens the window menu bar",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-060",
+      "title": "HP panel and Hit Points module bar",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-061",
+      "title": "Fused panels open and close together",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-062",
+      "title": "Settings search covers the Plugins tab",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-063",
+      "title": "Panels keep their place relative to the screen edges",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-064",
+      "title": "Info Bars (Titan Panel style) and Alerts bell",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Customisable bars with task, potions, chat, HP and alert modules.",
+      "reason": ""
+    },
+    {
+      "id": "feat-065",
+      "title": "Layout Editor",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Drag, snap and resize ScapeLite panels; named layouts.",
+      "reason": ""
+    },
+    {
+      "id": "feat-066",
+      "title": "Task Queue Panel redesign",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Compact cards with walking time, alternatives and drag reorder.",
+      "reason": ""
+    },
+    {
+      "id": "feat-067",
+      "title": "Shared UI kit, themes and palettes",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-068",
+      "title": "Pinned cards: Skills, Inventory, Equipment, Friends, Diary, Quests, Barter",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-069",
+      "title": "Fortress drop tracker",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Follows Fortress runs and drops, with the real chance of a drop.",
+      "reason": ""
+    },
+    {
+      "id": "feat-070",
+      "title": "Drop Luck Tracker, Goals, Material Shortage, Mechanics Explainer, Queue Walking Time",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-17",
+      "done": "2026-10-17",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-071",
+      "title": "Bank Tools",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": true,
+      "milestone": "0.3.0",
+      "summary": "Category separators, filters, item size slider and new-item sparkle.",
+      "reason": ""
+    },
+    {
+      "id": "feat-072",
+      "title": "Crafting Potential",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": true,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-073",
+      "title": "Window buttons dock and Combat Readout",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-074",
+      "title": "First-launch play style setup and plugin settings groups",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-075",
+      "title": "In-game bug report",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-076",
+      "title": "Installer, marketplace, updater, launcher, plugin guides",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-05",
+      "done": "2026-10-05",
+      "links": [],
+      "public": false,
+      "milestone": "0.2.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-001",
+      "title": "Website gallery and screenshots",
+      "notes": "A gallery section with screenshots of the main UI (Queue Panel, Info Bars, cards, Layout Editor).",
+      "area": "web",
+      "status": "planned",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "gallery"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": true,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-002",
+      "title": "Bring the website up to 0.4.0",
+      "notes": "Update catalog.json and feature copy for 0.4.0 once it is published.\nSite copy and catalog.json are on 0.4.0; screenshots for the new features (web-001) and the real download button (web-003) are still open; nothing was published.",
+      "area": "web",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "content"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-003",
+      "title": "Real download button, install page and FAQ check",
+      "notes": "Depends on the GitHub Release upload.",
+      "area": "web",
+      "status": "planned",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "download",
+        "on hold"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-004",
+      "title": "Publish the public roadmap on the website",
+      "notes": "Use the Export button on the Public roadmap tab (roadmap/public/roadmap.html or .json) and link it from the site.",
+      "area": "web",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "roadmap"
+      ],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-005",
+      "title": "Release notes page per version",
+      "notes": "Generate from the What changed tab.",
+      "area": "web",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "content"
+      ],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-006",
+      "title": "Opt-in players online count on the site",
+      "notes": "Needs the hosted counter endpoint first; see Logging & Data.",
+      "area": "web",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "L",
+      "tags": [
+        "stats"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-007",
+      "title": "Website live on GitHub Pages",
+      "notes": "Actions workflow deploys website/.",
+      "area": "web",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": true,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-008",
+      "title": "Local copy of the site at /site on the dashboard",
+      "notes": "",
+      "area": "web",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "web-009",
+      "title": "Marketplace and website screenshots for new plugins",
+      "notes": "",
+      "area": "web",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-19",
+      "done": "2026-10-19",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-001",
+      "title": "Publish 0.4.0 to the public repo",
+      "notes": "Nothing from 10-13 onward is pushed or published; the user put publishing on hold. scripts/publish-release.js makes the one-commit publish.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "on hold"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "scripts/publish-release.js"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-002",
+      "title": "Rebuild the installer for 0.4.0",
+      "notes": "npm run dist. Unsigned.",
+      "area": "repo",
+      "status": "done",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "installer",
+        "on hold"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-11-03",
+      "done": "2026-11-03",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-003",
+      "title": "Clean-machine installer test",
+      "notes": "Install, first run, tray, game launch, game guard, update flow, Start with Windows, uninstall.\nInstaller 0.4.0 exists locally; first test = friend's PC (2026-11-03), not a clean VM.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "installer",
+        "test",
+        "on hold"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-11-03",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-004",
+      "title": "Create the GitHub Release and upload the installer files",
+      "notes": ".exe, latest.yml and .blockmap, by hand in the browser.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "on hold"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-005",
+      "title": "Release notes for 0.4.0",
+      "notes": "Draft from the What changed tab (copy as markdown).",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "docs"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-006",
+      "title": "Marketplace screenshots for 7 plugins",
+      "notes": "tree-advisor, lever-advisor, task-log, mechanics-explainer, queue-walk, raid-dps-extra, material-shortage.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "marketplace",
+        "screenshots"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-007",
+      "title": "Tray adopts a hand-started supervisor",
+      "notes": "The tray does not own a supervisor that was started by hand, so Quit leaves it running.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "tray"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-008",
+      "title": "Two-supervisors startup race: observe the guard",
+      "notes": "The guard was added 10-20 but the race itself was never seen again.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-009",
+      "title": "Drop --remote-allow-origins=* from the launch flags",
+      "notes": "Test with the flag removed in overlay/launcher.js (FLAGS).\nVerified 2026-10-27 (distribution risks): headless Chromium without the flag answers 403 to an upgrade with a foreign Origin and accepts one without Origin (Node WebSocket). Remaining: confirm on the real game on a spare port; check the dashboard DevTools link (localhost:9222 inspector) still works, else remove it.\n2026-10-28: tested on a private Electron 37 host: no flag = Node/no-Origin works, foreign Origin 403, but the DevTools inspector page's own Origin is also 403. Narrowed the flag to http://localhost:9222,http://127.0.0.1:9222 (launcher FLAGS, README, INSTALL). Remaining: one run against the real game wrapper on a spare port; people with '*' in Steam launch options should switch.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "security"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-010",
+      "title": "Scrub personal data before the repo goes public",
+      "notes": "Git history has the author name and email. Publish from a fresh repo or rewrite history. Grep docs, website and catalog.",
+      "area": "repo",
+      "status": "planned",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "privacy",
+        "on hold"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-011",
+      "title": "Update feed URL for installed copies",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "updater"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-012",
+      "title": "Random free debugging port instead of 9222",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "security"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-013",
+      "title": "First-run help when Steam or the game is not found",
+      "notes": "Non-Steam install, library on another drive: clear message and a manual path option.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "onboarding"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-014",
+      "title": "Friendlier Discord relay setup",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-015",
+      "title": "\"Open logs folder\" in the app menu",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "support"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-016",
+      "title": "Public identity: project domain and feedback channel",
+      "notes": "Final name or domain, issues page or chat server, links in authors.local.json.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "owner"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-017",
+      "title": "Pre-commit syntax check of overlay/*.js",
+      "notes": "ui-bar.js was committed with a syntax error after concurrent edits (fixed in f3e5591). A node --check over overlay/*.js would catch that.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "tooling"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-018",
+      "title": "Commit the undeclared-identifier sweep script",
+      "notes": "The acorn-based scan found the queueRich bug class; it was a throw-away script.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "tooling"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-019",
+      "title": "Windows only: look at other platforms",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "L",
+      "tags": [
+        "platform"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-020",
+      "title": "Update source for community plugins",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "L",
+      "tags": [
+        "marketplace"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-021",
+      "title": "Code signing certificate",
+      "notes": "",
+      "area": "repo",
+      "status": "wontdo",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "installer"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": "Skipped on purpose for the first releases (cost). Revisit if SmartScreen warnings put people off."
+    },
+    {
+      "id": "repo-022",
+      "title": "Licence file",
+      "notes": "",
+      "area": "repo",
+      "status": "wontdo",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": "Deliberately skipped for now. Revisit before accepting outside contributions."
+    },
+    {
+      "id": "repo-023",
+      "title": "v0.3.0 pushed to the public repo",
+      "notes": "One commit via scripts/publish-release.js.",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-024",
+      "title": "Installer 0.3.0 built (unsigned)",
+      "notes": "",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-025",
+      "title": "Release notes 0.3.0",
+      "notes": "",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [
+        "docs/RELEASE-NOTES-0.3.0.md"
+      ],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-026",
+      "title": "Usage count on GoatCounter (opt-out in the first-launch setup)",
+      "notes": "",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-027",
+      "title": "Version bumped to 0.4.0 (private only)",
+      "notes": "",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-001",
+      "title": "Design Lab: specimens for the 208 names without one",
+      "notes": "The Coverage page lists registered names that have no specimen.\n2026-10-28: 208 -> 93 names without a specimen (spec-more.js, ALSO table, tokens via the tokens page). Left: design-token layer rows, the game's own panels (tasks, skills, inventory, equipment, chat, fortress hud, smith/imbue/brew windows), marketplace modals, xp sparkline and hover tip, queue tray parts and states, route-advisor change line and grip, settings search box and subheading, bank sparkle, route highlight, tooltips (queue task, route variant, lever).",
+      "area": "lab",
+      "status": "planned",
+      "priority": "P3",
+      "effort": "L",
+      "tags": [
+        "coverage"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [
+        "docs/DESIGN-LAB.md",
+        "design-lab/names.json"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-002",
+      "title": "Design Lab: look at snap guides, fuse buttons and menus",
+      "notes": "Never viewed in the browser.\nSnap guides, Fuse chip, size match guide, fuse buttons, fuse links and all 11 Menus specimens looked at in the browser at 1400x900: they render correctly. Also fixed: none needed.\nCorrection: seen in screenshots were snap guides + Fuse chip + size-match guide, the fuse buttons, the fuse links, and the first two Menus specimens (context menu, alignment grid); all rendered correctly. The other 9 Menus specimens were not looked at individually. The browser pane screenshots were unreliable (stale or timed out).",
+      "area": "lab",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-003",
+      "title": "Export the design tokens as a CSS file or a docs table",
+      "notes": "",
+      "area": "lab",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "tokens"
+      ],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-004",
+      "title": "Roadmap: link to the Design Lab and docs from the header",
+      "notes": "",
+      "area": "lab",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-005",
+      "title": "Design Lab",
+      "notes": "Real-CSS specimen page, token sheet, scenarios, icon gallery.",
+      "area": "lab",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [
+        "docs/DESIGN-LAB.md",
+        "design-lab/"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-006",
+      "title": "UI naming scheme (619 names)",
+      "notes": "",
+      "area": "lab",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [
+        "docs/UI-NAMING.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-007",
+      "title": "Feature gap research",
+      "notes": "What the game's panels offer that ScapeLite does not re-present.",
+      "area": "lab",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-21",
+      "done": "2026-10-21",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-008",
+      "title": "Roadmap and checklist tool",
+      "notes": "",
+      "area": "lab",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [
+        "roadmap/README.md",
+        "scripts/roadmap.js"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-009",
+      "title": "Route Advisor and log test scripts",
+      "notes": "",
+      "area": "lab",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [
+        "scripts/test-route-advisor.js",
+        "scripts/test-log.js"
+      ],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-001",
+      "title": "Log swallowed render errors (Info Bar modules, cards)",
+      "notes": "ui-bar.js refresh() and renderCard() catch and drop errors; log once per module to __ccLog (channel Plugins). That is how the queueRich bug stayed hidden.",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "bug",
+        "logging"
+      ],
+      "source": "subagent: gap research",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/FEATURE-GAPS.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-002",
+      "title": "Rotate watcher.log",
+      "notes": "overlay/watcher.log is never trimmed; Logs/Watcher has the same lines.",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "logs"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/LOGGING.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-003",
+      "title": "One State/ folder with an atomic-write helper",
+      "notes": "Move chat-relay-seen, digest-state and clan-hiscores-state; cap digest-state growth.\nMoved on 2026-10-28 on the real data (copy, check, .moved safety copy). Digest growth was already capped (1000 keys, buffer reset per post). Untested: installed app (SCAPELITE_HOME) first start; old .moved copies can be deleted once you are happy.",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "data"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/LOGGING.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-004",
+      "title": "Unified export and delete of my data",
+      "notes": "One Export my data (zip of history plus Task Log) and one Delete my data.\nInclude State/option-log.json (Task Option Log, docs/OPTION-LOG.md) in the export and in delete-my-data.",
+      "area": "log",
+      "status": "planned",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "privacy"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [
+        "docs/LOGGING.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-005",
+      "title": "\"What is stored\" panel with sizes per store",
+      "notes": "List State/option-log.json (Task Option Log): rows of offered task options, no names, newest 2500 sets, about 2-4 MB when full. See docs/OPTION-LOG.md.",
+      "area": "log",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "data"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [
+        "docs/LOGGING.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-006",
+      "title": "Opt-in active users counter",
+      "notes": "Needs a tiny hosted endpoint (POST /ping, GET /count). Strictly opt-in, random id, shown only when the count is 5 or more.",
+      "area": "log",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "L",
+      "tags": [
+        "stats",
+        "privacy"
+      ],
+      "source": "release checklist",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/RELEASE-CHECKLIST.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-007",
+      "title": "Perf channel dashboard",
+      "notes": "Show the Perf channel on the /logs page as a small chart.",
+      "area": "log",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "perf"
+      ],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-008",
+      "title": "Core logging system",
+      "notes": "",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [
+        "docs/LOGGING.md",
+        "overlay/logging/"
+      ],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "One Logs folder with a sub-folder per kind of log, retention, secret redaction and a viewer.",
+      "reason": ""
+    },
+    {
+      "id": "log-009",
+      "title": "Logs viewer page",
+      "notes": "http://localhost:7777/logs",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-010",
+      "title": "Task Log schema v2 and Slay History from the Task Log",
+      "notes": "",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-011",
+      "title": "Task Log rebuilt from Logs/Tasks files when the browser cache is empty",
+      "notes": "",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-012",
+      "title": "Logging and local data audit",
+      "notes": "",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [
+        "docs/LOGGING.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-013",
+      "title": "Task Log (local)",
+      "notes": "",
+      "area": "log",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-001",
+      "title": "Lever Advisor: slayer master picker",
+      "notes": "In progress in another session.",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "lever-advisor",
+        "in progress"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-002",
+      "title": "Diary and credits panel",
+      "notes": "First step of the advisor build order: free node pips per tier, credit value, best next tier per diary step.",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "L",
+      "tags": [
+        "diary"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-29",
+      "done": "2026-10-29",
+      "links": [
+        "docs/ADVISOR-NOTES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-003",
+      "title": "Calibrate the roll model from the 200-task history",
+      "notes": "Do not suggest credit-costing lever changes before this.",
+      "area": "adv",
+      "status": "doing",
+      "priority": "P2",
+      "effort": "L",
+      "tags": [
+        "model"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [
+        "docs/ADVISOR-NOTES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-004",
+      "title": "Tree Advisor: import from scapewatch.quxxe.dev",
+      "notes": "The user linked the site; never opened.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "tree-advisor"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-005",
+      "title": "Raid graph in the Discord summary",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "raids",
+        "discord"
+      ],
+      "source": "user",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-006",
+      "title": "Alert when a lever change is desired",
+      "notes": "Today only unspent credits alert.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "alerts",
+        "lever-advisor"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-007",
+      "title": "Diary tier planner: steps per credit saved",
+      "notes": "The notes table shows the idea (credits saved per diary step).",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "diary"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/ADVISOR-NOTES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-008",
+      "title": "Delve tree research follow-ups",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "research"
+      ],
+      "source": "audit",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/research-delve-tree.md",
+        "docs/research-fortress-and-dps.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-009",
+      "title": "Route Advisor: keep the path you follow, stable advice",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "route-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Advice no longer flips while you rearrange the queue.",
+      "reason": ""
+    },
+    {
+      "id": "adv-010",
+      "title": "Route Advisor: honest time saved, wait for the queue to settle",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "route-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-011",
+      "title": "Route Advisor: Gathering vs Processing ratio",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "route-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-012",
+      "title": "Lever Advisor as a drawer in the Skills Customization window",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "lever-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-20",
+      "done": "2026-10-20",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-013",
+      "title": "Tree Advisor",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "tree-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": true,
+      "milestone": "0.4.0",
+      "summary": "Best Delve and Fortify tree points for your gear.",
+      "reason": ""
+    },
+    {
+      "id": "adv-014",
+      "title": "Lever Advisor: start-independent plan, spends all credits",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "lever-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-18",
+      "done": "2026-10-18",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-015",
+      "title": "Slay tasks: real time and total XP",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-17",
+      "done": "2026-10-17",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-016",
+      "title": "Route Advisor v2: three paths, priorities, priced teleports",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "route-advisor"
+      ],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [],
+      "public": true,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-017",
+      "title": "Advisor notes: diary, levers and credits",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "changelog",
+      "created": "2026-10-22",
+      "updated": "2026-10-12",
+      "done": "2026-10-12",
+      "links": [
+        "docs/ADVISOR-NOTES.md"
+      ],
+      "public": false,
+      "milestone": "0.3.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-018",
+      "title": "Lever Advisor: easy-kills route on a bigger account, no-food case, Plugins toggle in the UI",
+      "notes": "",
+      "area": "adv",
+      "status": "planned",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "lab-010",
+      "title": "Roadmap page: real mouse drag and drop check, import/restore through the UI",
+      "notes": "",
+      "area": "lab",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "test"
+      ],
+      "source": "subagent: roadmap build",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-014",
+      "title": "Status dot / Core cost: re-profile after stacking fixes; layout editor raid check still 80 ms per 6 s",
+      "notes": "",
+      "area": "log",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "perf"
+      ],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-019",
+      "title": "Lever Advisor: slay master picker, easy-kills route, focus on 1-2 mobs, worth-of-advice table",
+      "notes": "Master picker + Easy kills route (risk tiers, respawn amortised), Focus for drop/collection hunts with walking penalty, gain table on every page. Display only.",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-020",
+      "title": "Game bridge: speed() single source for walking speed",
+      "notes": "speed() in game-bridge.js (Y.totalMovementSpeed + active movement potion), time(steps), onChange('speed'); migrated walking-countdown, queue-walk, ui-queue, route-advisor, lever-advisor; scripts/verify-bridge-speed.js",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-021",
+      "title": "Game bridge snapshot: one cached object (speed, held, skills, potions, task, slay/combat) with change events",
+      "notes": "Done: bridge.snapshot() + onChange('snapshot'), docs in ARCHITECTURE-CARDS.md, node scripts/test-bridge-snapshot.js. Not seen: a live change event firing; add an npm script test:bridge.",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-077",
+      "title": "Discord: shared sender module (429 retry_after, timeout, kept-until-accepted, atomic state)",
+      "notes": "Digest, hiscores and raid summary ignore failed posts and lose data; no 429 handling, no fetch timeout. See docs/DISCORD-FEATURES.md section 2.\nShipped 2026-10-22: overlay/discord-sender.js + overlay/safe-json.js, npm run test:discord. Chat relay, digest, hiscores and raid summary all use it; raid lobby alert is not Discord (Windows toast to Pushover) so nothing to move.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-078",
+      "title": "Discord: live status message (one edited webhook message: task, progress, ETA, XP/h)",
+      "notes": "POST ?wait=true once then PATCH; event driven on task change, progress at most every 30 s, ETA as relative timestamp, offline edit on stop. Webhook only, no bot.\nShipped 2026-10-22 as the Clan Status Board: every player's own card is the live status message (webhook only, no bot). docs/CLAN-STATUS-BOARD.md, npm run test:board.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-079",
+      "title": "Discord: health card, last error and test-send button in the dashboard",
+      "notes": "Last HTTP code, rate-limited-until, webhook-invalid state, test message.\nShipped 2026-10-22: Discord health card + Test send on the dashboard (supervisor restart needed once), Discord row in the status indicator hover.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-080",
+      "title": "Discord: clan status board (one message per member, opt-in, pseudonyms, staleness)",
+      "notes": "Needs the live status message first; privacy toggles per field, delete on opt-out.\nShipped 2026-10-22 with in-game names (no pseudonym), opt-in fields with a live preview, shared board webhook; each ScapeLite edits only its own message. Clan-now rollup stays a bot idea (feat-085).",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-081",
+      "title": "Discord: idle and queue-finished alert to a private channel",
+      "notes": "Reuse alertState idle and queue head; same quiet hours as the raid alert.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-082",
+      "title": "Discord: per-event routing and quiet hours",
+      "notes": "Different webhook per event type, quiet hours, pings only outside quiet hours.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-083",
+      "title": "Discord: digest v2 (embed sections, splitter over 2000 chars, optional chart image)",
+      "notes": "Digest content can exceed 2000 chars and be rejected, losing the window.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-084",
+      "title": "Discord: level-up and rare-drop announcements with item icons",
+      "notes": "Embed thumbnails from the game CDN or Pages; verify hotlinking first.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-085",
+      "title": "Discord: optional clan bot (slash commands, buttons, clan-now summary)",
+      "notes": "Only if the clan wants interactivity; needs hosting and token security; not part of the installer.\nUser decision 2026-10-22: the bot is parked (concept pile). The clan status board was built with webhooks only; revisit only if slash commands, buttons or a clan-now rollup are wanted.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "L",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: discord research",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [
+        "docs/DISCORD-FEATURES.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-086",
+      "title": "Queue: right-click menu on slay tasks (combat calculator, swap training) and icons with tooltips for loadout/training/kills on the current task",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-087",
+      "title": "Clan board: live check on a private test channel",
+      "notes": "Not verified against the real Discord API: <t:..:R> counting down inside embed field values (desktop and mobile), the edit rate limits (read from headers at runtime), the (edited) mark. Later: skill icons as thumbnails (emoji only in v1).\nLive check done 2026-10-22 on the private test webhook: create/edit, relative timestamps, (edited) mark, thumbnails, logo attachment, 5 simulated cards, recreate after delete. No 429s.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: clan status board",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-088",
+      "title": "Clan board: delete my card button and Reset card id in Settings",
+      "notes": "Webhooks can DELETE their own message; today the player deletes the card by hand in Discord. Also a dashboard Reset button for the stored message id.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "discord"
+      ],
+      "source": "subagent: clan status board",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-089",
+      "title": "Queue: game icons on every slay card, loadout list under the fight loadout icon, fight progress bar fix",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "claude",
+      "created": "2026-10-22",
+      "updated": "2026-10-22",
+      "done": "2026-10-22",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-090",
+      "title": "Lamp XP preview in item tooltips",
+      "notes": "Hover an XP lamp, combat lamp or gem: per skill level now, result of 1 and of the whole stack, colour coded, best pick and Route Advisor priority pick. Bridge: lampPreview(itemId, qty). Toggle hoverLampPreview.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "hover",
+        "tooltip"
+      ],
+      "source": "claude",
+      "created": "2026-10-23",
+      "updated": "2026-10-23",
+      "done": "2026-10-23",
+      "links": [
+        "overlay/hover-info.js",
+        "overlay/game-bridge.js"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-091",
+      "title": "Report the food-pop-up timer bug to the game developers (clearAllTimers leaves .eat-indicator elements)",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "bug",
+        "game"
+      ],
+      "source": "claude",
+      "created": "2026-10-25",
+      "updated": "2026-10-25",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-028",
+      "title": "Installer: gate personal files (allow-list + post-build scan)",
+      "notes": "I-17. build.files is a deny-list; overlay/discord-test-webhook.json and overlay/*.lock are not excluded, a local npm run dist would pack them. Build tester installers from a clean checkout; post-build scan of dist/win-unpacked fails on *config.json, *state.json, *webhook*, *.lock, *.log, *.bak.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-092",
+      "title": "Developer sign-off on click proxies; fix the never-clicks claim",
+      "notes": "Section 2.8. Class B proxies (queue select, reroll, loadout, roll mode, slayer master, chat send, friend add) change game state on the player's click; only navigation has a reported OK. Ask the developers in writing, correct README/website/PLUGINS wording (see feat-030).",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-093",
+      "title": "Display-only mode switch (turns off every click proxy)",
+      "notes": "Setting that disables class B and C forwards (ui-queue, loadout, chat send, friend add, panel-fuse auto open/close, popupClose). Default off for class B in the tester build until the developer answers.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-094",
+      "title": "Safe mode and Unload everything now",
+      "notes": "4.5. Tray item + dashboard button + SCAPELITE_SAFE=1: supervisor and watcher run, nothing is injected; live button calls every plugin teardown without restarting the game; auto safe mode after N watcher crash cycles.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-015",
+      "title": "Diagnostics bundle with game version and compatibility self-check",
+      "notes": "4.2, C-01. One button writes a redacted file: ScapeLite build id, Windows, Electron, game wrapper version + client fingerprint, plugin load state, per-plugin selector/object self-check, last 300 redacted lines of System/Watcher/Errors/Plugins, port/lock/Steam status. Never config files, Discord/Chat logs or chat history. Also a Compatibility report button and a health card.",
+      "area": "log",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "L",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-029",
+      "title": "Game guard: ask before restarting the game; calmer polling",
+      "notes": "I-05. autoRelaunch defaults ON and taskkill /F's the game; tasklist runs every 1.5 s. Tester build: toast with a Restart button, event-driven or slower polling, never during a raid/fortress.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-095",
+      "title": "Usage ping off by default for testers; one consistent privacy text",
+      "notes": "S-04. Website FAQ says no data and mentions an update check that does not exist in installed builds, while usage-ping.js is on by default (IP to GoatCounter). Default off in the tester build; align FAQ, README, tour, usage-ping header.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-096",
+      "title": "Discord relay: plain chat off by default, first-enable consent notice",
+      "notes": "S-07. Mirroring other players' chat and names into a channel needs a clear warning (tell your clan), per-field opt-in confirmed for every Discord feature.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-030",
+      "title": "Tester kit: quick start, rules, known issues, privacy sheet, agreement",
+      "notes": "Section 7. SmartScreen screenshots, SHA-256, rules (display-only, no advertising in the official Discord, do not share), known issues draft, report steps, troubleshooting, uninstall/reset, update procedure, expiry date.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-031",
+      "title": "Tester builds: build id in the app and manual update procedure",
+      "notes": "4.4, I-13. 0.4.0-tN shown in status light, dashboard, bug report and file name; keep the previous installer for rollback; short what-changed note per build from the roadmap changelog.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-032",
+      "title": "Private tester feedback channel and report template",
+      "notes": "4.1. The Report button opens a public GitHub issue (account needed, public). Testers need a private channel (not the official Discord) and a template: time, plugin, expected, build id.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-033",
+      "title": "Scrub: neutral fixture in test-log.js, bare-name term, screenshot review",
+      "notes": "2.9. scripts/test-log.js holds the Windows account name in 2 assertions (an escaped path defeats the literal scrub term). Review all 31 catalog-img + website/assets/shots images (chat-relay.png shows another player's name). Delete the stray file named nul in the repo root.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-034",
+      "title": "Licence, third-party notices, game-logo files decision",
+      "notes": "2.10. No LICENSE (public repo licence empty). Generate THIRD-PARTY-NOTICES from the lockfile; overlay/scapewatch-icon*.png look like the game logo: replace or ask permission.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-035",
+      "title": "Ask the developers: blessing questions list",
+      "notes": "L-01 lists 7 questions: debug-port approach and wrapper stability, click proxies, Discord mirroring of clan events, screenshots/logo/name, whether a public repo + site counts as advertising, a client version/heads-up channel, a contact.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "distribution",
+        "owner"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-036",
+      "title": "Supervisor: hard exit if 7777 cannot bind; foreign service not attached",
+      "notes": "I-07, C-11. app/main.js get() returns {} (truthy) for non-JSON so a foreign service on 7777 counts as attached; status-server only logs bind errors so a second supervisor still runs a watcher. Check for a ScapeLite-shaped /status, fall back to another port, exit on bind failure (also a machine-wide lock for installed + checkout and for two Windows users).",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-037",
+      "title": "Single-instance lock: guard against pid reuse after a crash",
+      "notes": "C-11(d). alive(pid) only asks whether the pid exists; a reused pid makes the new supervisor exit silently. Compare image name/start time; log and show the reason.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-038",
+      "title": "Launcher: verify the 9222 target is the game, not any Chromium",
+      "notes": "I-06. portOpen() accepts any answer; the watcher takes any page matching /scapewatch/. Check type page, host play.scapewatch.com, Electron header before saying ready.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-039",
+      "title": "Test installer: non-ASCII user name, spaces, other-drive Steam library",
+      "notes": "I-03. reg query output is decoded as UTF-8 from the console code page; a Steam path with accented letters may fail detection. Test, then read the registry via chcp 65001 or PowerShell JSON; manual game folder (repo-013).",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution",
+        "test"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-040",
+      "title": "Uninstall: remove login item; Remove my data action",
+      "notes": "I-12. deleteAppDataOnUninstall false leaves webhook configs in %APPDATA%/ScapeLite; the login item may remain. Tray 'Remove ScapeLite data' (also clears cc-* page keys) and a Reset ScapeLite action (see log-004).",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-016",
+      "title": "Schema version in config/state files, newer-file guard",
+      "notes": "I-14. No schemaVersion, no migration framework, no downgrade guard; testers on different builds will corrupt or misread each other's files. Add a version, ignore-and-warn when newer.",
+      "area": "log",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-097",
+      "title": "Hide plugin install-from-GitHub in the tester build",
+      "notes": "S-09. Community plugins run inside the game page with access to the game session; the preview scan is heuristic. Keep behind devMode for testers.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-041",
+      "title": "Local control API: per-launch token; trim /status for the game origin",
+      "notes": "S-03. Any local process or other Windows user can call the control API (no Origin accepted); game-origin scripts can read recentLog. Random token for control POSTs, drop recentLog from the cross-origin view.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-042",
+      "title": "Fix Quit (keep service running) menu label or behaviour",
+      "notes": "C-10. When the tray started the supervisor (ownsSupervisor) quit() stops it anyway.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-017",
+      "title": "Redact watcher.log too (raw text today)",
+      "notes": "S-05. panel-resize-watcher.js log() appends raw text to watcher.log; the structured Logs path is redacted. Pair with log-002 rotation.",
+      "area": "log",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-043",
+      "title": "Embed exe metadata in CI builds; submit installer to Defender portal",
+      "notes": "I-01. signAndEditExecutable is false (no version/company info). The CI runner can enable it. Submit each tester build for false-positive review before sending.",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-098",
+      "title": "Test matrix: DPI 100-200%, 1366x768, ultrawide, multi-monitor, fullscreen",
+      "notes": "C-02. Panels may land off-screen; add an everything-is-off-screen reset reachable from the tray; check re-clamp on window resize.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "distribution",
+        "test"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-099",
+      "title": "Fresh-account run: every plugin on an empty new account",
+      "notes": "C-04. Empty bank, quests, clan, queue, free-to-play limits; check Logs/Errors (related: feat-027).",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "distribution",
+        "test"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "log-018",
+      "title": "Low-end PC test and published cost numbers; 8 h soak test",
+      "notes": "C-03, C-13. Measure idle and raid on the weakest machine, with eco mode; watch JS heap and DOM nodes over 8 h with plugin restarts. Lower tester log caps (maxTotalMB).",
+      "area": "log",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "distribution",
+        "test"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-100",
+      "title": "Audit game-text selectors and English-only matches",
+      "notes": "C-07. Avg DPS row text, item-name target search, chat categories. Check whether the game has a UI language setting.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "distribution",
+        "test"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-101",
+      "title": "Gear-calc localStorage overwrite: avoid or restore",
+      "notes": "S-11. game-bridge calcRefresh writes the game's own calculator snapshot key and loads a hidden iframe; restore the previous value or use the local gearDps maths.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "distribution"
+      ],
+      "source": "subagent: distribution risks",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISTRIBUTION-RISKS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-102",
+      "title": "Barter card: Reroll, Buy, Sell, Charm mirror buttons",
+      "notes": "User-initiated forwards to the game's own buttons; docs/PANEL-PARITY.md",
+      "area": "feat",
+      "status": "done",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-103",
+      "title": "Item tiers on Barter, Inventory, Equipment cards",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P1",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-104",
+      "title": "Card extras: skills total, diary title, equipment switches, friend click",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-105",
+      "title": "Info Bar modules: Offline hours and World",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-106",
+      "title": "Diary card: expand a bank to see its steps",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-107",
+      "title": "Friends card: click clan members and self, world tag",
+      "notes": "Chat parts (world tag, links, Tab, rules dialog) shipped via feat-108/015/016; Friends card parts still open.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-108",
+      "title": "Chat: Tab cycles send channel, world tag, links, rules dialog",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-109",
+      "title": "Queue: hover route preview on the World Map",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-110",
+      "title": "Equipment card: loadout rename and weapon line",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-111",
+      "title": "Info HUD extras: holiday boost, free-to-play, raid lobby blurb",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-112",
+      "title": "Invite tray content as an alert; tier badge on potion module icons",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "parity"
+      ],
+      "source": "subagent: panel parity",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-044",
+      "title": "Packaging allow-list, hollow config templates, build-time package guard",
+      "notes": "Allow-list build.files; *.example.json hollowed; first-run config creation; verify-package guard + self-test; publish-release scan; docs/PACKAGING.md",
+      "area": "repo",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "packaging",
+        "distribution"
+      ],
+      "source": "subagent: packaging",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-113",
+      "title": "Relay: Luck XP removed from relay lines, digest and tests",
+      "notes": "Only the player's own New Collection lines carried '+N Luck XP'; stripped at the single entry point, none in any output. The Luck skill's level-ups stay.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-114",
+      "title": "Relay: one normaliser turns every chat line into a typed event",
+      "notes": "overlay/relay-events.js: own and other wordings give the same {type,item,source,...}; live text, digest and event key come from it. Fixes raw 'rare raid drop' posts, doubled quest text, pet text, own-only Chaos/turned-up lines.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-115",
+      "title": "Digest: bucket by item, Fortress loot is an Unlock for everyone",
+      "notes": "items.json type unlock decides; was filed by the wording (others get 'unlocked:' lines, the player never does). Old digest-state.json is re-filed on load; repeated drops fold into x3.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-116",
+      "title": "Live relay: drop, unlock and collection lines become one post",
+      "notes": "2123 live posts in the real logs became 1491 events (-30 percent), none lost; role pings from both categories on a merged event.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-117",
+      "title": "Relay: duplicate-instance protection (leader lease per webhook)",
+      "notes": "Webhooks only: one lease message per webhook (create, GET, PATCH), id found through a [sl:ID] suffix in the webhook name, own-clock TTL, self-fencing, takeover with jitter and read-back, failover replay without repeats. Verified on a private test webhook.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "L",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-118",
+      "title": "Relay: digest, clan rank and raid summaries respect the lease",
+      "notes": "Leader-only digest (followers empty their copy when the leader posted), leader-only hiscores post, raid summaries use once-only claims in the lease message.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-119",
+      "title": "Plugins tab: Several ScapeLite Users On This Channel (auto/always/never)",
+      "notes": "relayRole, default Automatic; Always post = no lease and no extra message for a solo user.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-120",
+      "title": "Tests: npm run test:relay (typed-event corpus, 5 simulated instances, fake Discord)",
+      "notes": "113 real anonymised lines, leader crash, restart, failing GET, Discord down, skewed clocks, simultaneous start, claims.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "2026-10-27",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-121",
+      "title": "Live relay: fold runs of level-ups (Mine 40 to 44) and quiet hours",
+      "notes": "Level-ups are 58 percent of live posts in the real logs (861 of 1491).",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [
+        "docs/DISCORD-RELAY-AUDIT.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-122",
+      "title": "Digest switch: show Fortress loot under Drops instead of Unlocks",
+      "notes": "Today the item decides (items.json unlock type); the clan may prefer Fortress loot as drops.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "digest"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-123",
+      "title": "Dashboard: show the relay lease role per channel (leader/follower/unsure)",
+      "notes": "STATUS.relayLease already carries it; needs a supervisor restart and a card.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "dashboard"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-124",
+      "title": "Relay lease: reset button and a 'who is the relay' line in the Plugins tab",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-125",
+      "title": "Collect global cape/pet announcement lines into the relay corpus",
+      "notes": "Global cape lines never appeared in the logs; their wording is untested.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay audit",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-045",
+      "title": "Packaged-app smoke test: start the unpacked app's supervisor against a temp SCAPELITE_HOME on a spare port and check first-run files and /status, in CI before the installer",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "packaging",
+        "testing"
+      ],
+      "source": "subagent: packaging",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-046",
+      "title": "Pre-commit/CI job that runs 'verify-package --source' on every push to the private repo, not only at publish time",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "packaging"
+      ],
+      "source": "subagent: packaging",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-047",
+      "title": "Turn asar back on (asarUnpack for the scripts read by path) now that the guard can read an asar; fewer loose files for Defender",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "packaging",
+        "distribution"
+      ],
+      "source": "subagent: packaging",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-048",
+      "title": "Per-user config import/export (one zip without webhooks) so a tester or the owner can move settings between a checkout and an installed copy",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "packaging",
+        "distribution"
+      ],
+      "source": "subagent: packaging",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-049",
+      "title": "Drop express from dependencies into devDependencies (only the planner uses it) and re-check the installer for stray third-party licences",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "packaging"
+      ],
+      "source": "subagent: packaging",
+      "created": "2026-10-27",
+      "updated": "2026-10-27",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-126",
+      "title": "Watchdog: restart dead supervisor/watcher with now, +5 min, then 10 min policy",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "watchdog",
+        "reliability"
+      ],
+      "source": "claude",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "repo-050",
+      "title": "Windows Scheduled Task at log-on/every 5 min that starts the tray app if it is gone (closes the 'tray is gone' gap; persistence outside the repo, needs user ok)",
+      "notes": "",
+      "area": "repo",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "watchdog",
+        "reliability"
+      ],
+      "source": "subagent: watchdog",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-127",
+      "title": "Push alert (Pushover) when a part stays down 15 min or the relay posted nothing for hours while the game runs",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "watchdog",
+        "reliability"
+      ],
+      "source": "subagent: watchdog",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-128",
+      "title": "Relay silence detector: warn on dashboard/log when game is running but relay posted nothing for N hours",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "watchdog"
+      ],
+      "source": "subagent: watchdog",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-129",
+      "title": "ScapeLite looks: Full Vanilla, Combination, ScapeLite only, with a first-run chooser",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "onboarding",
+        "ui"
+      ],
+      "source": "claude",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "Pick how much of ScapeLite you see: the game as it is, the Info Bar next to the game's panels, or ScapeLite only. Asked once on a new install, changeable in Settings > Plugins.",
+      "reason": ""
+    },
+    {
+      "id": "feat-130",
+      "title": "Fix: Info Bar 'Open/Hide the game's original panel' follows the panel's real visibility",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "bug",
+        "info-bar"
+      ],
+      "source": "claude",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-131",
+      "title": "Menu dock: own the vertical menu setting and CSS only after panel-resize exposes the menu geometry as an API",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "ui",
+        "cleanup"
+      ],
+      "source": "subagent: onboarding",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-132",
+      "title": "Relay v2: no lease message in channels, optional private lease webhook, Own events only, version signalling, clean-up of the v1 lease",
+      "notes": "docs/DISCORD-RELAY-AUDIT.md part 8; overlay/relay-lease.js, relay-legacy-cleanup.js; npm run test:relay (39 tests).",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "claude",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-133",
+      "title": "Chat commands MVP: /sl prefix, page command registry, local reply lines (help, version, echo)",
+      "notes": "New overlay/chat-commands.js (__ccCmd) + one hook in chat-plus.js Enter handler + __ccChat.local(). Replies are local-only lines, never persisted or relayed. See docs/CHAT-COMMANDS.md sections 1.2, 1.5, 4.2 step 1.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "chat",
+        "commands"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-134",
+      "title": "Chat commands: capture-phase guard on the game chat input so /sl lines never reach the server",
+      "notes": "window capture keydown on .chat-input, swallow only ^/(sl|scapelite), via __ccLife scope. Game has no client slash commands (verified in the bundle). Near-miss hold for mistyped prefix. See section 1.3-1.4.\nNear-miss guard (/s1 -> hold for a second Enter) is NOT built; only the exact-prefix capture guard is.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "chat",
+        "commands"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-135",
+      "title": "Chat commands: watcher mailbox (page queue polled on the 3 s loop, static allowlist, replies back to the page)",
+      "notes": "Same pattern as __ccReloadRequest/__ccUpdateReq. No new port/HTTP; validated args, idempotent ids, no secrets. Optional later: Runtime.addBinding for instant delivery. See section 2.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "chat",
+        "commands",
+        "watcher"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-136",
+      "title": "Chat commands: status, relay status, plugins, plugin on/off, refresh",
+      "notes": "Read-only/ctl MVP commands reusing STATUS, setPluginEnabled and __ccReloadRequest.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "chat",
+        "commands"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-137",
+      "title": "Chat commands: digest preview and hiscores check (poll now without posting)",
+      "notes": "Needs pollClanHiscores post:false option and digestPreview() (pure buildDigestBlocks+chunkBlocks).\nBuilt 2026-10-28; hiscores check verified only with fakes: live the game did not answer clan_hiscores_my_rank (the scheduled poll timed out the same way at 11:57 and 12:09), so the success path is not seen live.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "chat",
+        "commands",
+        "discord"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-138",
+      "title": "Chat commands: manual post commands (board repost, digest post, hiscores post, raid retry, discord test) with --yes and anti-spam gates",
+      "notes": "Must keep relayGate, per-command 60 s gap, hourly cap, preview-first, log line per manual trigger. Add after the MVP has been used.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "chat",
+        "commands",
+        "discord"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-139",
+      "title": "Chat commands: autocomplete popup and ScapeLite command palette (hotkey)",
+      "notes": "UI.menu popup in chat-plus for /sl words (Tab only while line starts with /sl); palette works when chat-plus is off and cannot leak to chat.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "chat",
+        "commands",
+        "ui"
+      ],
+      "source": "subagent: chat-commands",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [
+        "docs/CHAT-COMMANDS.md"
+      ],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-140",
+      "title": "Relay setup string: one paste carries relay URL, lease webhook URL and role (clan leader hands out a single code)",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay v2",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-141",
+      "title": "Dashboard: Discord health card shows lease webhook status, current leader name and the 'a clanmate runs a newer version' notice",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "dashboard"
+      ],
+      "source": "subagent: relay v2",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-142",
+      "title": "Relay: roster of Own-events-only members so a full relayer skips the players who post for themselves (mixing both modes without duplicates)",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "discord",
+        "relay"
+      ],
+      "source": "subagent: relay v2",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-143",
+      "title": "Cards: one shared refresh layer, card test harness, cards split out of ui-bar.js",
+      "notes": "card-sync.js (observer per source, follow window, one redraw policy), overlay/cards/*.js, npm run test:cards, npm run lint:forwards, docs/ARCHITECTURE-CARDS.md",
+      "area": "feat",
+      "status": "done",
+      "priority": "P1",
+      "effort": "L",
+      "tags": [
+        "cards",
+        "test",
+        "refactor"
+      ],
+      "source": "claude",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "0.4.0",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-144",
+      "title": "Bridge onChange('queue'): replace the queue's 1 s data poll with an event",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "cards",
+        "subagent"
+      ],
+      "source": "subagent: cards-layer",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-145",
+      "title": "Info Bar non-card modules (Potions, Alerts, Panel buttons) on the card layer instead of the 1 s bar timer",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "cards",
+        "subagent"
+      ],
+      "source": "subagent: cards-layer",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-146",
+      "title": "Queue: replace watchSlot (80 ms poll) and renderHold with the card layer's follow window",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "cards",
+        "subagent"
+      ],
+      "source": "subagent: cards-layer",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-147",
+      "title": "Forwarding helper: route the 82 unmarked .click() sites through one marked helper (fwd-ok) and ratchet the baseline to 0",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "cards",
+        "subagent"
+      ],
+      "source": "subagent: cards-layer",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-148",
+      "title": "Hidden-panel soak test: observe Barter, Quests, Diary and Skills over a long play session and add fresh() if one goes stale",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "M",
+      "tags": [
+        "cards",
+        "subagent"
+      ],
+      "source": "subagent: cards-layer",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-149",
+      "title": "Look chooser is step 1 of the welcome tour; the tour adapts to the chosen look",
+      "notes": "presets.js picker() embedded in welcome-tour.js step 1; step 2 'Your look' and the UI tour follow the look (Full Vanilla skips the Info bar step, no menu-button text). Separate chooser window kept as fallback when the tour is off. npm run test:onboarding (18 checks, fake game shell). Not seen on an empty browser profile in the real game.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "onboarding",
+        "ui"
+      ],
+      "source": "claude",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "2026-10-28",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-150",
+      "title": "Chat commands: near-miss guard (hold /s1 /ls /scapelte for a second Enter instead of sending)",
+      "notes": "Designed in docs/CHAT-COMMANDS.md 1.4, not built in the MVP. Setting chatCmdNearMiss, default on.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "chat",
+        "commands"
+      ],
+      "source": "subagent: chat commands MVP",
+      "created": "2026-10-28",
+      "updated": "2026-10-28",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-022",
+      "title": "One-stop Universal Advisor: what to do, how and where for the most effective path",
+      "notes": "User vision 2026-10-29: one complete panel that says exactly what to do, how, and where. Builds on adv-002 (diary + credits). Spec in docs/UNIVERSAL-ADVISOR.md.\nPhase 1 shipped (c68b1a7): Diary and Credits panel + docs/UNIVERSAL-ADVISOR.md. Next: phase 2 advisor-core (action record, progress-hours, credit price, ranking). Decisions for the user are in section 11 of the doc.\nPhases 2-4 shipped (9db9d13): advisor-core, Advisor panel, lever + tree adapters, Info Bar module Next action (off by default). Lever advice follows docs/ROLL-MODEL-CALIBRATION.md (rate only, 1% floor, no node levers). Defaults in doc section 11 are provisional, user to confirm. Open: phase 5 free-pip placement + offered-options recorder, phase 6 learning loop.\nOwner correction 2026-10-29: the diary is passive, never advised. Panel reworked to Locations and Free Pips (d9a8bac); Advisor suggests free-pip location-lever placements (walking, class B; paid class C), no diary tier-ups.",
+      "area": "adv",
+      "status": "doing",
+      "priority": "P1",
+      "effort": "L",
+      "tags": [
+        "advisor",
+        "diary"
+      ],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-023",
+      "title": "Analyse lucky slay task tooltips against real outcomes",
+      "notes": "",
+      "area": "adv",
+      "status": "doing",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "model",
+        "slay"
+      ],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-151",
+      "title": "Nice default layout preset for all panels (size, position)",
+      "notes": "Ships as an opt-in named layout first; user approves before it becomes the default for new profiles.\nShipped opt-in as 'ScapeLite default' (Layout Editor + Settings > Panels); see docs/DEFAULT-LAYOUT.md. Waiting for the user to look at docs/default-layout-preview.html.",
+      "area": "feat",
+      "status": "doing",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "layout",
+        "onboarding"
+      ],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-024",
+      "title": "Drop Luck: Holiday Bat is guaranteed, not counted as lucky",
+      "notes": "",
+      "area": "adv",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "2026-10-29",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-025",
+      "title": "Slay XP per kill is about 1.5x the model since 2026-10-22 (all channels, lucky and normal)",
+      "notes": "Seen in cc-task-log: Slay, Spirit, chosen, Life and second skill all pay ~1.5x base x (1+bonus) per counted kill from 10-22 on (1.0 before). Skilling is exact. See docs/LUCKY-SLAY-TOOLTIPS.md. Candidate for adv-003.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "model",
+        "slay"
+      ],
+      "source": "subagent: lucky slay",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-026",
+      "title": "Luck XP of a lucky slay task is sometimes lower than Slay + chosen (1 of 9)",
+      "notes": "106 Dire Orc on 2026-10-23: Luck XP equalled the chosen skill only. Cause unknown; 8 of 9 are within 6%.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "slay"
+      ],
+      "source": "subagent: lucky slay",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-027",
+      "title": "Layout Editor: add the Diary and Credits panel to the Show all panels list; Design Lab names and a screenshot for it; sync website/catalog.json",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "diary",
+        "layout"
+      ],
+      "source": "subagent: universal advisor",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-028",
+      "title": "Diary and Credits: free pip placement hints (away from far nodes, toward high-rate nodes) once the roll model is calibrated",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "diary",
+        "levers"
+      ],
+      "source": "subagent: universal advisor",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-029",
+      "title": "Route Advisor: fixed overhead of about 60 s per task in the time model",
+      "notes": "Task log and history gaps both show about 45-80 s per task outside the model (walked legs 1.32x distance/speed; same-node legs 18 s). Ranking hardly moves, shown XP/h drops a few percent. Setting with 60 s default or learned from the log. See docs/ROLL-MODEL-CALIBRATION.md section 6 and 9.\nDone 2026-10-29: TASK_OVERHEAD_S = 60 in route-advisor.js (commit 76ddf24), owner decision.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "model",
+        "route"
+      ],
+      "source": "subagent: roll calibration",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-030",
+      "title": "Record the task options that are offered (not only the chosen one) to test the roll directly",
+      "notes": "Display-only recorder of the 3 options per queue slot (skill, activity, node, lucky, quest) when first seen. After about 500 options: skill/node shares, lucky rate, independence. Chosen tasks cannot show the roll (player picks lucky and near tasks). See docs/ROLL-MODEL-CALIBRATION.md section 9.\nBuilt 2026-10-29: overlay/option-log.js + option-log-store.js, scripts/option-log-report.js, npm run test:option-log. Needs about 300 offered options per test before the report says anything. See docs/OPTION-LOG.md.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "model",
+        "logging"
+      ],
+      "source": "subagent: roll calibration",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-031",
+      "title": "Slay tooltips and ETAs: learn the per-task factor (about 1.5x since 2026-10-22), keep rates unchanged",
+      "notes": "XP/h of slay is right (median 1.07) but XP and time per task are about 1.5x the shown numbers since 2026-10-22 11:00 UTC. Learn the factor from the last 20 slay tasks and apply to totals/ETAs only. Cause unknown. See docs/ROLL-MODEL-CALIBRATION.md section 7 (adv-025).\nBuilt 2026-10-29: task-log.js slayK (learned from the last 15 slay tasks, 1.5 fallback), used by ui-queue.js and ui-bar.js for slay totals/ETAs only. npm run test:slay-correction. Not covered: hover-info Luck block, clan board ETA.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "S",
+      "tags": [
+        "slay",
+        "model"
+      ],
+      "source": "subagent: roll calibration",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-032",
+      "title": "Watch Vigor and Farm: both land below the roll model in the history and the longer task log",
+      "notes": "Vigor 19 vs 29.9 expected (-2.2 sigma), Farm 7 vs 15.3 (-2.2); Farm 18 vs 35 over 462 tasks. Lever base best fit 1.17 (95% 1.08-1.26). Re-run scripts/roll-calibration.js in 1-2 weeks.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "model"
+      ],
+      "source": "subagent: roll calibration",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-152",
+      "title": "Active Potions: second hover card per food and potion with exact numbers",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "info-bar",
+        "potions"
+      ],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "2026-10-29",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-153",
+      "title": "Barter card and button grey out when no charges are left",
+      "notes": "",
+      "area": "feat",
+      "status": "done",
+      "priority": "P3",
+      "effort": "S",
+      "tags": [
+        "cards",
+        "barter"
+      ],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "2026-10-29",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-154",
+      "title": "Drop Luck Tracker overhaul: Delve tab with Chaos loot, Unlocks filters and search, chance graph per drop, Luck tab folded in",
+      "notes": "Commit 05226d9. Chaos/Fortress get no per-run luck rating: the game publishes no per-kill chance for them.",
+      "area": "feat",
+      "status": "done",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "drops",
+        "ui"
+      ],
+      "source": "user",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "2026-10-29",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-033",
+      "title": "Universal Advisor: record the options the queue offers (skill, activity, node, lucky, slay mob) so the roll chance and the lucky chance can be tested",
+      "notes": "From docs/ROLL-MODEL-CALIBRATION.md recommendation 4; display-only recorder; needed for any node-lever or lucky-chance advice.",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "advisor",
+        "model"
+      ],
+      "source": "subagent: universal advisor",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-034",
+      "title": "Advisor: Design Lab specimens and final names for Advisor Panel, Action Card, Sureness Chip; add the panel to the Layout Editor Show all panels list",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "advisor",
+        "naming"
+      ],
+      "source": "subagent: universal advisor",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-155",
+      "title": "Offer the ScapeLite default layout as the layout of a new profile",
+      "notes": "After the user approves it: new installs start on it instead of offering it; needs the look chooser to run first.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "subagent: default layout",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-156",
+      "title": "Re-fit the ScapeLite default layout when the window size changes",
+      "notes": "Today the layout is built for the window size at the moment of pressing the button; moving to another size needs another press.",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "subagent: default layout",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "feat-157",
+      "title": "Layout Editor: preview thumbnail for each saved layout",
+      "notes": "",
+      "area": "feat",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [],
+      "source": "subagent: default layout",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-035",
+      "title": "Measure the real walking saved after location levers are set (task log walking seconds before and after) and replace the half-difference haircut with the measured number",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "levers",
+        "model"
+      ],
+      "source": "subagent: universal advisor",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-036",
+      "title": "Locations panel: node-to-node distances (not only node-to-bank) from the Route Advisor hub path data, and a map hover showing good and bad locations",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "levers",
+        "map"
+      ],
+      "source": "subagent: universal advisor",
+      "created": "2026-10-29",
+      "updated": "2026-10-29",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    }
+  ]
+}

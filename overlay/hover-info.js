@@ -477,8 +477,10 @@
       const scrollRow = option.querySelector('.icon-scroll-row[data-skill][data-activity-id]');
       let xpLine = tooltip.querySelector('.cc-hover-xp');
       let goldLine = tooltip.querySelector('.cc-hover-gold');
+      let luckLine = tooltip.querySelector('.cc-hover-xp-luck');
 
       if (!enabled || !scrollRow) {
+        if (luckLine) luckLine.remove();
         if (xpLine) xpLine.remove();
         if (goldLine) goldLine.remove();
         continue;
@@ -506,6 +508,7 @@
       const currentXP = parseCurrentXP(skill);
 
       if (!Number.isFinite(qty) || qty <= 0 || successXP == null || currentXP == null) {
+        if (luckLine) luckLine.remove();
         if (xpLine) xpLine.remove();
         if (goldLine) goldLine.remove();
         continue;
@@ -517,7 +520,9 @@
       // Lucky tasks: 2x XP per action (and 2x rewards), no failed actions -- the game marks them with `.lucky`.
       const lm = option.classList.contains('lucky') ? 2 : 1;
       if (lm > 1) leftNote += ' · lucky ×2';
-      const totalXp = successXP * qty * lm;
+      // the game pays base x (1 + the skill's XP bonus) per item (the bridge knows the bonus); the fail share is small and left out
+      let xb = 1; try { const BR = window.__ccBridge, ax = BR && BR.actXp ? BR.actXp(skill, activityId) : null; if (ax && Number.isFinite(ax.bonus)) xb = 1 + ax.bonus; } catch (e) { /* no bridge: base XP only */ }
+      const totalXp = successXP * qty * lm * xb;
       const newXp = currentXP + totalXp;
       if (!xpLine) {
         xpLine = document.createElement('div');
@@ -544,6 +549,13 @@
       }
       ensureIconStyle();
       renderXpBlock(xpLine, skill, { currentXP, newXp, totalXp, prog, tsec, leftNote });
+      // A Lucky task also pays Luck XP equal to the (doubled) skill XP: show that Luck progress under the skill's own.
+      const luckNow = lm > 1 ? parseCurrentXP('luck') : null;
+      if (lm > 1 && luckNow != null && skill !== 'luck') {
+        if (!luckLine) { luckLine = document.createElement('div'); luckLine.className = 'tt-line cc-hover-xp-luck'; luckLine.style.cssText = 'display:block;margin-top:4px;min-width:200px'; xpLine.after(luckLine); }
+        const luckNew = luckNow + totalXp;
+        renderXpBlock(luckLine, 'luck', { currentXP: luckNow, newXp: luckNew, totalXp, prog: settingEnabled('hoverTaskXpPercent', true) ? calcProg('luck', luckNow, luckNew) : null, tsec, leftNote: ' · lucky bonus' });
+      } else if (luckLine) luckLine.remove();
 
       // Expected coin reward -- ONLY for activities whose loot table really
       // pays gold (Plunder, Bard; see __CC_ACTIVITY_GOLD in the watcher):
@@ -688,7 +700,7 @@
 
   function updateQuestRewards() {
     const enabled = settingEnabled('hoverQuestRewards', true);
-    const slots = document.querySelectorAll('.quests-panel .quest-slot');
+    const slots = window.__ccDom.qa('.quests-panel .quest-slot');
     slots.forEach((slot) => {
       let tooltip = slot.querySelector('.cc-hover-quest-tooltip');
 
@@ -842,8 +854,17 @@
     for (const e of entries) {
       const pos = e.nodeId ? nodesById[e.nodeId] : null;
       if (!pos) { clearDistanceColor(e.option); continue; }
+      // Colour by the number the game prints (path distance from the previous stop in the queue); teleport hops are purple.
+      // Falls back to the straight-line distance from you when the game's number is not available.
+      let hop = null;
+      try {
+        const sr = e.option.querySelector('.icon-scroll-row');
+        const slot = sr ? parseInt(sr.getAttribute('data-slot-index'), 10) : NaN;
+        const mob = sr ? sr.getAttribute('data-mob-id') : null;
+        if (Number.isFinite(slot) && slot >= 0 && window.__ccBridge && window.__ccBridge.hop) hop = window.__ccBridge.hop(slot, mob || e.nodeId, !!mob);
+      } catch (er) { hop = null; }
       const dx = pos.x - myPos.x, dy = pos.y - myPos.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+      const dist = hop ? hop.d : Math.sqrt(dx * dx + dy * dy);
       // Fixed absolute scale: 0 -> green (hue 120), the true farthest-
       // possible distance between any two real nodes -> red (hue 0).
       // Originally normalized to min/max of the CURRENT queue instead --
@@ -852,7 +873,7 @@
       // because a different set of alternatives happened to be offered.
       const t = Math.min(1, dist / maxNodeDistance);
       const hue = (1 - t) * 120;
-      const color = 'hsl(' + Math.round(hue) + ', 70%, 45%)';
+      const color = hop && hop.tp ? 'hsl(280, 65%, 58%)' : 'hsl(' + Math.round(hue) + ', 70%, 45%)';
       e.option.classList.add('cc-hover-dist-colored');
       e.option.style.outline = '3px solid ' + color;
       e.option.style.outlineOffset = '-2px';
@@ -994,7 +1015,7 @@
   }
   function updateSkillPercents() {
     ensureXpTable();
-    document.querySelectorAll('.skill-cell[data-skill-id]').forEach(updateSkillCellPct);
+    window.__ccDom.qa('.skill-cell[data-skill-id]').forEach(updateSkillCellPct);
   }
   const onSkillHover = (e) => {
     const cell = e.target && e.target.closest ? e.target.closest('.skill-cell[data-skill-id]') : null;
@@ -1010,7 +1031,7 @@
   skqStyle.id = 'cc-hover-skq-style';
   skqStyle.textContent = `
 .cc-skq-fill{position:absolute;top:0;bottom:0;pointer-events:none;background:#7dff94;box-shadow:0 0 4px rgba(125,255,148,.7)}
-.cc-skq-up{margin:2px 0 3px;padding:2px 6px;border-radius:4px;background:rgba(255,210,74,.14);border:1px solid rgba(255,210,74,.55);color:#ffd24a;font-weight:700}
+.cc-skq-up{margin:2px 0 3px;padding:2px 6px;border-radius:4px;background:rgba(255,210,74,.14);border:1px solid rgba(255,210,74,.55);color:var(--cc-accent,#ffd24a);font-weight:700}
 .cc-skq{display:block;min-width:200px}
 .cc-skq .cc-skq-h{color:#8fe39a;font-weight:600}
 `;
@@ -1021,7 +1042,7 @@
       if (!bo) return;
       const sk = {};
       if (bo.combat) { const c = bo.combat, a = (k, v) => { if (k && v > 0) sk[k] = (sk[k] || 0) + v; }; a('slay', c.slay); a('spirit', c.spirit); a(c.chosenSkill, c.chosen); a('life', c.life); a(c.secSkill, c.sec); }
-      else if (bo.skill && Number.isFinite(bo.totalXp)) sk[bo.skill] = bo.totalXp * (1 + (bo.xpBonus || 0));
+      else if (bo.skill && Number.isFinite(bo.totalXp)) sk[bo.skill] = bo.totalXp;   // the bridge's XP already includes the skill's bonus and the per-item gather count
       // Lucky tasks also pay Luck XP equal to the (doubled) skill XP; slay: slay XP + the chosen combat skill's XP (measured live, 2026-10-12).
       if (bo.lucky) { const l = bo.combat ? (bo.combat.slay || 0) + (bo.combat.chosen || 0) : sk[bo.skill] || 0; if (l > 0) sk.luck = (sk.luck || 0) + l; }
       for (const k in sk) { xp[k] = (xp[k] || 0) + sk[k]; n[k] = (n[k] || 0) + 1; }
@@ -1034,7 +1055,7 @@
   const gradeCol = (pct) => 'hsl(' + Math.round(Math.max(0, Math.min(100, pct)) * 1.2) + ',80%,' + (pct < 50 ? 46 : 42) + '%)';
   function gradeSkillBars() {
     const on = settingEnabled('hoverSkillGradient', true);
-    document.querySelectorAll('.skill-cell[data-skill-id]').forEach((cell) => {
+    window.__ccDom.qa('.skill-cell[data-skill-id]').forEach((cell) => {
       [cell.querySelector('.skill-progress-fill'), cell.querySelector('.tt-bar-fill')].forEach((f) => {
         if (!f) return;
         if (!on) { if (f.dataset.ccG) { f.style.removeProperty('background'); delete f.dataset.ccG; } return; }
@@ -1046,7 +1067,7 @@
     });
   }
   function updateSkillQueued() {
-    const cells = document.querySelectorAll('.skill-cell[data-skill-id]');
+    const cells = window.__ccDom.qa('.skill-cell[data-skill-id]');
     const enabled = settingEnabled('hoverSkillQueued', true) && xpForLevel;
     let bridge = null;
     try { if (enabled && window.__ccBridge && window.__ccBridge.ok()) bridge = window.__ccBridge.project(); } catch (e) { bridge = null; }
@@ -1118,7 +1139,7 @@
 .cc-xb-head b{color:#fff;font-weight:700}
 .cc-xb-dim{color:#9a9aa6;font-size:.88em}
 .cc-xb-lv{margin-top:2px;color:#cfd3dc;font-weight:600}
-.cc-xb-lv.up{color:#ffd24a}
+.cc-xb-lv.up{color:var(--cc-accent,#ffd24a)}
 .cc-xb{position:relative;height:9px;margin:4px 0 3px;border-radius:5px;background:#262633;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
 .cc-xb i{position:absolute;top:0;bottom:0;display:block}
 .cc-xb-cur{left:0;background:#3a7bd5}
@@ -1171,8 +1192,16 @@
         }
       }
       const c = info && info.kind === 'slay' ? info.combat : null;
-      if (!c) { if (box) box.remove(); continue; }
+      let luckBox = tooltip.querySelector('.cc-hover-slayluck');
+      if (!c) { if (box) box.remove(); if (luckBox) luckBox.remove(); continue; }
       const tsec = Number.isFinite(c.timeSec) && c.timeSec > 0 ? c.timeSec : info.timeSec;
+      // A Lucky slay task also pays Luck XP = slay XP + the chosen combat skill's XP (measured live, 2026-10-12): show its progress under the box.
+      const luckGain = info.lucky ? (c.slay || 0) + (c.chosen || 0) : 0, luckNow = luckGain > 0 ? parseCurrentXP('luck') : null;
+      if (luckNow != null) {
+        if (!luckBox) { luckBox = document.createElement('div'); luckBox.className = 'tt-line cc-hover-slayluck'; luckBox.style.cssText = 'display:block;margin-top:4px;min-width:200px'; tooltip.appendChild(luckBox); }
+        const luckNew = luckNow + luckGain;
+        renderXpBlock(luckBox, 'luck', { currentXP: luckNow, newXp: luckNew, totalXp: luckGain, prog: settingEnabled('hoverTaskXpPercent', true) ? calcProg('luck', luckNow, luckNew) : null, tsec, leftNote: ' · lucky bonus' });
+      } else if (luckBox) luckBox.remove();
       const chips = [['slay', c.slay], ['spirit', c.spirit]];
       if (c.chosenSkill) chips.push([c.chosenSkill, c.chosen]);
       chips.push(['life', c.life], [c.secSkill, c.sec]);
@@ -1206,76 +1235,152 @@
     }
   }
 
-  // --- Feature: show / hide the queue's "NEW TASKS" insert bar ---------------
-  // The gold "NEW TASKS" line in the Tasks panel (.uq-insert, drag zone
-  // .uq-insert-grab) sets where newly rolled tasks land, and is easy to grab by
-  // accident when dragging the bottom task. This adds a small button beside the
-  // game's own "Collapse to icons" / "Pin popouts" buttons that hides the bar and
-  // makes it ungrabbable (visibility + pointer-events only; the game's chosen
-  // insert position is untouched). State persists in localStorage.
-  const INSERT_LS = 'cc-uq-insert-hidden';
-  const INSERT_STYLE_ID = 'cc-hover-insert-style';
-  let insertHidden = false;
-  try { insertHidden = localStorage.getItem(INSERT_LS) === '1'; } catch (e) {}
-  function ensureInsertStyle() {
-    if (document.getElementById(INSERT_STYLE_ID) || !document.head) return;
+  // (The NEW TASKS insert bar and its show / hide switch now live in our own Task queue panel, overlay/ui-queue.js, setting uiQueueInsertBar.)
+
+  // --- Feature: lamp preview in item tooltips -------------------------------------
+  // Hovering an XP lamp, a combat lamp or a gem (anything the game's Constants.isCombatXpItem accepts) adds a table to the game's own item
+  // tooltip (bank, inventory, anywhere the game draws `.tooltip > .tt-name`): per skill the level now, what 1 lamp (and the whole stack) turns
+  // it into, colour coded, and the best pick. The numbers are __ccBridge.lampPreview() (pure read; see game-bridge.js for the formula).
+  // Nothing is clicked or sent: the table is rebuilt on mouseover and only text/DOM is added to the tooltip.
+  const LAMP_STYLE_ID = 'cc-hover-lamp-style';
+  function ensureLampStyle() {
+    if (document.getElementById(LAMP_STYLE_ID) || !document.head) return;
     const st = document.createElement('style');
-    st.id = INSERT_STYLE_ID;
+    st.id = LAMP_STYLE_ID;
     st.textContent = `
-body.cc-uq-insert-hidden .uq-insert{visibility:hidden!important;pointer-events:none!important}
-body.cc-uq-insert-hidden .uq-insert .uq-insert-grab{pointer-events:none!important;cursor:default!important}
-.cc-insert-btn{position:absolute;width:20px;height:20px;display:flex;align-items:center;justify-content:center;padding:0;
-  background:var(--bg-cell);border:1px solid var(--border-primary);border-radius:4px;color:var(--text-muted);cursor:pointer;opacity:.7;z-index:61}
-.cc-insert-btn:hover{opacity:1;background:var(--bg-hover);color:var(--text-light)}
-.cc-insert-btn.active{opacity:1;color:var(--text-gold);border-color:var(--border-secondary);background:var(--bg-hover)}
-.cc-insert-btn svg{width:13px;height:13px;display:block;fill:currentColor}`;
+.tooltip .tt-line.cc-lamp,.cc-lamp{display:block;min-width:300px;margin-top:6px;padding-top:6px;border-top:1px solid var(--cc-border,#2e2e42);font-size:17px}
+.cc-lamp-h{display:flex;justify-content:space-between;gap:10px;color:var(--cc-text-dim,#8f8fa4);margin-bottom:2px}
+.cc-lamp-h b{color:var(--cc-text,#dcdce8);font-weight:600}
+.cc-lamp-t{display:grid;gap:1px 8px;align-items:center;white-space:nowrap}
+.cc-lamp-t>span{min-width:0}
+.cc-lamp-t .c0{display:flex;align-items:center;color:var(--cc-text,#dcdce8)}
+.cc-lamp-t .c0 .cc-ico{width:14px;height:14px;margin-right:4px;vertical-align:0}
+.cc-lamp-t .hd{color:var(--cc-text-faint,#7c7c93);font-size:14px;text-transform:uppercase;letter-spacing:.03em}
+.cc-lamp-t .now{color:var(--cc-text-dim,#8f8fa4)}
+.cc-lamp-t .up{color:var(--cc-good,#5fe06d);font-weight:700}
+.cc-lamp-t .mid{color:var(--cc-warn,#ffb84a)}
+.cc-lamp-t .low{color:var(--cc-text-faint,#7c7c93)}
+.cc-lamp-t .best{background:rgba(255,210,74,.08)}
+.cc-lamp-b{margin-top:3px;color:var(--cc-text-dim,#8f8fa4)}
+.cc-lamp-b b{color:var(--cc-accent,#ffd24a);font-weight:600}
+.cc-lamp-note{margin-top:2px;color:var(--cc-text-faint,#7c7c93)}`;
     document.head.appendChild(st);
   }
-  function setInsertHidden(v) {
-    insertHidden = !!v;
-    try { localStorage.setItem(INSERT_LS, insertHidden ? '1' : '0'); } catch (e) {}
-    updateInsertToggle();
+  const LAMP_PRIO_DEFAULT = { vigor: 2, smith: 1.6, mine: 1.6, cook: 1.4, slay: 1.2, fish: 1.1, brew: 1.1, farm: 1, forage: 1, craft: 1, invoke: 1, imbue: 1, plunder: 1, barter: 0.8, bard: 0.8, discover: 0.8, alms: 0.8, luck: 0.7, delve: 0.5, fortify: 0.5 };
+  let lampNames = null;
+  function lampIdByName(name) {
+    if (!itemsById) return null;
+    if (!lampNames) {
+      lampNames = {};
+      for (const id in itemsById) { const it = itemsById[id]; if (it && (it.consumableType === 'lamp' || it.consumableType === 'combat_lamp' || it.type === 'gem')) lampNames[it.name] = id; }
+    }
+    return lampNames[name] || null;
   }
-  function updateInsertToggle() {
-    const panel = qc('.uq-panel');
-    // Looked up directly (not through the cached qc(), which remembers "not found" for a few seconds and made a new button every tick).
-    const all = [...document.querySelectorAll('.cc-insert-btn')];
-    let btn = all.find((b) => panel && b.parentElement === panel) || null;
-    all.forEach((b) => { if (b !== btn) b.remove(); });
-    const enabled = settingEnabled('queueInsertToggle', true);
-    if (!enabled || !panel) {
-      if (btn) btn.remove();
-      if (document.body) document.body.classList.remove('cc-uq-insert-hidden');
-      return;
-    }
-    ensureInsertStyle();
-    if (document.body) document.body.classList.toggle('cc-uq-insert-hidden', insertHidden);
-    if (!btn || btn.parentElement !== panel) {
-      if (btn) btn.remove();
-      btn = document.createElement('div');
-      btn.className = 'cc-insert-btn';
-      // a bar with an up-arrow: "the insert line"
-      btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 15h18v3H3z"></path><path d="M12 4l5 6H7z"></path></svg>';
-      // The game's own buttons swallow nothing special; keep clicks from reaching the panel.
-      ['mousedown', 'pointerdown', 'dblclick', 'contextmenu'].forEach((t) => btn.addEventListener(t, (e) => e.stopPropagation()));
-      btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); setInsertHidden(!insertHidden); });
-      panel.appendChild(btn);
-    }
-    btn.classList.toggle('active', !insertHidden);
-    btn.title = insertHidden ? 'Show the NEW TASKS insert bar' : 'Hide the NEW TASKS insert bar (stops accidental drags)';
-    // Sit directly left of the game's "Collapse to icons" button, whatever the layout.
-    const ref = panel.querySelector('.queue-collapse-btn') || panel.querySelector('.queue-pin-btn');
-    if (ref) {
-      const cs = getComputedStyle(ref);
-      const right = parseFloat(cs.right);
-      btn.style.right = (Number.isFinite(right) ? right + 24 : 60) + 'px';
-      btn.style.top = cs.top !== 'auto' ? cs.top : '';
-      btn.style.bottom = cs.bottom !== 'auto' ? cs.bottom : '';
-    }
+  function lampCell(from, pFrom, to, pTo, cap, gain) {
+    // -> { text, cls }. Green = whole level(s), yellow = a real step toward the next one (>= 10% of the level), grey = tiny.
+    if (from >= cap) return { text: 'max', cls: 'low' };
+    if (to > from) return { text: 'Lv ' + from + ' → ' + to + (to >= cap ? ' (max)' : ''), cls: 'up' };
+    const d = (pTo - pFrom) * 100;
+    return { text: '+' + (d >= 10 ? Math.round(d) : Math.round(d * 10) / 10) + '% (→ ' + Math.round(pTo * 100) + '%)', cls: d >= 10 ? 'mid' : 'low' };
   }
+  function lampPrio() {
+    try { const v = window.__ccPluginSettings && window.__ccPluginSettings.get('routePriorities'); if (v && typeof v === 'object') return v; } catch (e) {}
+    return LAMP_PRIO_DEFAULT;
+  }
+  function renderLamp(tt, id, slotQty) {
+    const br = window.__ccBridge;
+    if (!br || typeof br.lampPreview !== 'function') return;
+    const one = br.lampPreview(id, 1);
+    if (!one) { const old = tt.querySelector('.cc-lamp'); if (old) old.remove(); return; }
+    const n = Math.max(1, slotQty || one.held || 1);
+    const all = n > 1 ? br.lampPreview(id, n) : null;
+    const cols = all ? 3 : 2;
+    const rows = one.skills.map((r, i) => {
+      const a = all ? all.skills[i] : null;
+      const maxed = r.level >= r.cap;
+      return { r, a, e1: maxed ? -1 : (r.lvTo + r.pctTo) - (r.level + r.pctFrom), eN: maxed ? -1 : (a ? (a.lvToN + a.pctToN) - (a.level + a.pctFrom) : -1) };
+    });
+    const useN = !!all;
+    rows.sort((x, y) => ((useN ? y.eN : y.e1) - (useN ? x.eN : x.e1)) || (x.r.name < y.r.name ? -1 : 1));
+    const prio = lampPrio();
+    const val = (x) => (useN ? x.eN : x.e1);
+    const live = rows.filter((x) => val(x) > 0);
+    const bestLv = live.length ? live[0] : null;
+    let bestPr = null;
+    if (one.kind === 'lamp') live.forEach((x) => { const w = val(x) * (prio[x.r.id] != null ? +prio[x.r.id] : 1); if (!bestPr || w > bestPr.w) bestPr = { x, w }; });
+    let closest = null;
+    rows.forEach((x) => {
+      const rr = useN ? { lv: x.a.level, to: x.a.lvToN, p: x.a.pctToN, cap: x.a.cap } : { lv: x.r.level, to: x.r.lvTo, p: x.r.pctTo, cap: x.r.cap };
+      if (rr.lv >= rr.cap || rr.to > rr.lv || val(x) <= 0) return;
+      if (!closest || rr.p > closest.p) closest = { x, p: rr.p };
+    });
+    const key = JSON.stringify([id, n, rows.map((x) => [x.r.id, x.r.xp, x.r.gain]), one.others && one.others.xp, prio && bestPr ? bestPr.x.r.id : '']);
+    let box = tt.querySelector('.cc-lamp');
+    if (box && box.dataset.ccK === key) return;
+    ensureLampStyle(); ensureIconStyle();
+    if (!box) { box = document.createElement('div'); box.className = 'tt-line cc-lamp'; tt.appendChild(box); }
+    box.dataset.ccK = key;
+    box.textContent = '';
+    const h = document.createElement('div'); h.className = 'cc-lamp-h';
+    const hl = document.createElement('span'); hl.innerHTML = '<b>Preview</b> · pick one skill';
+    const hr = document.createElement('span');
+    hr.textContent = one.kind === 'combat' ? '+' + fmt(one.per) + ' XP' : one.per + ' × level XP';
+    h.appendChild(hl); h.appendChild(hr); box.appendChild(h);
+    const t = document.createElement('div'); t.className = 'cc-lamp-t';
+    t.style.gridTemplateColumns = 'auto auto ' + (all ? '1fr 1fr' : '1fr');
+    const put = (txt, cls, el) => { const s = document.createElement('span'); if (cls) s.className = cls; if (el) s.appendChild(el); if (txt != null) s.appendChild(document.createTextNode(txt)); t.appendChild(s); return s; };
+    put('Skill', 'hd'); put('Now', 'hd'); put('Use 1', 'hd'); if (all) put('Use ' + fmt(n), 'hd');
+    const bestId = bestLv ? bestLv.r.id : '';
+    // Fit the screen: the tooltip is drawn at the game's UI zoom, so only as many rows as the window holds (best first); the rest is counted.
+    let zoom = 1; try { zoom = parseFloat(getComputedStyle(document.getElementById('ui-container')).zoom) || 1; } catch (e) { /* default */ }
+    const maxRows = Math.max(8, Math.floor((window.innerHeight / zoom - 380) / 23));
+    const shown = rows.slice(0, maxRows);
+    shown.forEach((x) => {
+      const r = x.r, a = x.a, bst = r.id === bestId ? ' best' : '';
+      const c0 = put(r.name, 'c0' + bst, icoImg(r.id, 'skill', r.name));
+      put('Lv ' + r.level + (r.level >= r.cap ? '' : ' · ' + Math.round(r.pctFrom * 100) + '%'), 'now' + bst);
+      const c1 = lampCell(r.level, r.pctFrom, r.lvTo, r.pctTo, r.cap);
+      put(c1.text, c1.cls + bst).title = '+' + fmt(r.gain) + ' XP';
+      if (a) { const cN = lampCell(a.level, a.pctFrom, a.lvToN, a.pctToN, a.cap); put(cN.text, cN.cls + bst).title = '+' + fmt(a.gainN) + ' XP'; }
+    });
+    box.appendChild(t);
+    if (rows.length > shown.length) { const d = document.createElement('div'); d.className = 'cc-lamp-note'; d.textContent = '+ ' + (rows.length - shown.length) + ' more skills with a smaller result'; box.appendChild(d); }
+    const lvTxt = (x) => { const e = val(x); return e >= 1 ? '+' + (Math.round(e * 10) / 10) + ' levels' : '+' + Math.round(e * 100) + '% of a level'; };
+    const picks = [];
+    if (bestLv) picks.push(['Most progress', bestLv.r.name + ' (' + lvTxt(bestLv) + ')']);
+    if (bestPr && bestPr.x !== bestLv) picks.push(['Priority pick', bestPr.x.r.name + ' (' + lvTxt(bestPr.x) + ', priority ×' + (prio[bestPr.x.r.id] != null ? prio[bestPr.x.r.id] : 1) + ')']);
+    else if (bestPr && bestLv) picks[0][0] = 'Most progress + priority';
+    if (closest && closest.x !== bestLv) picks.push(['Closest to a level', closest.x.r.name + ' (' + Math.round(closest.p * 100) + '%)']);
+    picks.forEach((p) => { const d = document.createElement('div'); d.className = 'cc-lamp-b'; d.appendChild(document.createTextNode(p[0] + ': ')); const b = document.createElement('b'); b.textContent = p[1]; d.appendChild(b); box.appendChild(d); });
+    if (one.others) { const d = document.createElement('div'); d.className = 'cc-lamp-note'; const o = all ? all.others : one.others; d.textContent = 'Also +' + one.allBonus + ' × level XP to every other skill: +' + fmt(o.xp) + ' XP in total, about ' + o.levels + ' levels across them.'; box.appendChild(d); }
+    if (one.kind === 'combat') { const d = document.createElement('div'); d.className = 'cc-lamp-note'; d.textContent = 'All of it goes to the one skill you pick (no split).'; box.appendChild(d); }
+  }
+  function onLampOver(e) {
+    if (!settingEnabled('hoverLampPreview', true) || !itemsById) return;
+    // The game shows item tooltips in ONE shared box (.global-tooltip) that it fills from the slot's own .tooltip on mouseover (our capture
+    // listener runs first). Slots that carry data-item-id are rebuilt by the game each time, so for those the section goes into the slot's
+    // .tooltip-extra, which the game appends to the rebuilt tooltip; other slots (the bank) get it inside their .tooltip.
+    const el = e.target && e.target.closest ? e.target.closest('[class*="slot"], .loot-slot, .potion-row') : null;
+    if (!el || el.closest('.tooltip')) return;
+    const tt = el.querySelector(':scope > .tooltip');
+    let id = null;
+    const di = el.dataset && el.dataset.itemId;
+    if (di) { const it = itemsById[di]; if (it && (it.consumableType === 'lamp' || it.consumableType === 'combat_lamp' || it.type === 'gem')) id = di; }
+    else if (tt) { const nm = tt.querySelector('.tt-name'); id = nm ? lampIdByName((nm.textContent || '').trim()) : null; }
+    if (!id) return;
+    let host = tt;
+    if (di) { host = el.querySelector(':scope > .tooltip-extra'); if (!host) { host = document.createElement('div'); host.className = 'tooltip-extra'; host.style.display = 'none'; el.appendChild(host); } }
+    if (!host) return;
+    let q = 0;
+    const ql = tt && tt.querySelector('.tt-qty-line'), qs = el.querySelector('.inv-qty');
+    const m = /([\d,]+)/.exec((ql && ql.textContent) || (qs && qs.textContent) || '');
+    if (m) q = parseInt(m[1].replace(/,/g, ''), 10) || 0;
+    try { renderLamp(host, id, q); } catch (err) { /* best effort */ }
+  }
+  document.addEventListener('mouseover', onLampOver, true);
 
   function tick() {
-    try { updateInsertToggle(); } catch (e) { /* best effort */ }
+    try { if (!settingEnabled('hoverLampPreview', true)) document.querySelectorAll('.cc-lamp').forEach((el) => el.remove()); } catch (e) { /* best effort */ }
     try { updateSkillPercents(); } catch (e) { /* best effort */ }
     try { gradeSkillBars(); } catch (e) { /* best effort */ }
     try { updateSkillQueued(); } catch (e) { /* best effort */ }
@@ -1294,11 +1399,11 @@ body.cc-uq-insert-hidden .uq-insert .uq-insert-grab{pointer-events:none!importan
   function teardown() {
     clearInterval(intervalId);
     document.removeEventListener('mouseover', onSkillHover, true);
+    document.removeEventListener('mouseover', onLampOver, true);
+    document.querySelectorAll('.cc-lamp').forEach((el) => el.remove());
+    const lst = document.getElementById(LAMP_STYLE_ID); if (lst) lst.remove();
     document.querySelectorAll('.cc-hover-skillpct, .cc-hover-slayxp, .cc-hover-slayrate').forEach((el) => el.remove());
     const ics = document.getElementById('cc-hover-ico-style'); if (ics) ics.remove();
-    document.querySelectorAll('.cc-insert-btn').forEach((el) => el.remove());
-    const ins = document.getElementById('cc-hover-insert-style'); if (ins) ins.remove();
-    if (document.body) document.body.classList.remove('cc-uq-insert-hidden');
     document.querySelectorAll('.cc-skq-fill, .cc-skq-badge, .cc-skq').forEach((el) => el.remove());
     document.querySelectorAll('[data-cc-g]').forEach((el) => { el.style.removeProperty('background'); delete el.dataset.ccG; });
     skqStyle.remove();

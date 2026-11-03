@@ -122,7 +122,7 @@ right/below.
 Nothing is written to any game file; re-inject after every reload/relaunch.
 
 1. Launch Scapewatch (Steam) with launch options:
-   `--remote-debugging-port=9222 --remote-allow-origins=*`
+   `--remote-debugging-port=9222 --remote-allow-origins=http://localhost:9222,http://127.0.0.1:9222`
 2. Inject (looks up the current page target itself — the id changes on
    every reload):
 
@@ -251,6 +251,7 @@ followed by a genuinely new message relaying normally.
   game's category system has no dedicated category for (confirmed: only
   pets get their own shiny category). Posts are spaced ~500ms apart to
   stay under Discord's rate limit.
+- `relay-events.js` / `relay-core.js` / `relay-lease.js` — since 2026-10-27 the watcher no longer parses chat wording itself: `relay-events.js` turns every raw line into a typed event (the same for your own and other members' lines; unlock items from `data/raw/items.json` are Unlocks for everybody; no Luck XP), `relay-core.js` is the outbox/gate/payload engine and `relay-lease.js` makes several ScapeLite instances on one webhook post once. Full audit, evidence and setup: `docs/DISCORD-RELAY-AUDIT.md`. Tests: `npm run test:relay`.
 - `chat-relay-config.json` (**you create this, gitignored, not included**)
   — your webhook URLs and role IDs. Treat it like a password file: never
   commit it, never paste its contents into chat or Discord. Re-read fresh
@@ -631,6 +632,8 @@ its tooltip. Purely cosmetic: no clicks, no mouse simulation needed to
 build or verify any of it (the game's own `.tooltip`/`.icon-tooltip` nodes
 already exist in the page at all times, just CSS-hidden until real hover),
 nothing sent to the game's WebSocket.
+
+Lamp XP preview (toggle `hoverLampPreview`): hovering an XP lamp, combat lamp or gem adds a per-skill table to the item's tooltip (level now, result of 1 lamp and of the whole stack, green = levels you up, yellow = a good step, grey = tiny, plus the best pick and the Route Advisor priority pick). It uses `__ccBridge.lampPreview()`. The game draws item tooltips in one shared `.global-tooltip` that it copies from the slot's `.tooltip` on mouseover (and rebuilds for slots with `data-item-id`, where our section rides in the slot's `.tooltip-extra`).
 
 Five independent toggles in Settings -> Plugins -> Hover Info --
 `hoverTaskXpPreview`, `hoverTaskXpPercent`, `hoverMobStats`,
@@ -1218,6 +1221,14 @@ lazy-loaded from `paths.json`).
 Plugins tab -> "Route Advisor": enable, show on World Map, warning triangle,
 alert threshold. Only rows with known node ids are optimised; action time is
 not included.
+
+**Update 2026-10-20 -- exact and stable.** The search is now an exact dynamic programme
+(every order and pick, teleport charges and quest chain in the state) with no random
+numbers, clock or effort limit, and a change is only suggested when it clears a margin
+against both the queue and the previous suggestion. The full model, the threshold
+derivation and the tie-breaking rule are in `docs/ROUTE-ADVISOR-MODEL.md`; `npm run
+test:route` checks it (determinism, exactness, idempotence, stability), and
+`__ccRouteAdvisor.selfCheck()` / `.log` do the same on the live queue.
 
 ## Supervisor, dashboard controls and plugin switches (2026-10-07)
 

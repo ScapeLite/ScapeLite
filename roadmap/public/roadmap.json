@@ -1,0 +1,283 @@
+{
+  "project": "ScapeLite",
+  "generated": "2026-10-22",
+  "milestones": [
+    {
+      "id": "0.2.0",
+      "status": "released",
+      "date": "2026-10-05",
+      "title": "Installer and marketplace"
+    },
+    {
+      "id": "0.3.0",
+      "status": "released",
+      "date": "2026-10-12",
+      "title": "Route Advisor v2 and public launch"
+    },
+    {
+      "id": "0.4.0",
+      "status": "current",
+      "date": "",
+      "title": "New UI, logging, Design Lab"
+    },
+    {
+      "id": "0.5.0",
+      "status": "next",
+      "date": "",
+      "title": "Next"
+    }
+  ],
+  "now": [],
+  "next": [
+    {
+      "id": "web-001",
+      "title": "Website gallery and screenshots",
+      "summary": "",
+      "area": "ScapeLite Website",
+      "milestone": "",
+      "done": ""
+    }
+  ],
+  "shipped": [
+    {
+      "id": "feat-032",
+      "title": "Panel hotkeys reach ScapeLite panels",
+      "summary": "The game's panel keys open ScapeLite's own queue, cards and panels.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-033",
+      "title": "Window buttons Info Bar module",
+      "summary": "The game's left-strip windows as buttons in an Info Bar, with hotkeys.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-034",
+      "title": "One stacking order for panels and game windows",
+      "summary": "The last panel or window you touched is on top.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-035",
+      "title": "Queue: queued combat/skilling dividers",
+      "summary": "See a task waiting behind the current one.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-036",
+      "title": "Queue: click and right-click pass-through",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-037",
+      "title": "Current task: level bar, loadout, trained skill, kills",
+      "summary": "Level progress and combat info on the current task card and Info Bar.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-038",
+      "title": "Game player menu on right-click in ScapeLite lists",
+      "summary": "Friends, clan, muted and chat names open the game's own player menu.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-039",
+      "title": "Chat: 19 message-type filters",
+      "summary": "The game's own message types as filters.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-040",
+      "title": "Chat language picker",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-041",
+      "title": "Skills card: click a skill opens its window",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-042",
+      "title": "Quests card: free slots and List view",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-043",
+      "title": "Diary card: full list with sort",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-044",
+      "title": "Barter card: header tooltips and gold",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-045",
+      "title": "Alert: Thanks for playing reward ready",
+      "summary": "Alert Bell notices the free 12-hour reward.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-046",
+      "title": "Info Bar module: Players online",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-21"
+    },
+    {
+      "id": "feat-053",
+      "title": "Eco mode",
+      "summary": "ScapeLite rests when the game cannot be seen.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-20"
+    },
+    {
+      "id": "feat-056",
+      "title": "Game windows always movable and resizable",
+      "summary": "Bank, Settings and the other big windows can be moved and resized; See-through replaces Float.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-20"
+    },
+    {
+      "id": "log-008",
+      "title": "Core logging system",
+      "summary": "One Logs folder with a sub-folder per kind of log, retention, secret redaction and a viewer.",
+      "area": "Logging & Data",
+      "milestone": "0.4.0",
+      "done": "2026-10-20"
+    },
+    {
+      "id": "adv-009",
+      "title": "Route Advisor: keep the path you follow, stable advice",
+      "summary": "Advice no longer flips while you rearrange the queue.",
+      "area": "Game knowledge & Advisors",
+      "milestone": "0.4.0",
+      "done": "2026-10-20"
+    },
+    {
+      "id": "adv-012",
+      "title": "Lever Advisor as a drawer in the Skills Customization window",
+      "summary": "",
+      "area": "Game knowledge & Advisors",
+      "milestone": "0.4.0",
+      "done": "2026-10-20"
+    },
+    {
+      "id": "feat-069",
+      "title": "Fortress drop tracker",
+      "summary": "Follows Fortress runs and drops, with the real chance of a drop.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-19"
+    },
+    {
+      "id": "feat-064",
+      "title": "Info Bars (Titan Panel style) and Alerts bell",
+      "summary": "Customisable bars with task, potions, chat, HP and alert modules.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-18"
+    },
+    {
+      "id": "feat-065",
+      "title": "Layout Editor",
+      "summary": "Drag, snap and resize ScapeLite panels; named layouts.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-18"
+    },
+    {
+      "id": "feat-066",
+      "title": "Task Queue Panel redesign",
+      "summary": "Compact cards with walking time, alternatives and drag reorder.",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-18"
+    },
+    {
+      "id": "feat-067",
+      "title": "Shared UI kit, themes and palettes",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.4.0",
+      "done": "2026-10-18"
+    },
+    {
+      "id": "adv-013",
+      "title": "Tree Advisor",
+      "summary": "Best Delve and Fortify tree points for your gear.",
+      "area": "Game knowledge & Advisors",
+      "milestone": "0.4.0",
+      "done": "2026-10-18"
+    },
+    {
+      "id": "feat-071",
+      "title": "Bank Tools",
+      "summary": "Category separators, filters, item size slider and new-item sparkle.",
+      "area": "ScapeLite Features",
+      "milestone": "0.3.0",
+      "done": "2026-10-12"
+    },
+    {
+      "id": "feat-072",
+      "title": "Crafting Potential",
+      "summary": "",
+      "area": "ScapeLite Features",
+      "milestone": "0.3.0",
+      "done": "2026-10-12"
+    },
+    {
+      "id": "web-007",
+      "title": "Website live on GitHub Pages",
+      "summary": "",
+      "area": "ScapeLite Website",
+      "milestone": "0.3.0",
+      "done": "2026-10-12"
+    },
+    {
+      "id": "adv-016",
+      "title": "Route Advisor v2: three paths, priorities, priced teleports",
+      "summary": "",
+      "area": "Game knowledge & Advisors",
+      "milestone": "0.3.0",
+      "done": "2026-10-12"
+    }
+  ]
+}

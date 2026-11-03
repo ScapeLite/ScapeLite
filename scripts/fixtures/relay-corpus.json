@@ -1,0 +1,1356 @@
+{
+ "_comment": "Real chat lines from ScapeLite logs (2026-10-20..27), names anonymised: Wulf = the player running ScapeLite (the personal \"game\" feed), Member A..D = clan members. expect = reviewed typed event. Regenerate only after reviewing the diff.",
+ "lines": [
+  {
+   "kind": "collection",
+   "player": "Member A",
+   "self": false,
+   "text": "New Collection! Received (Unf) Battle Potion from Brew.",
+   "expect": {
+    "type": "collection",
+    "item": "(Unf) Battle Potion",
+    "qty": 1,
+    "source": "Brew",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "levelUp",
+   "player": "Wulf",
+   "self": true,
+   "text": "Level up! Vigor level is now 52.",
+   "expect": {
+    "type": "levelUp",
+    "skill": "Vigor",
+    "level": 52
+   }
+  },
+  {
+   "kind": "questComplete",
+   "player": "Wulf",
+   "self": true,
+   "text": "Quest complete: Sandscale Valley Drill",
+   "expect": {
+    "type": "quest",
+    "item": "Sandscale Valley Drill"
+   }
+  },
+  {
+   "kind": "levelUp",
+   "player": "Member B",
+   "self": false,
+   "text": "Level up! Life level is now 40",
+   "expect": {
+    "type": "levelUp",
+    "skill": "Life",
+    "level": 40
+   }
+  },
+  {
+   "kind": "levelUp",
+   "player": "Wulf",
+   "self": true,
+   "text": "Level up! Heft level is now 48.",
+   "expect": {
+    "type": "levelUp",
+    "skill": "Heft",
+    "level": 48
+   }
+  },
+  {
+   "kind": "levelUp",
+   "player": "Wulf",
+   "self": true,
+   "text": "Level up! Luck level is now 53.",
+   "expect": {
+    "type": "levelUp",
+    "skill": "Luck",
+    "level": 53
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T2] Enchanted Chisel as a Dire Treant drop. +646 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Chisel",
+    "qty": 1,
+    "source": "Dire Treant",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Dire Treant dropped [T2] Enchanted Chisel!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Chisel",
+    "qty": 1,
+    "source": "Dire Treant",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "levelUp",
+   "player": "Member B",
+   "self": false,
+   "text": "Level up! Defend level is now 33",
+   "expect": {
+    "type": "levelUp",
+    "skill": "Defend",
+    "level": 33
+   }
+  },
+  {
+   "kind": "levelUp",
+   "player": "Member B",
+   "self": false,
+   "text": "Level up! Heft level is now 45",
+   "expect": {
+    "type": "levelUp",
+    "skill": "Heft",
+    "level": 45
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member D",
+   "self": false,
+   "text": "New Collection! Received [T4] Cured Fur from Craft.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Cured Fur",
+    "qty": 1,
+    "source": "Craft",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T2] Travel Cloak as a Dire Rat drop. +646 Luck XP",
+   "expect": {
+    "type": "drop",
+    "item": "[T2] Travel Cloak",
+    "qty": 1,
+    "source": "Dire Rat",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Dire Rat dropped [T2] Travel Cloak!",
+   "expect": {
+    "type": "drop",
+    "item": "[T2] Travel Cloak",
+    "qty": 1,
+    "source": "Dire Rat",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member B",
+   "self": false,
+   "text": "received a rare drop: [T4] Glowing Missile from Dire Golem!",
+   "expect": {
+    "type": "drop",
+    "item": "[T4] Glowing Missile",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member B",
+   "self": false,
+   "text": "New Collection! Received [T4] Glowing Missile as a Dire Golem drop.",
+   "expect": {
+    "type": "drop",
+    "item": "[T4] Glowing Missile",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member A",
+   "self": false,
+   "text": "New Collection! Received [T4] Eagle Seed from Farm.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Eagle Seed",
+    "qty": 1,
+    "source": "Farm",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member B",
+   "self": false,
+   "text": "received a rare drop: [T4] Mithril Bar from Dire Golem!",
+   "expect": {
+    "type": "drop",
+    "item": "[T4] Mithril Bar",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member B",
+   "self": false,
+   "text": "New Collection! Received [T4] Mithril Bar as a Dire Golem drop.",
+   "expect": {
+    "type": "drop",
+    "item": "[T4] Mithril Bar",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "unlocked: [T2] Trader's Notes",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Trader's Notes",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare raid drop: [T2] Trader's Notes from Fortress!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Trader's Notes",
+    "qty": 1,
+    "source": "Fortress",
+    "sourceKind": "fortress"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Shiny Lucky] Enchanted Trowel!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Trowel",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Shiny Lucky] Enchanted Trowel. +647 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Trowel",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "questComplete",
+   "player": "Wulf",
+   "self": true,
+   "text": "Quest complete: Ridgemill Battle Root Order",
+   "expect": {
+    "type": "quest",
+    "item": "Ridgemill Battle Root Order"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "unlocked: [Chaos] [T2] Dire Dungeon Tablet",
+   "expect": {
+    "type": "unlock",
+    "item": "[Chaos] [T2] Dire Dungeon Tablet",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member A",
+   "self": false,
+   "text": "New Collection! Received [Chaos] [T2] Dire Dungeon Tablet as a Chaos Dungeon milestone.",
+   "expect": {
+    "type": "unlock",
+    "item": "[Chaos] [T2] Dire Dungeon Tablet",
+    "qty": 1,
+    "source": "a Chaos Dungeon milestone",
+    "sourceKind": "milestone"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member B",
+   "self": false,
+   "text": "unlocked: [T2] Enchanted Hammer",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Hammer",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member B",
+   "self": false,
+   "text": "received a rare drop: [T2] Enchanted Hammer from Dire Golem!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Hammer",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member B",
+   "self": false,
+   "text": "New Collection! Received [T2] Enchanted Hammer as a Dire Golem drop.",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Hammer",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member B",
+   "self": false,
+   "text": "received a rare drop: [T4] Mithril Ore from Dire Golem!",
+   "expect": {
+    "type": "drop",
+    "item": "[T4] Mithril Ore",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member B",
+   "self": false,
+   "text": "New Collection! Received [T4] Mithril Ore as a Dire Golem drop.",
+   "expect": {
+    "type": "drop",
+    "item": "[T4] Mithril Ore",
+    "qty": 1,
+    "source": "Dire Golem",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "unlocked: [T3] Corruptor's Idol",
+   "expect": {
+    "type": "unlock",
+    "item": "[T3] Corruptor's Idol",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare raid drop: [T3] Corruptor's Idol from Fortress!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T3] Corruptor's Idol",
+    "qty": 1,
+    "source": "Fortress",
+    "sourceKind": "fortress"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member D",
+   "self": false,
+   "text": "New Collection! Received [T4] Fur Crossbow from Craft.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Fur Crossbow",
+    "qty": 1,
+    "source": "Craft",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member D",
+   "self": false,
+   "text": "New Collection! Received [T4] Fur Coif from Craft.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Fur Coif",
+    "qty": 1,
+    "source": "Craft",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member D",
+   "self": false,
+   "text": "New Collection! Received [T4] Fur Body from Craft.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Fur Body",
+    "qty": 1,
+    "source": "Craft",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "questComplete",
+   "player": "Member A",
+   "self": false,
+   "text": "completed the quest: Ironice Smithy Order!",
+   "expect": {
+    "type": "quest",
+    "item": "Ironice Smithy Order"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "unlocked: [Adept] Bulk Loupe",
+   "expect": {
+    "type": "unlock",
+    "item": "[Adept] Bulk Loupe",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "questComplete",
+   "player": "Wulf",
+   "self": true,
+   "text": "Quest complete: Drypocket Survey Drift",
+   "expect": {
+    "type": "quest",
+    "item": "Drypocket Survey Drift"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare drop: [T1] Faulty Crystal from Dire Lich!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Faulty Crystal",
+    "qty": 1,
+    "source": "Dire Lich",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "questComplete",
+   "player": "Member A",
+   "self": false,
+   "text": "completed the quest: Lastlight Obelisk Charge!",
+   "expect": {
+    "type": "quest",
+    "item": "Lastlight Obelisk Charge"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare drop: [T3] Bright Sash from Dire Lich!",
+   "expect": {
+    "type": "drop",
+    "item": "[T3] Bright Sash",
+    "qty": 1,
+    "source": "Dire Lich",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member D",
+   "self": false,
+   "text": "unlocked: [T2] Enchanted Lens",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Lens",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member D",
+   "self": false,
+   "text": "New Collection! Received [T2] Enchanted Lens as a Dire Goblin drop.",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Lens",
+    "qty": 1,
+    "source": "Dire Goblin",
+    "sourceKind": "monster"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member D",
+   "self": false,
+   "text": "unlocked: [T2] Enchanted Instrument",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Instrument",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "unlocked: [T2] Enchanted Lantern",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Lantern",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member B",
+   "self": false,
+   "text": "unlocked: [Lucky] Enchanted Lens",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Lens",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member B",
+   "self": false,
+   "text": "received the Lucky Enchanted Lens!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Lens",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "unlocked: [Lucky] Enchanted Spring",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Spring",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "received the Lucky Enchanted Spring!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Spring",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "unlocked: [Lucky] Enchanted Salve",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Salve",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "received the Lucky Enchanted Salve!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Salve",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "unlocked: [Lucky] Enchanted Pickaxe",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Pickaxe",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Lucky Enchanted Pickaxe!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Pickaxe",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T4] Barrier Leaf from Farm. +647 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Barrier Leaf",
+    "qty": 1,
+    "source": "Farm",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "questComplete",
+   "player": "Member C",
+   "self": false,
+   "text": "completed the quest: Archrest Cartograph Expedition!",
+   "expect": {
+    "type": "quest",
+    "item": "Archrest Cartograph Expedition"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare raid drop: [T1] Double Shot from Chaos Dungeon!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Double Shot",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member D",
+   "self": false,
+   "text": "received the Lucky Enchanted Censer!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Censer",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare raid drop: [T1] Pinning Bolt from Chaos Dungeon!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Pinning Bolt",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare raid drop: [T1] Bloodscent from Chaos Dungeon!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Bloodscent",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T4] Arcane Bud from Farm. +649 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Arcane Bud",
+    "qty": 1,
+    "source": "Farm",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received a rare raid drop: [T1] Sure Strike from Chaos Dungeon!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Sure Strike",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T2] Dire Dungeon Glyph as a Dire Dungeon drop. +649 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Dire Dungeon Glyph",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Dire Dungeon dropped [T2] Dire Dungeon Glyph!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Dire Dungeon Glyph",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Lucky Enchanted Skull!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Skull",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member B",
+   "self": false,
+   "text": "received the Lucky Enchanted Mortar!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Mortar",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T2] Enchanted Spring as a Dire Dungeon drop. +650 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Spring",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T2] Enchanted Shim as a Dire Dungeon drop. +649 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Shim",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Dire Dungeon dropped [T2] Enchanted Spring!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Spring",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Dire Dungeon dropped [T2] Enchanted Shim!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Shim",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T2] Enchanted Skull as a Dire Dungeon drop. +650 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Skull",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Dire Dungeon dropped [T2] Enchanted Skull!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T2] Enchanted Skull",
+    "qty": 1,
+    "source": "Dire Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Chaos Dungeon reward: [T1] Vengeance!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Vengeance",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Chaos Dungeon reward: [T1] Steady Aim!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Steady Aim",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Lucky] Enchanted Rod!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Rod",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Lucky] Enchanted Rod. +650 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Rod",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received (Unf) Barrier Potion from Brew. +650 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "(Unf) Barrier Potion",
+    "qty": 1,
+    "source": "Brew",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T4] Barrier Potion from Brew. +651 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Barrier Potion",
+    "qty": 1,
+    "source": "Brew",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Lucky Enchanted Pommel!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Pommel",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member A",
+   "self": false,
+   "text": "New Collection! Claimed 2x [T2] Medium Combat Lamp from the Alms Path.",
+   "expect": {
+    "type": "collection",
+    "item": "[T2] Medium Combat Lamp",
+    "qty": 2,
+    "source": "the Alms Path",
+    "sourceKind": "alms"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received [T5] Octopus from Cook. +664 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "[T5] Octopus",
+    "qty": 1,
+    "source": "Cook",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "received the Shiny Lucky Enchanted Grip!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Grip",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Received (Unf) Arcane Potion from Brew. +681 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "(Unf) Arcane Potion",
+    "qty": 1,
+    "source": "Brew",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member A",
+   "self": false,
+   "text": "received the Shiny Lucky Enchanted Spring!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Spring",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member C",
+   "self": false,
+   "text": "New Collection! Claimed 3x [T3] Large Lamp from the Alms Path.",
+   "expect": {
+    "type": "collection",
+    "item": "[T3] Large Lamp",
+    "qty": 3,
+    "source": "the Alms Path",
+    "sourceKind": "alms"
+   }
+  },
+  {
+   "kind": "shinyPetDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received the SHINY Farm pet!",
+   "expect": {
+    "type": "pet",
+    "pet": "Farm",
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member B",
+   "self": false,
+   "text": "New Collection! Claimed 2x [T2] Medium Combat Lamp from the Alms Path.",
+   "expect": {
+    "type": "collection",
+    "item": "[T2] Medium Combat Lamp",
+    "qty": 2,
+    "source": "the Alms Path",
+    "sourceKind": "alms"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Shiny Lucky Enchanted Rod!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Rod",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Claimed 2x [T2] Medium Combat Lamp from the Alms Path. +682 Luck XP",
+   "expect": {
+    "type": "collection",
+    "item": "[T2] Medium Combat Lamp",
+    "qty": 2,
+    "source": "the Alms Path",
+    "sourceKind": "alms"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Shiny Lucky Enchanted Trowel!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Trowel",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "petDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Fortify pet is now following you!",
+   "expect": {
+    "type": "pet",
+    "pet": "Fortify"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the Fortify Pet. +686 Luck XP",
+   "expect": {
+    "type": "pet",
+    "qty": 1,
+    "pet": "Fortify"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Lucky] Enchanted Lockpick!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Lockpick",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Lucky] Enchanted Lockpick. +700 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Lockpick",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Pickpockets turned up [T1] Thief's Gauntlets!",
+   "expect": {
+    "type": "drop",
+    "item": "[T1] Thief's Gauntlets",
+    "qty": 1,
+    "source": "plundering",
+    "sourceKind": "plunder"
+   }
+  },
+  {
+   "kind": "petDrop",
+   "player": "Member A",
+   "self": false,
+   "text": "received the Luck pet!",
+   "expect": {
+    "type": "pet",
+    "pet": "Luck"
+   }
+  },
+  {
+   "kind": "petDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Fish pet!",
+   "expect": {
+    "type": "pet",
+    "pet": "Fish"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Lucky] Enchanted Grip!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Grip",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Lucky] Enchanted Grip. +722 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Grip",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Invoke Stall turned up [T1] Farmer's Almanac!",
+   "expect": {
+    "type": "unlock",
+    "item": "[T1] Farmer's Almanac",
+    "qty": 1,
+    "source": "Invoke Stall",
+    "sourceKind": "skill"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Chaos Dungeon reward: [Chaos] [T2] Dire Dungeon Tablet!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Chaos] [T2] Dire Dungeon Tablet",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Chaos Dungeon reward: [Chaos] [T2] Dire Dungeon Glyph!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Chaos] [T2] Dire Dungeon Glyph",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "rareDrop",
+   "player": "Wulf",
+   "self": true,
+   "text": "Chaos Dungeon reward: [Chaos] [T3] Savage Dungeon Tablet!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Chaos] [T3] Savage Dungeon Tablet",
+    "qty": 1,
+    "source": "Chaos Dungeon",
+    "sourceKind": "dungeon"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Lucky] Enchanted Censer!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Censer",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Lucky] Enchanted Censer. +742 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Lucky] Enchanted Censer",
+    "qty": 1
+   }
+  },
+  {
+   "kind": "petDrop",
+   "player": "Member B",
+   "self": false,
+   "text": "received the Spirit pet!",
+   "expect": {
+    "type": "pet",
+    "pet": "Spirit"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member A",
+   "self": false,
+   "text": "New Collection! Claimed 2x [T4] Treasure Chest from the Alms Path.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Treasure Chest",
+    "qty": 2,
+    "source": "the Alms Path",
+    "sourceKind": "alms"
+   }
+  },
+  {
+   "kind": "petDrop",
+   "player": "Member A",
+   "self": false,
+   "text": "received the Fish pet!",
+   "expect": {
+    "type": "pet",
+    "pet": "Fish"
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Member B",
+   "self": false,
+   "text": "New Collection! Claimed 2x [T4] Treasure Chest from the Alms Path.",
+   "expect": {
+    "type": "collection",
+    "item": "[T4] Treasure Chest",
+    "qty": 2,
+    "source": "the Alms Path",
+    "sourceKind": "alms"
+   }
+  },
+  {
+   "kind": "petDrop",
+   "player": "Member C",
+   "self": false,
+   "text": "received the Discover pet!",
+   "expect": {
+    "type": "pet",
+    "pet": "Discover"
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Shiny Lucky] Enchanted Rod!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Rod",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Shiny Lucky] Enchanted Rod. +767 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Rod",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "unlock",
+   "player": "Wulf",
+   "self": true,
+   "text": "received the [Shiny Lucky] Enchanted Censer!",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Censer",
+    "qty": 1,
+    "shiny": true
+   }
+  },
+  {
+   "kind": "collection",
+   "player": "Wulf",
+   "self": true,
+   "text": "New Collection! Unlocked the [Shiny Lucky] Enchanted Censer. +768 Luck XP",
+   "expect": {
+    "type": "unlock",
+    "item": "[Shiny Lucky] Enchanted Censer",
+    "qty": 1,
+    "shiny": true
+   }
+  }
+ ]
+}

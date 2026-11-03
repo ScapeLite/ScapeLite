@@ -11,7 +11,8 @@ const path = require('path');
 const { execFile, spawn } = require('child_process');
 
 const PORT = 9222;
-const FLAGS = ['--remote-debugging-port=' + PORT, '--remote-allow-origins=*'];
+// Only the debugger's own pages (the DevTools link) may open a socket with an Origin header; a web page in the player's browser gets 403. Node clients (the watcher) send no Origin and need no flag.
+const FLAGS = ['--remote-debugging-port=' + PORT, '--remote-allow-origins=http://localhost:' + PORT + ',http://127.0.0.1:' + PORT];
 const GAME_NAME = /scapewatch/i;
 
 const run = (cmd, args, timeout) => new Promise((resolve) => {

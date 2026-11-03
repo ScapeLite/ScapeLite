@@ -1,0 +1,42 @@
+name: Release
+# Pushing a tag like v0.3.1 builds the Windows installer on GitHub and publishes it as a Release with the update files.
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    # Only the public release repo publishes releases.
+    if: github.repository == 'ScapeLite/ScapeLite'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run test:package
+      # the afterPack hook (scripts/after-pack.js) runs the leak guard on the packed app and fails the build on a hit
+      - run: npx electron-builder --win --publish never
+      - run: node scripts/verify-package.js dist/win-unpacked
+      - name: Release notes from the changelog
+        shell: bash
+        run: |
+          node -e "
+          const fs=require('fs'),v=process.env.GITHUB_REF_NAME.replace(/^v/,'');
+          const t=fs.readFileSync('CHANGELOG.md','utf8').split(/\r?\n/);
+          const i=t.findIndex(l=>l.startsWith('## '+v));
+          let out=[];
+          if(i>=0){for(let j=i+1;j<t.length&&!t[j].startsWith('## ');j++)out.push(t[j]);}
+          const head='ScapeLite v'+v+': optional, display-only plugins for Scapewatch (Steam, Windows).\n\n**Install:** download the .exe below and run it. Windows may show an unknown publisher warning because the installer is not code-signed yet: choose **More info**, then **Run anyway**.\n\n';
+          fs.writeFileSync('release-notes.md',head+out.join('\n').trim()+'\n');
+          "
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: ScapeLite ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: |
+            dist/ScapeLite Setup *.exe
+            dist/ScapeLite Setup *.exe.blockmap
+            dist/latest.yml

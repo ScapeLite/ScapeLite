@@ -13,6 +13,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
+    # Only the public release repo has Pages; the private development repo would fail here on every push.
+    if: github.repository == 'ScapeLite/ScapeLite'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

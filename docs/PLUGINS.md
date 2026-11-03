@@ -61,7 +61,7 @@ Useful globals provided by other plugins (optional, check they exist): `window._
 
 ## Rules
 
-1. **Display / information only.** Never click, select, submit or otherwise act in the game for the player.
+1. **Display / information only.** Never act in the game for the player on your own: no timer, observer or event handler may click, select, submit or send anything unprompted. The one allowed action path is passing the player's own click on one of your controls to the game's own control, one click for one click (check `ev.isTrusted`), marked `// fwd-ok` and counted by `npm run lint:forwards`.
 2. Don't touch other users' data or send anything off-machine without an explicit, user-configured setting.
 3. Clean up completely in `teardown()` so *Remove* leaves no trace.
 4. Don't mutate game nodes the game rebuilds (the Tasks panel breaks if its children are moved); add your own elements beside them, or restyle with CSS.

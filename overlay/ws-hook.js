@@ -98,7 +98,7 @@
     return (itemsById && itemsById[itemId] && itemsById[itemId].name) || itemId;
   }
 
-  async function queueRaidSummary(data) {
+  async function queueRaidSummary(data, kind) {
     if (!data) return;
     await ensureItems();
     const memberMap = {};
@@ -117,8 +117,10 @@
       isRare: !!l.isRare,
     }));
     raidSummaryQueue.push({
-      raidName: data.raidName || 'Raid',
-      runMs: data.runMs || 0,
+      kind: kind || 'raid',
+      raidName: data.raidName || (kind === 'dungeon' ? 'Chaos Dungeon' : 'Raid'),
+      runMs: data.runMs || data.timeMs || 0,
+      wave: kind === 'dungeon' ? (data.highestWave || data.bestWave || 0) : null,
       memberCount: (latestRaidMembers || []).length,
       members: (latestRaidMembers || []).map((m) => m.playerName),
       perPlayerDamage,
@@ -138,7 +140,9 @@
         ? lobby.members.filter((m) => m && !m.isClone).map((m) => ({ playerId: m.playerId, playerName: m.playerName }))
         : null; // lobby is null/gone -- left or raid ended, nothing to track
     } else if (msg.type === 'raid_run_complete') {
-      queueRaidSummary(msg.data);
+      queueRaidSummary(msg.data, 'raid');
+    } else if (msg.type === 'chaos_run_complete') {
+      queueRaidSummary(msg.data, 'dungeon'); // wave runs end without being "completed": post them too
     }
   }
 

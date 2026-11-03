@@ -1,0 +1,20 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>onboarding-fixture</title>
+<style>body{margin:0;background:#222;color:#ddd;font:14px system-ui}</style></head>
+<body>
+<!-- Fake game shell for scripts/test-onboarding.js: just what presets.js and welcome-tour.js look for. -->
+<div class="floating-tab-strip"></div><div class="panel-floating"></div>
+<script>
+const SET = {};
+window.fx = { SET, barApplied: 0 };
+window.__ccDom = { q: (s) => document.querySelector(s), qa: (s) => [...document.querySelectorAll(s)], roots: () => [document] };
+window.__ccPluginSettings = {
+  get: (k) => SET[k], set: (k, v) => { SET[k] = v; }, seed: (o) => { Object.assign(SET, o); }, getAll: () => Object.assign({}, SET), onChange: () => () => {},
+  setBundle(o) { const refused = []; Object.keys(o).forEach((k) => { SET[k] = o[k]; }); return { applied: Object.keys(o), refused }; },
+};
+window.__ccBar = {
+  config: { v: 1, top: [{ id: 'task', s: 'l' }, { id: 'panelbtns', s: 'c' }], bottom: [] }, MODULES: {},
+  applyConfig(c) { this.config = c; window.fx.barApplied++; return true; },
+};
+</script>
+</body></html>

@@ -10,35 +10,39 @@
 
   // Layout keys only -- never progress, chat or cached data.
   const KEYS = ['scapewatch_panel_windows', 'scapewatch_dashboard_pos', 'cc-panel-scale-v2', 'cc-panel-origins', 'cc-panel-locks', 'cc-panel-fuse', 'cc-menu-dock', 'cc-wc-dock',
-    'cc-notif-pos', 'cc-xp-tracker-pos', 'cc-route-panel-pos', 'cc-route-panel-size', 'cc-route-map-open', 'cc-modal-scale', 'cc-modal-float', 'cc-walk-panel-layout', 'cc-ct-collapsed', 'cc-uq-insert-hidden'];
+    'cc-notif-pos', 'cc-xp-tracker-pos', 'cc-route-panel-pos', 'cc-route-panel-size', 'cc-route-map-open', 'cc-modal-scale', 'cc-modal-float', 'cc-modal-win', 'cc-walk-panel-layout', 'cc-ct-collapsed', 'cc-uq-insert-hidden', 'cc-layout:v1', 'cc-panel-mult'];
+  const PREFIXES = ['cc-ui:panel:', 'cc-size-'];   // ScapeLite panels built on the UI kit and their saved sizes
+  const prefKeys = () => { const o = []; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && PREFIXES.some((p) => k.indexOf(p) === 0)) o.push(k); } } catch (e) {} return o; };
   const read = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}') || {}; } catch (e) { return {}; } };
   const write = (o) => { try { localStorage.setItem(LS, JSON.stringify(o)); } catch (e) {} };
-  function snapshot() { const d = {}; KEYS.forEach((k) => { try { const v = localStorage.getItem(k); if (v != null) d[k] = v; } catch (e) {} }); return d; }
+  function snapshot() { const d = {}; KEYS.concat(prefKeys()).forEach((k) => { try { const v = localStorage.getItem(k); if (v != null) d[k] = v; } catch (e) {} }); return d; }
   function apply(data) {
     KEYS.forEach((k) => { try { if (data && data[k] != null) localStorage.setItem(k, data[k]); else localStorage.removeItem(k); } catch (e) {} });
+    prefKeys().forEach((k) => { try { localStorage.removeItem(k); } catch (e) {} });
+    Object.keys(data || {}).forEach((k) => { try { if (PREFIXES.some((p) => k.indexOf(p) === 0)) localStorage.setItem(k, data[k]); } catch (e) {} });
     setTimeout(() => location.reload(), 150);
   }
 
   const style = document.createElement('style');
   style.id = 'cc-layouts-style';
   style.textContent = `
-#cc-layouts{position:fixed;left:50%;top:14%;transform:translateX(-50%);width:400px;max-height:70vh;z-index:100010;display:none;flex-direction:column;background:#0f0f14;border:1px solid rgba(255,255,255,.18);
-  border-radius:10px;color:#ddd;font:13px/1.4 system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.65);overflow:hidden}
+#cc-layouts{position:fixed;left:50%;top:14%;transform:translateX(-50%);width:400px;max-height:70vh;z-index:100010;display:none;flex-direction:column;background:var(--cc-sunk);border:1px solid rgba(255,255,255,.18);
+  border-radius:10px;color:var(--cc-text);font:13px/1.4 system-ui,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.65);overflow:hidden}
 #cc-layouts.show{display:flex}
-#cc-layouts .hd{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#17171f;border-bottom:1px solid rgba(255,255,255,.08);cursor:grab;user-select:none}
-#cc-layouts .hd b{font-weight:600;color:#fff;font-size:14px}
+#cc-layouts .hd{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--cc-bg-2);border-bottom:1px solid rgba(255,255,255,.08);cursor:grab;user-select:none}
+#cc-layouts .hd b{font-weight:600;color:var(--cc-text);font-size:14px}
 #cc-layouts .hd .sp{flex:1}
-#cc-layouts button{font:inherit;color:#ddd;background:#22222c;border:1px solid #3a3a48;border-radius:6px;padding:2px 10px;cursor:pointer}
-#cc-layouts button:hover{border-color:#80808f}
-#cc-layouts button.pri{border-color:#b8962f;color:#ffd24a}
-#cc-layouts button.dng:hover{border-color:#e0675a;color:#ff8a7a}
+#cc-layouts button{font:inherit;color:var(--cc-text);background:var(--cc-bg-3);border:1px solid var(--cc-border-strong);border-radius:6px;padding:2px 10px;cursor:pointer}
+#cc-layouts button:hover{border-color:var(--cc-text-faint)}
+#cc-layouts button.pri{border-color:#b8962f;color:var(--cc-accent)}
+#cc-layouts button.dng:hover{border-color:#e0675a;color:var(--cc-bad)}
 #cc-layouts .bd{padding:10px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
-#cc-layouts .row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #2a2a38;border-radius:8px;background:#15151c}
+#cc-layouts .row{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-bg-2)}
 #cc-layouts .row .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#cc-layouts .row small{color:#8a8a96}
+#cc-layouts .row small{color:var(--cc-text-dim)}
 #cc-layouts .add{display:flex;gap:6px}
-#cc-layouts input{flex:1;font:inherit;color:#fff;background:#1b1b24;border:1px solid #3a3a48;border-radius:6px;padding:4px 8px}
-#cc-layouts .note{color:#8a8a96;font-size:11.5px}`;
+#cc-layouts input{flex:1;font:inherit;color:var(--cc-text);background:#1b1b24;border:1px solid var(--cc-border-strong);border-radius:6px;padding:4px 8px}
+#cc-layouts .note{color:var(--cc-text-dim);font-size:11.5px}`;
   const root = document.createElement('div');
   root.id = 'cc-layouts';
 
@@ -83,7 +87,7 @@
       if (e.target.tagName === 'BUTTON') return; e.preventDefault();
       const r = root.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
       root.style.transform = 'none'; root.style.left = r.left + 'px'; root.style.top = r.top + 'px';
-      const mv = (ev) => { root.style.left = Math.max(40 - r.width, Math.min(innerWidth - 40, r.left + ev.clientX - sx)) + 'px'; root.style.top = Math.max(0, Math.min(innerHeight - 30, r.top + ev.clientY - sy)) + 'px'; };
+      const mv = (ev) => { root.style.left = Math.max(40 - r.width, Math.min(innerWidth - 40, r.left + ev.clientX - sx)) + 'px'; root.style.top = Math.max(0, Math.min((window.__ccVH ? window.__ccVH() : window.innerHeight) - 30, r.top + ev.clientY - sy)) + 'px'; };
       const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); };
       document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
     });

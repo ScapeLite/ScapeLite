@@ -121,11 +121,14 @@
     { re: /^received a rare drop:\s*(.+?)\s+from\s+(.+?)!*$/i, extract: m => ({ item: m[1].trim(), source: m[2].trim() }) },
     { re: /^Level up!\s*(.+?)\s+level is now\s+(\d+)/i, extract: m => ({ skill: m[1].trim(), level: m[2] }) },
     // "New Collection! Received [T2] Wayfarer's Wrap as a T2 Chest Drops drop. +363 Luck XP" / "... from Brew. +401 Luck XP":
-    // pull out the clean item name, where it came from and the Luck XP so the Discord line (and ultra-rare keyword matching) are tidy.
-    { re: /^New Collection!\s*Received\s+(.+?)\s+(?:from|as an?)\s+(.+?)(?:\s+drop)?\.?(?:\s*\+([\d,]+)\s*Luck XP\.?)?$/i, extract: m => ({ item: m[1].trim(), source: m[2].trim(), luck: m[3] ? m[3].replace(/,/g, '') : '' }) },
+    // pull out the item name and where it came from. The "+N Luck XP" suffix (only the player's own lines carry it) is never relayed anywhere;
+    // the watcher re-parses the raw text with overlay/relay-events.js, which is the authority on event types.
+    { re: /^New Collection!\s*Received\s+(.+?)\s+(?:from|as an?)\s+(.+?)(?:\s+drop)?\.?(?:\s*\+[\d,]+\s*Luck XP\.?)?$/i, extract: m => ({ item: m[1].trim(), source: m[2].trim() }) },
     { re: /^New Collection!\s*(.+)$/i, extract: m => ({ item: m[1].trim() }) },
     // Confirmed live from the game's own bundle, 2026-10-07: always exactly
     // `"Quest complete: " + questName`, no variation.
+    // Own game-channel drop line: "Dire Zombie dropped [T2] Melee Offhand Ring!" -> just the item, source kept separately.
+    { re: /^(.+?)\s+dropped\s+(.+?)\s*!*$/i, extract: m => ({ item: m[2].trim(), source: m[1].trim() }) },
     { re: /^Quest complete:\s*(.+)$/i, extract: m => ({ item: m[1].trim() }) },
   ];
 
@@ -251,7 +254,7 @@
     const outChannel = channel === 'game' ? 'clan' : channel;
     queue.push(Object.assign(
       {
-        id: seq, queuedAt: Date.now(), channel: outChannel, player: parts.player, text: parts.text,
+        id: seq, queuedAt: Date.now(), channel: outChannel, self: channel === 'game', player: parts.player, text: parts.text,
         timestamp: parts.timestamp, iconUrl: parts.iconUrl, badgeIconUrl: parts.badgeIconUrl, color: parts.color,
         raw: `${parts.player}: ${parts.text}`,
       },
@@ -278,7 +281,7 @@
   }
 
   function startWhenReady() {
-    const container = document.querySelector('.chat-message-area');
+    const container = window.__ccDom.q('.chat-message-area');
     if (container) { attach(container); return; }
     const root = document.documentElement || document.body;
     if (!root) {
@@ -288,7 +291,7 @@
       return;
     }
     waiter = new MutationObserver(() => {
-      const el = document.querySelector('.chat-message-area');
+      const el = window.__ccDom.q('.chat-message-area');
       if (el) { waiter.disconnect(); waiter = null; attach(el); }
     });
     waiter.observe(root, { childList: true, subtree: true });
@@ -304,7 +307,7 @@
   }
 
   window[NS] = {
-    version: 11,
+    version: 12,
     teardown,
     // Called by the watcher process: returns and clears all queued events.
     drain() {
@@ -319,7 +322,7 @@
     // against what was actually relayed.
     rescan() {
       const out = [];
-      const cont = document.querySelector('.chat-message-area');
+      const cont = window.__ccDom.q('.chat-message-area');
       if (!cont) return out;
       for (const node of cont.children) {
         if (!node.classList || !node.classList.contains('chat-message')) continue;
@@ -329,7 +332,7 @@
         if (!parts.player) continue;
         const classified = classify(channel, node.dataset.category, parts.text);
         if (!classified) continue;
-        out.push(Object.assign({ channel: channel === 'game' ? 'clan' : channel, player: parts.player, text: parts.text, timestamp: parts.timestamp,
+        out.push(Object.assign({ channel: channel === 'game' ? 'clan' : channel, self: channel === 'game', player: parts.player, text: parts.text, timestamp: parts.timestamp,
           iconUrl: parts.iconUrl, badgeIconUrl: parts.badgeIconUrl, color: parts.color, raw: parts.player + ': ' + parts.text }, classified));
       }
       return out;
