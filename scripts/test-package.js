@@ -91,7 +91,14 @@ for (const rel of Object.keys(FORBIDDEN)) {
 }
 t('a file that is merely unexpected (not on the allow-list) is caught', () => { const d = cleanTree(); put(d, 'overlay/notes.txt', 'x'); assert.ok(has(scan(d), /allow-list/)); });
 t('a new top-level folder is caught', () => { const d = cleanTree(); put(d, 'stuff/a.js', 'x'); assert.ok(has(scan(d), /top-level/)); });
-t('an extra doc is caught', () => { const d = cleanTree(); put(d, 'docs/DISTRIBUTION-RISKS.md', '# x'); assert.ok(has(scan(d), /doc not in/)); });
+t('every doc the installer lists is allowed by the guard (a CI build once failed on a doc that was listed but not allowed)', () => {
+  const pk = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const docs = pk.build.files.filter((f) => /^docs\/[^*!]+\.md$/.test(f)).map((f) => f.slice(5));
+  assert.ok(docs.length >= 4);
+  const d = cleanTree(); docs.forEach((n) => put(d, 'docs/' + n, '# x'));
+  assert.ok(!has(scan(d), /doc not in/), docs.join(', '));
+});
+t('an extra doc is caught',() => { const d = cleanTree(); put(d, 'docs/DISTRIBUTION-RISKS.md', '# x'); assert.ok(has(scan(d), /doc not in/)); });
 t('webhook files are caught inside node_modules too', () => { const d = cleanTree(); put(d, 'node_modules/foo/my-webhook.json', '{}'); assert.ok(has(scan(d), /webhook file/)); });
 
 t('a Discord webhook URL inside a code file is caught (and not echoed)', () => {

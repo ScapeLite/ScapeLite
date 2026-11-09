@@ -20,7 +20,7 @@ const LIMITS = { file: 1.5 * MB, totalNoModules: 30 * MB };
 
 // ---- allow-list (package mode) ------------------------------------------------------------------------------------------------
 const TOP_ALLOWED = new Set(['package.json', 'app', 'branding', 'overlay', 'website', 'examples', 'docs', 'node_modules']);
-const DOCS_ALLOWED = new Set(['PLUGINS.md', 'SUBMIT-A-PLUGIN.md', 'PLUGIN-AUTHOR-GUIDE.md']);
+const DOCS_ALLOWED = new Set(['PLUGINS.md', 'SUBMIT-A-PLUGIN.md', 'PLUGIN-AUTHOR-GUIDE.md', 'DISCORD-RELAY-SETUP.md']);
 const ALLOW = [
   [/^package\.json$/, 'package.json'],
   [/^app\/main\.js$/, 'app/main.js'],
