@@ -15,6 +15,7 @@
     ['🎯 Goals', '__ccGoals', 'Skill targets and item hunts with ETAs'],
     ['📍 Locations and Free Pips', '__ccDiaryCredits', 'Good and bad locations by walking distance, where to put the free diary pips'],
     ['🧠 Advisor', '__ccAdvisor', 'What to do next, how and where'],
+    ['💬 Discord setup', '__ccDiscordSetup', 'Channels, webhooks and roles for the Discord features, with a Test button'],
     ['📈 XP Tracker', '__ccXpTracker', 'XP per hour, graph and all skills'],
     ['🍀 Drop Luck', '__ccDropLuck', 'How lucky your rare drops have been'],
     ['🌳 Tree Advisor', '__ccTreeAdvisor', 'Best Delve and Fortress tree builds'],

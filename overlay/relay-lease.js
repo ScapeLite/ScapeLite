@@ -51,7 +51,9 @@ const hash8 = (s) => crypto.createHash('sha1').update(String(s)).digest('hex').s
 const newInstanceId = () => crypto.randomBytes(4).toString('hex');
 
 function encodeState(st, label) {
-  const head = `-# ScapeLite relay lease · do not edit or delete · leader ${String(st.n || label || '-').replace(/[^\w .-]/g, '').slice(0, 24) || '-'}${st.id ? '' : ' (released)'}`;
+  // Discord shows <t:unix:f> in each reader's own time zone and <t:unix:R> as "2 minutes ago": the message says by itself when the lease was last written
+  const sec = Number(st.t) > 1e12 ? Math.floor(Number(st.t) / 1000) : 0;
+  const head = `-# ScapeLite relay lease · do not edit or delete · leader ${String(st.n || label || '-').replace(/[^\w .-]/g, '').slice(0, 24) || '-'}${st.id ? '' : ' (released)'}${sec ? ` · last written <t:${sec}:f> (<t:${sec}:R>)` : ''}`;
   return `${head}\n||${JSON.stringify(st)}||`;
 }
 function decodeState(content) {
@@ -108,6 +110,10 @@ function createLease(o) {
     const key = `${st.id}:${st.e}:${st.s}`;
     // Blind for a while (Discord down, PC asleep): that says nothing about the leader. Start measuring its silence again from this read.
     if (key !== S.lastKey || S.gap > opt.pollMs * 4) { S.lastKey = key; S.lastChangeAt = now(); S.gap = 0; }
+    // Who holds the lease is logged whenever it changes (a new instance, a new name, a release), so the log tells the story of the leader
+    const who = st.id ? `${st.n || '?'} [${st.id}]` : '(released)';
+    if (S.seenWho !== undefined && S.seenWho !== who) log(`Relay lease: the leader changed from ${S.seenWho} to ${who} (epoch ${st.e})`);
+    S.seenWho = who;
     S.state = st;
     S.newest = maxVer(S.newest, st.mv);
   }
@@ -245,6 +251,42 @@ function createLease(o) {
     await writeMessage(Object.assign({}, st, { mv: v }));   // read-modify-write of one field; the leader's next beat keeps it. A lost race is retried by the next poll.
   }
 
+  // ---- clan board (overlay/clan-board-roster.js) ----
+  // "bm": hash of a lower-case player name -> 1, written by every ScapeLite that keeps its OWN board card (any entry = "this player has a card, the host makes none").
+  // "bc": hash -> message id of a roster card the host made, so a new host after a failover edits the same messages. Old copies keep unknown fields when they rewrite the lease.
+  // read, change, write, then read back: a leader heartbeat that was in flight at the same moment can overwrite the change, so it is checked and tried again (3 times)
+  async function boardWrite(mutate) {
+    if (!S.messageId) return { ok: false, error: 'no lease yet' };
+    for (let a = 0; a < 3; a++) {
+      const r = await readMessage();
+      if (!r.ok || !r.state) return { ok: false, error: r.error || 'lease unreadable' };
+      const patch = mutate(r.state);
+      if (!patch) return { ok: true, same: true };
+      const next = Object.assign({}, r.state, patch);
+      const w = await writeMessage(next);
+      if (!w.ok) return { ok: false, error: w.error };
+      await sleep(opt.verifyDelayMs + random() * 300);
+      const v = await readMessage();
+      if (v.ok && v.state && Object.keys(patch).every((k) => JSON.stringify(v.state[k]) === JSON.stringify(patch[k]))) { observe(v.state); return { ok: true }; }
+    }
+    return { ok: false, error: 'the lease was overwritten three times in a row' };
+  }
+  const boardView = () => {
+    const st = S.state || {};
+    return { known: !!S.state, present: new Set(Object.keys(st.bm || {})), cards: Object.assign({}, st.bc || {}) };
+  };
+  // announce this player (a no-op when the entry is already there); keep (a Set of hashes) drops the entries of players who left the clan
+  const boardAnnounce = (hash, keep) => boardWrite((st) => {
+    const bm = Object.assign({}, st.bm || {}); let changed = false;
+    if (!bm[hash]) { bm[hash] = 1; changed = true; }
+    if (keep && keep.size) Object.keys(bm).forEach((k) => { if (k !== hash && !keep.has(k)) { delete bm[k]; changed = true; } });
+    const keys = Object.keys(bm); while (keys.length > 40) { delete bm[keys.shift()]; changed = true; }
+    return changed ? { bm } : null;
+  });
+  const boardSetCards = (map) => boardWrite((st) => {
+    const bc = {}; Object.keys(map || {}).slice(0, 100).forEach((k) => { if (/^[0-9a-f]{8}$/.test(k) && /^\d{15,25}$/.test(String(map[k]))) bc[k] = String(map[k]); });
+    return JSON.stringify(st.bc || {}) === JSON.stringify(bc) ? null : { bc };
+  });
   // ---- follower / unsure poll ----
   async function poll() {
     S.lastPollAt = now();
@@ -320,14 +362,74 @@ function createLease(o) {
     becomeRole('unsure', 'released');
   }
 
+  // ---- team settings (overlay/team-sync.js): a few extra messages on the lease webhook, found through the "ts" field of the lease state ----
+  // Old copies of ScapeLite keep unknown fields when they rewrite the lease, so "ts" survives their heartbeats. teamMeta() costs no request: the lease is read anyway.
+  const TS = require('./team-sync');
+  const teamMeta = () => (S.state ? TS.cleanMeta(S.state.ts) : null);
+  async function teamFetch() {
+    if (!S.messageId) return { ok: false, error: 'There is no shared lease yet. Is the lease webhook saved and the game running?' };
+    const r = await readMessage();
+    if (!r.ok || !r.state) return { ok: false, error: 'The lease message could not be read right now.' };
+    const meta = TS.cleanMeta(r.state.ts);
+    if (!meta) return { ok: true, none: true };
+    const parts = [];
+    for (const id of meta.ids) {
+      const g = await req('lease', null, { method: 'GET', messageId: id });
+      if (!g.ok) return { ok: false, error: g.messageGone ? 'A part of the team settings was deleted from the channel. Ask the publisher to publish again.' : 'Discord did not answer: ' + (g.error || 'unknown error') };
+      parts.push(TS.parsePart(g.json && g.json.content));
+    }
+    const j = TS.joinParts(parts, meta.ver);
+    if (!j.ok) return { ok: false, error: j.error };
+    return { ok: true, meta, text: j.text };
+  }
+  // text = TS.encodeText(...).text. Edits the existing part messages (new ones only when more are needed), points the lease at them LAST, reads the pointer back and
+  // retries if a heartbeat overwrote it at the same moment. Parts that are no longer needed are deleted.
+  async function teamPublish(text, info) {
+    if (!S.messageId) return { ok: false, error: 'There is no shared lease yet. Is the lease webhook saved and the game running?' };
+    const parts = TS.toParts(String(text || ''));
+    if (!parts.length || parts.length > TS.LIMITS.maxParts) return { ok: false, error: 'The settings are too large to publish.' };
+    const r0 = await readMessage();
+    if (!r0.ok || !r0.state) return { ok: false, error: 'The lease message could not be read right now.' };
+    const old = TS.cleanMeta(r0.state.ts), oldIds = old ? old.ids : [], ver = (old ? old.ver : 0) + 1, ids = [];
+    for (let i = 0; i < parts.length; i++) {
+      const content = TS.partMessage(i, parts.length, ver, parts[i]);
+      if (oldIds[i]) {
+        const e = await req('lease', { content }, { messageId: oldIds[i] });
+        if (e.ok) { ids.push(oldIds[i]); continue; }
+        if (!e.messageGone) return { ok: false, error: 'Discord did not take the edit: ' + (e.error || 'unknown error') };
+      }
+      const c = await req('lease', { username: 'ScapeLite team settings', content }, { wait: true });
+      if (!c.ok || !c.id) return { ok: false, error: 'Discord did not take the message: ' + (c.error || 'unknown error') };
+      ids.push(c.id);
+    }
+    const meta = { ver, ids, sum: String(text).slice(String(text).lastIndexOf('.') + 1), by: label(), at: now(), u: info && info.urls ? 1 : 0 };
+    for (let a = 0; a < 3; a++) {
+      const cur = await readMessage();
+      if (!cur.ok || !cur.state) return { ok: false, error: 'The lease message could not be read right now.' };
+      const w = await writeMessage(Object.assign({}, cur.state, { ts: meta }));
+      if (!w.ok) return { ok: false, error: 'The lease could not be written: ' + (w.error || 'unknown error') };
+      await sleep(opt.verifyDelayMs + random() * 300);
+      const v = await readMessage();
+      const m2 = v.ok && v.state ? TS.cleanMeta(v.state.ts) : null;
+      if (m2 && m2.ver === ver) {
+        for (const id of oldIds.slice(ids.length)) await req('lease', null, { method: 'DELETE', messageId: id });
+        if (v.state) observe(v.state);
+        log('Team settings published: version ' + ver + ' in ' + ids.length + ' message' + (ids.length > 1 ? 's' : '') + (meta.u ? ' (with webhook addresses)' : '') + '.');
+        return { ok: true, meta };
+      }
+    }
+    return { ok: false, error: 'The lease was rewritten at the same moment. Press Publish again.' };
+  }
+
   return {
-    tick, claim, release, resume: () => { S.released = false; S.lastPollAt = 0; },
+    tick, claim, release, teamMeta, teamFetch, teamPublish, resume: () => { S.released = false; S.lastPollAt = 0; },
     role: () => S.role,
     canRelay: () => S.role === 'leader' && now() - S.lastConfirmedAt < opt.fenceMs,
     noteRelayed: (key) => { if (key) S.pendingKeys.push(key); if (S.pendingKeys.length > 200) S.pendingKeys.splice(0, S.pendingKeys.length - 200); },
     alreadyRelayed: (key) => !!(S.state && Array.isArray(S.state.lk) && S.state.lk.indexOf(key) !== -1),
     setShared: (patch) => { Object.assign(S.pendingShared, patch); S.lastBeatAt = 0; },
     shared: () => (S.state ? { dg: S.state.dg || 0, lk: S.state.lk || [], leader: S.state.n || '', epoch: S.state.e || 0 } : null),
+    boardView, boardAnnounce, boardSetCards,
     info: () => ({ version: myVer(), newest: S.newest, newerVersion: (S.newest && myVer() && cmpVer(S.newest, myVer()) > 0) ? S.newest : '', role: S.role, leader: S.state && S.state.n || '', epoch: S.state && S.state.e || 0, beat: S.state && S.state.s || 0, hasLease: !!S.messageId, errors: S.errors, lastError: S.lastError, takeovers: S.takeovers, sinceMs: now() - S.since }),
     _S: S,
   };

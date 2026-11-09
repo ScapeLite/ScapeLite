@@ -397,13 +397,17 @@
   const readBk = () => { try { return JSON.parse(localStorage.getItem(LS_BK) || 'null'); } catch (e) { return null; } };
   const lsKeys = () => { const k = []; try { for (let i = 0; i < localStorage.length; i++) { const n = localStorage.key(i); if (BK_PREFIX.some((p) => n.indexOf(p) === 0)) k.push(n); } } catch (e) { /* storage blocked */ } return k; };
   function snapshotAll() {
-    const o = { at: Date.now(), db: JSON.parse(JSON.stringify(db)), scales: {}, mult: {}, ls: {}, pos: {}, look: lookNow() };
+    const o = { at: Date.now(), db: JSON.parse(JSON.stringify(db)), scales: {}, mult: {}, ls: {}, pos: {}, look: lookNow(), open: openNow() };
     try { o.scales = (window.__ccPanelScale && window.__ccPanelScale.scales) || {}; } catch (e) { /* none */ }
     try { o.mult = JSON.parse(localStorage.getItem('cc-panel-mult') || '{}') || {}; } catch (e) { /* none */ }
     lsKeys().forEach((n) => { try { o.ls[n] = localStorage.getItem(n); } catch (e) { /* skip */ } });
     ids().forEach((id) => { const el = elOf(id); if (!el) return; const L = parseFloat(el.style.left), T = parseFloat(el.style.top); if (Number.isFinite(L) && Number.isFinite(T)) o.pos[id] = [L, T]; });
     return o;
   }
+  // which of ScapeLite's own panels are open (plugin namespace -> true/false); only those that have an open/close switch. The default layout opens a few and closes the rest, and going back restores this.
+  const nsOpen = (n) => { const o = window[n]; if (!o || typeof o.toggle !== 'function' || o.isOpen === undefined) return null; try { return !!(typeof o.isOpen === 'function' ? o.isOpen() : o.isOpen); } catch (e) { return null; } };
+  const openNow = () => { const r = {}, D = window.__ccDefaultLayout; Object.keys((D && D.NS) || {}).forEach((id) => { const n = D.NS[id], v = nsOpen(n); if (v !== null) r[n] = v; }); return r; };
+  const setOpenState = (want) => { Object.keys(want || {}).forEach((n) => { const cur = nsOpen(n); if (cur !== null && cur !== !!want[n]) { try { window[n].toggle(); } catch (e) { /* leave it as it is */ } } }); };
   const vpNow = () => { let e = { top: 0, bottom: 0 }; try { const x = window.__ccBar && window.__ccBar.edge && window.__ccBar.edge(); if (x) e = x; } catch (er) { /* no bars */ } return { w: innerWidth, h: innerHeight, top: e.top || 0, bottom: e.bottom || 0, zoom: zoomK(), g: Math.max(0.5, Math.min(2, (Number(setting('uiScalePct', 100)) || 100) / 100)) }; };
   function useDefault() {
     const D = window.__ccDefaultLayout; if (!D || !info()) return false;
@@ -420,6 +424,9 @@
       try { const k = 'cc-ui:panel:' + id, v = JSON.parse(localStorage.getItem(k) || 'null'); if (v) { v.x = p.x; v.y = p.y; localStorage.setItem(k, JSON.stringify(v)); } } catch (e) { /* none */ }   // the kit's saved spot (and whether it was open) of a panel that is not built yet
     });
     db.active = D.NAME; save(); undoSnap = null; applyProfile(D.NAME);
+    // a clean start: the few panels that matter are open, the other ScapeLite panels are closed (the ScapeLite menu opens any of them again)
+    const want = {}; (b.open || []).forEach((n) => { want[n] = true; }); (b.close || []).forEach((n) => { want[n] = false; });
+    setTimeout(() => setOpenState(want), 250);
     return true;
   }
   function backToOld() {
@@ -438,6 +445,7 @@
       remember(id, el);
     });
     ghIds.forEach((id) => { const e = elOf(id); if (e) e.removeAttribute('data-cc-gh'); }); ghIds.clear();   // panels that were hidden behind a tab are back at once
+    setTimeout(() => setOpenState(o.open), 250);   // the panels that were open are open again, the ones the default opened close
     applyLook(o.look); try { localStorage.removeItem(LS_BK); } catch (e) { /* none */ }
     refreshBar(); return true;
   }

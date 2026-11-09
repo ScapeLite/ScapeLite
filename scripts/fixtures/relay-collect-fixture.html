@@ -1,0 +1,66 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>relay-collect-fixture</title></head>
+<body>
+<!-- A fake of the game's chat panel (scripts/test-relay-collect.js). It draws lines the way the game does (only the ones its filters allow) and keeps ALL of them in
+     _messages, like the game. The real overlay/chat-relay-collect.js and the real overlay/game-bridge.js are loaded into this page by the test. -->
+<span class="ingame-hud-name">Wulf</span>
+<div id="chat-panel"><div class="chat-content-wrap"><div class="chat-message-area"></div></div></div>
+<script>
+window.__ccDom = { q: (s) => document.querySelector(s), qa: (s) => Array.from(document.querySelectorAll(s)) };
+const area = document.querySelector('.chat-message-area');
+let minute = 0;
+const C = {
+  _messages: [], _maxMessages: 1000, SEND_CHANNELS: ['global', 'proximity', 'friends', 'clan'], _activeChannel: 'clan', _dmTarget: null,
+  _filters: { global: true, proximity: true, friends: true, clan: true, game: true },
+  _clanFilters: { levels: true, pets: true, shinyPets: true, allSkillsPet: true, shinyAllSkillsPet: true, rareDrops: true, deaths: true, questsCompleted: true, questSteps: false, tasks: false, unlocks: true, collections: true },
+  _gameFilters: { levels: true, pets: true, rareDrops: true, unlocks: true, collections: true, questsCompleted: true },
+  _globalFilters: { cape: true, pet: true, shiny_pet: true },
+  _proximityFilters: {},
+  CATEGORY_COLORS: { rareDrops: 1, pets: 1, shinyPets: 1, unlocks: 1, levels: 1, collections: 1, questsCompleted: 1, cape: 1, pet: 1, shiny_pet: 1 },
+  _isSenderMuted() { return false; },
+  // same rule as the game's _isVisible
+  _isVisible(e) {
+    return !(!this._filters[e.channel] || (e.channel === 'game' && e.category && !e.sender && this._gameFilters[e.category] === false) ||
+      (e.channel === 'clan' && e.category && !e.sender && !this._clanFilters[e.category]) ||
+      (e.channel === 'global' && e.category && !e.sender && this._globalFilters.hasOwnProperty(e.category) && !this._globalFilters[e.category]));
+  },
+  // same shape as the game's _buildLine
+  _buildLine(e) {
+    const t = document.createElement('div'); t.className = 'chat-message chat-msg-' + e.channel; t.setAttribute('data-channel', e.channel);
+    if (e.category && !e.sender) t.setAttribute('data-category', e.category);
+    t.style.color = '#ccc';
+    const ts = document.createElement('span'); ts.className = 'chat-timestamp'; ts.textContent = '[' + e.timestamp + '] '; t.appendChild(ts);
+    const slot = document.createElement('span'); slot.className = 'chat-badge-slot'; t.appendChild(slot);
+    if (e.sender) {
+      const n = document.createElement('span'); n.className = 'chat-sender-name'; n.textContent = e.sender; t.appendChild(n);
+      const x = document.createElement('span'); x.className = 'chat-text'; x.textContent = ': ' + e.text; t.appendChild(x);
+    } else {
+      if (e.eventSender) { const n = document.createElement('span'); n.className = 'chat-sender-name'; n.textContent = e.eventSender; t.appendChild(n); t.appendChild(document.createElement('span')).textContent = ': '; }
+      const i = document.createElement('img'); i.className = 'chat-game-icon'; i.alt = ''; t.appendChild(i);
+      t.appendChild(document.createElement('span')).textContent = e.text;
+    }
+    return t;
+  },
+  addMessage(channel, sender, text, icon, category, eventSender) {
+    const m = { channel, sender, text, timestamp: '12:' + String(minute++ % 60).padStart(2, '0'), icon: icon || null, category: category || null, eventSender: eventSender || null, _el: null };
+    this._messages.push(m);
+    if (this._isVisible(m)) { m._el = this._buildLine(m); area.appendChild(m._el); }
+  },
+  setFilter(ch, on) { this._filters[ch] = on; this._renderAll(); },
+  setClanFilter(cat, on) { this._clanFilters[cat] = on; this._renderAll(); },
+  _renderAll() { area.innerHTML = ''; this._messages.forEach((m) => { if (this._isVisible(m)) { m._el = this._buildLine(m); area.appendChild(m._el); } else m._el = null; }); },
+};
+window.fx = {
+  C,
+  // install the REAL bridge (its source is a function expression) against a minimal game state
+  installBridge(src) {
+    const fn = (0, eval)(src);
+    const G = { state: 'idle', skills: {}, bank: [], activePotions: {}, unlocks: {}, pets: {}, capes: {}, itemsData: {}, getDisplayedMovementYards: () => 0 };
+    const Y = { totalMovementSpeed: () => 12, movementSpeed: () => 12, TELESCOPE_MOVE_SPEED_BONUS_PER: 0, GAUNTLET_RARE_TIER_KEYS: [], COLLECTOR_MAX_MOVE_SPEED: 0 };
+    fn(G, {}, Y, C, { _active: false }, {}, {}, {}, {}, {});
+    return typeof window.__ccBridge.chatHidden;
+  },
+  drain: () => (window.__ccChatRelay ? window.__ccChatRelay.drain() : null),
+};
+</script>
+</body></html>

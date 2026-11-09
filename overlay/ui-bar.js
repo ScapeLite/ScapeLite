@@ -329,7 +329,7 @@
       const key = q.key || String(i); let c = have.get(key); have.delete(key);
       if (!c) { c = buildBtn(x, bar.el); c.dataset.key = key; }
       c._q = q; c._reorder = !!r.reorder;
-      const cn = 'pi' + (q.click ? ' btn' : '') + (q.active ? ' on' : '') + (q.tone ? ' t-' + q.tone : '') + (c.classList.contains('drag') ? ' drag' : '');
+      const cn = 'pi' + (q.img ? ' hi' : '') + (q.click ? ' btn' : '') + (q.active ? ' on' : '') + (q.tone ? ' t-' + q.tone : '') + (c.classList.contains('drag') ? ' drag' : '');
       if (c.className !== cn) c.className = cn;
       const im = c.firstChild, tx = c.children[1];
       if (q.img) { if (im.getAttribute('src') !== q.img) { im.src = q.img; im.alt = ''; } im.style.display = ''; } else im.style.display = 'none';
@@ -392,16 +392,16 @@
         return { t: (tk.activityName || cap(tk.activityId || 'Task')) + ' ' + tk.progress + '/' + tk.quantity + (o.eta !== false && isFinite(eta) ? ' · ' + dur(eta) : '') + (ex.length ? ' · ' + ex.join(' · ') : ''), tip: cap(tk.skill) + ' task' + (tk.nodeName ? ' at ' + tk.nodeName : '') + taskTip(cu), frac: o.bar !== false ? tk.progress / tk.quantity : null, richFn: o.queue !== false ? () => ({ title: 'Task queue', queue: true, blocks: [] }) : null };
       } },
     where: { label: 'Location', icon: '📍', opts: [{ k: 'state', label: 'Show what you are doing', def: true }],
-      render: (c, o) => { const l = c.live; if (!l) return null; const tk = l.task; const place = (tk && tk.nodeName) || cap(String(l.at || '').replace(/_/g, ' ')); return { t: (o.state !== false ? doing(l) + ' · ' : '') + place }; } },
+      render: (c, o) => { const l = c.live; if (!l) return null; const tk = l.task; const place = (tk && tk.nodeName) || cap(String(l.at || '').replace(/_/g, ' ')); return { t: (o.state !== false ? doing(l) + ' · ' : '') + place, dropOrder: [0] }; } },
     xp: { label: 'XP per hour', icon: '📈', opts: [], click: () => { try { window.__ccXpTracker && window.__ccXpTracker.toggle(); } catch (e) { /* ignore */ } },
-      render: () => { const r = xpRates(); return { t: r > 0 ? num(r) + ' XP/hr' : 'XP/hr –', tone: r > 0 ? 'good' : undefined, tip: 'All skills, from the XP Tracker (click to open it)' }; } },
+      render: () => { const r = xpRates(); return { t: r > 0 ? num(r) + ' XP/hr' : 'XP/hr –', short: r > 0 ? num(r) : '–', tone: r > 0 ? 'good' : undefined, tip: 'All skills, from the XP Tracker (click to open it)' }; } },
     gold: { label: 'Gold', icon: '🪙', opts: [{ k: 'full', label: 'Show the full number', def: false }],
       render: (c, o) => { const g = c.held && c.held.gold; if (g == null) return null; return { t: o.full ? Math.round(g).toLocaleString('en-US') : num(g), tip: Math.round(g).toLocaleString('en-US') + ' gold' }; } },
     blood: { label: 'Blood coins', icon: '🩸', opts: [], render: (c) => { const g = c.held && c.held.bloodcoins; return g == null ? null : { t: num(g), tip: Math.round(g).toLocaleString('en-US') + ' blood coins' }; } },
     clock: { label: 'Clock', icon: '🕒', opts: [{ k: 'h12', label: '12-hour clock', def: false }, { k: 'sec', label: 'Show seconds', def: false }],
       render: (c, o) => { const d = new Date(); return { t: d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: o.sec ? '2-digit' : undefined, hour12: !!o.h12 }) }; } },
     advisor: { label: 'Next action', icon: '🧠', opts: [], render: () => { const A = window.__ccAdvisor, x = A && A.hero && A.hero(); if (!x) return null; return { t: x.text.length > 60 ? x.text.slice(0, 58) + '…' : x.text, tip: x.text + ' · ' + x.gain + ' (Advisor panel, sure ' + x.sure + ')', tone: x.sure === 'A' ? 'good' : undefined }; } },
-    inv: { label: 'Inventory space', icon: '🎒', opts: [], render: (c) => { const a = c.alert; if (!a || !a.invTotal) return null; const free = a.invTotal - a.invUsed; return { t: free + ' free', tip: a.invUsed + ' of ' + a.invTotal + ' slots used', tone: free <= 1 ? 'bad' : free <= 3 ? 'warn' : undefined }; } },
+    inv: { label: 'Inventory space', icon: '🎒', opts: [], render: (c) => { const a = c.alert; if (!a || !a.invTotal) return null; const free = a.invTotal - a.invUsed; return { t: free + ' free', short: String(free), tip: a.invUsed + ' of ' + a.invTotal + ' slots used', tone: free <= 1 ? 'bad' : free <= 3 ? 'warn' : undefined }; } },
     event: { label: 'Game event', icon: '\uD83C\uDF89', opts: [{ k: 'name', label: 'Show the event name', def: false }, { k: 'days', label: 'Show the days left', def: true }],
       render: (c, o) => {
         const ev = window.__ccUI && window.__ccUI.eventInfo && window.__ccUI.eventInfo(); if (!ev) return null;   // no event on: the module is not there
@@ -451,7 +451,7 @@
           else { const ms = document.querySelectorAll('.chat-panel .chat-message'); const m = ms[ms.length - 1]; if (m) { const ts = m.querySelector('.chat-timestamp'); last = m.textContent.replace(ts ? ts.textContent : '', '').trim(); } }
         }
         if (cc) n = cc.unread || 0;
-        return { t: (last ? 'Chat \u00B7 ' + last : 'Chat') + (n ? ' \u00B7 ' + n + ' new' : ''), fw: Math.max(160, Math.min(900, Number(o.w) || 420)), richFn: () => chatRich(), tip: '' };
+        return { t: (last ? 'Chat \u00B7 ' + last : 'Chat') + (n ? ' \u00B7 ' + n + ' new' : ''), dropOrder: [0], fw: Math.max(160, Math.min(900, Number(o.w) || 420)), richFn: () => chatRich(), tip: '' };
       } },
     space: { many: true, label: 'Empty space (spacer)', icon: '', opts: [
         { k: 'w', label: 'Width', choices: [[16, 'Small (16 px)'], [40, 'Medium (40 px)'], [96, 'Large (96 px)'], [200, 'Extra large (200 px)'], [400, 'Huge (400 px)']], def: 40 },
@@ -486,7 +486,7 @@
         const el = document.querySelector('.ingame-hud-offline'), h = el && txt(el, ':scope > span'); if (!h) return null;
         const tiers = Array.from(el.querySelectorAll('.tooltip .tt-tier')).map((r) => ({ img: (r.querySelector('img') || {}).src || '', name: ownText(r.querySelector('.tt-tier-name')), sub: txt(r, '.tt-tier-lock') || (r.classList.contains('active') ? 'counts' : 'not counted'), right: txt(r, '.h'), dim: r.classList.contains('locked') }));
         const blocks = [{ kind: 'text', text: txt(el, '.tt-off-body') }].concat(tiers.length ? [{ kind: 'rows', rows: tiers }] : []).concat(txt(el, '.tt-hint') ? [{ kind: 'label', text: txt(el, '.tt-hint') }] : []);
-        return { t: h + ' offline', tip: 'Your character keeps working this long after you log out', rich: { title: 'Offline hours', note: h, blocks } };
+        return { t: h + ' offline', short: h, tip: 'Your character keeps working this long after you log out', rich: { title: 'Offline hours', note: h, blocks } };
       } },
     // The world you are on (the game's info HUD). A click is passed to the game's own world name, which opens its world list; picking a world there is the game's own action.
     world: { label: 'World', icon: '\uD83C\uDF10', opts: [],
@@ -498,7 +498,7 @@
         const el = document.querySelector('.ingame-hud-online-total'), b = el && el.querySelector('b'); if (!b || !b.textContent.trim()) return null;
         const rows = Array.from(el.querySelectorAll('.tooltip .tt-pop-row')).map((r) => Array.from(r.querySelectorAll('span')).map((x) => x.textContent.trim()).filter(Boolean).join(' ')).filter(Boolean);
         const title = txt(el, '.tooltip .tt-pop-title');
-        return { t: b.textContent.trim() + ' online', tip: [title, ...rows].filter(Boolean).join(' \u00B7 ') || 'Players online' };
+        return { t: b.textContent.trim() + ' online', short: b.textContent.trim(), tip: [title, ...rows].filter(Boolean).join(' \u00B7 ') || 'Players online' };
       } },
   };
   const DEFAULT = { v: 1, top: [{ id: 'task', s: 'l' }, { id: 'where', s: 'l' }, { id: 'panelbtns', s: 'c' }, { id: 'xp', s: 'r' }, { id: 'gold', s: 'r' }, { id: 'clock', s: 'r' }], bottom: [] };
@@ -512,7 +512,7 @@
 .cc-bar{position:fixed;left:0;right:0;z-index:var(--cc-z-bar,99900);display:flex;align-items:stretch;gap:2px;box-sizing:border-box;padding:0 6px;user-select:none;overflow:hidden}
 .cc-bar[data-pos=top]{top:0;border-bottom:1px solid var(--cc-border,#2e2e42);box-shadow:0 2px 10px rgba(0,0,0,.4)}
 .cc-bar[data-pos=bottom]{bottom:0;border-top:1px solid var(--cc-border,#2e2e42);box-shadow:0 -2px 10px rgba(0,0,0,.4)}
-.cc-bar .zl,.cc-bar .zr,.cc-bar .zc{display:flex;align-items:stretch;gap:2px;min-width:40px}
+.cc-bar .zl,.cc-bar .zr,.cc-bar .zc{display:flex;align-items:stretch;gap:2px;min-width:max-content}   /* a zone never gets narrower than its modules: the fit below makes them add up to the bar, so nothing runs under its neighbour */
 .cc-bar .zl{flex:1 1 0;justify-content:flex-start}.cc-bar .zr{flex:1 1 0;justify-content:flex-end}.cc-bar .zc{flex:0 1 auto;justify-content:center}
 .cc-bar .zc:empty{min-width:0}
 .cc-bar .m{position:relative;display:flex;align-items:center;gap:6px;padding:0 10px;border-radius:6px;cursor:default;white-space:nowrap}
@@ -521,6 +521,18 @@
 .cc-bar .m .i{font-size:1.1em;line-height:1}
 .cc-bar .m .t{font-weight:600}
 .cc-bar .m:focus-visible,.cc-bar .pi:focus-visible{outline:2px solid var(--cc-info);outline-offset:-2px}
+.cc-bar .m .i{flex:none}
+/* fit (see fitBar): compression steps, cheapest first */
+.cc-bar .m.fit-hid{display:none !important}
+.cc-bar .m.ell{overflow:hidden;min-width:0 !important}
+.cc-bar .m.ell .t{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cc-bar .m.nolab .pi.hi b{display:none}
+.cc-bar.tight{gap:1px;padding:0 3px}
+.cc-bar.tight .zl,.cc-bar.tight .zr,.cc-bar.tight .zc{gap:1px}
+.cc-bar.tight .m{padding:0 5px;gap:4px}
+.cc-bar.tight .m .pc{gap:3px !important}
+.cc-bar.tight .m .pi.btn{padding:3px 4px}
+.cc-bar .m.ovf{flex:none;font-weight:700;cursor:pointer;padding:0 9px}
 .cc-bar .m.fw{box-sizing:border-box;min-width:120px;overflow:hidden}   /* elastic: the chat button shrinks with its zone instead of running under the panel buttons */
 .cc-bar .m.fw .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .cc-bar .m.sp{padding:0;min-width:0;box-sizing:border-box;border-radius:0}
@@ -532,7 +544,7 @@ body.cc-sp-nohover .cc-bar .m.sp:hover{outline:none}
 .cc-bar .m .pi img{width:20px;height:20px;image-rendering:pixelated}
 .cc-bar .m .pc{gap:var(--pg,8px)}
 .cc-bar .m .pi.btn{position:relative;gap:6px;padding:3px 9px;border-radius:7px;cursor:pointer;color:var(--cc-text-dim,#8f8fa4);border:1px solid transparent;font-weight:600}
-.cc-bar .m .pi.btn b{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.cc-bar .m .pi.btn b{max-width:var(--bmax,260px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .cc-bar .m .pc.look-icon .pi.btn{padding:3px 6px}
 .cc-bar .m .pc.pills .pi.btn{border-color:var(--cc-border,#2e2e42);background:var(--cc-bg-2,#161620)}
 .cc-bar .m .pi.btn:hover{color:var(--cc-text,#fff);background:var(--cc-bg-hover,#262636)}
@@ -1083,18 +1095,18 @@ body.cc-hp-hide-orig :is(#ui-container,#hud-layer)>.hp-bar{display:none !importa
     el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); const m = e.target.closest('.m'), pi = e.target.closest('.pi[data-key]'); showMenu(e.clientX, e.clientY, pos, m ? m.dataset.id : null, m ? m.dataset.s : null, m ? Number(m.dataset.i) : -1, pi && /^(pbtn|panelbtns)$/.test(m ? m.dataset.id : '') ? pi.dataset.key : null); });
     ['mousedown', 'click', 'wheel'].forEach((t) => el.addEventListener(t, (e) => e.stopPropagation()));
     try { window.__ccUI.ccWatch(el); } catch (e) { /* kit gone: no width classes */ }
-    return { pos, el, zl, zc, zr, mods: {} };
+    const ro = new ResizeObserver(() => fitSoon()); ro.observe(el);   // a new window width: fit again (coalesced into one frame)
+    return { pos, el, zl, zc, zr, mods: {}, ro };
   }
-  const LOWPRI_C = new Set(['where', 'blood', 'clock']), LOWPRI_M = new Set(['gold', 'inv', 'xp']);
-  function ensureModules(b) {
+    function ensureModules(b) {
     const list = cfg[b.pos];
     const want = list.map((m, i) => m.id + '|' + m.s + '|' + i);
     if (b.sig === want.join(',')) return;
-    b.sig = want.join(','); b.zl.textContent = ''; b.zc.textContent = ''; b.zr.textContent = ''; b.mods = {};
+    b.sig = want.join(','); b.zl.textContent = ''; b.zc.textContent = ''; b.zr.textContent = ''; b.mods = {}; b.ovf = null; b.fitKey = '';
     list.forEach((m, i) => {
       const def = MODULES[m.id]; if (!def) return;
       const e = document.createElement('div'); e.className = 'm' + (def.click ? ' clk' : ''); e.dataset.id = m.id; e.dataset.s = m.s; e.dataset.i = String(i);
-      e.innerHTML = '<span class="i"></span><span class="t' + (LOWPRI_C.has(m.id) ? ' cc-hide-c' : LOWPRI_M.has(m.id) ? ' cc-hide-m' : '') + '"></span><span class="pc"></span><span class="f"><i></i></span>';
+      e.innerHTML = '<span class="i"></span><span class="t"></span><span class="pc"></span><span class="f"><i></i></span>';
       e.querySelector('.i').textContent = def.icon;
       if (def.click) e.addEventListener('click', (ev) => { if (!dragMoved) def.click(m.o || {}); });
       e.addEventListener('mousedown', (ev) => { hideTip(); startDrag(ev, b, m, e); });
@@ -1121,20 +1133,150 @@ body.cc-hp-hide-orig :is(#ui-container,#hud-layer)>.hp-bar{display:none !importa
       Object.keys(b.mods).forEach((k) => {
         const x = b.mods[k]; let r = null; try { r = x.def.render(ctx, x.m.o || {}); } catch (e) { r = null; swal('Info Bar module ' + (x.m.id || k), e); }
         x.el.style.display = r ? '' : 'none'; if (!r) return;
+        x.full = r.t == null ? '' : r.t; x.short = r.short == null ? null : r.short; x.dropOrder = r.dropOrder || null; x.isBar = !!r.bar; x.blank = !!r.blank; x.items = !!r.items; x.baseW = r.blank ? r.w : (r.fw || 0);
         x.el.classList.toggle('sp', !!r.blank); x.el.classList.toggle('ln', !!r.blank && !!r.line); x.el.style.width = r.blank ? r.w + 'px' : (r.fw ? r.fw + 'px' : ''); x.el.classList.toggle('fw', !!r.fw);
         if (r.blank) { x.t.style.display = 'none'; x.icon.style.display = 'none'; x.pc.textContent = ''; delete x.pc.dataset.sig; x.f.style.display = 'none'; x.tip = setting('uiBarSpacerHover', true) !== false ? (r.tip || '') : ''; x.rich = null; x.richFn = null; x.el.removeAttribute('title'); return; }
         if (r.items) {
           x.t.style.display = 'none'; x.icon.style.display = 'none';
           syncItems(x, r, b);
-        } else { x.t.style.display = ''; x.icon.style.display = ''; x.pc.textContent = ''; delete x.pc.dataset.sig; if (x.t.textContent !== r.t) x.t.textContent = r.t; }
-        x.tip = r.tip || ''; x.rich = r.rich || null; x.richFn = r.richFn || null; x.el.removeAttribute('title');
+        } else { x.t.style.display = ''; x.icon.style.display = ''; x.pc.textContent = ''; delete x.pc.dataset.sig; }
+        x.baseTip = r.tip || ''; x.hasRich = !!(r.rich || r.richFn); x.tip = x.baseTip;   // (applyFs adds the whole text when the module is shortened)
+        applyFs(x);   // the text itself (in the shortest form the fit chose), the width limits, the hover text and the hidden state
+        x.rich = r.rich || null; x.richFn = r.richFn || null; x.el.removeAttribute('title');
         if (tipFor === x && tipEl && !x.key && (x.richFn || x.rich || x.tip) && !tip2 && !tipEl.matches(':hover')) { if (tipEl.dataset.sig !== tipSig(x)) showTip(x, b.el, true); }
         x.el.classList.toggle('hpbar', !!r.bar); if (!r.items && r.noicon) x.icon.style.display = 'none';   // (item modules keep their own icon state)
         x.el.classList.toggle('good', r.tone === 'good'); x.el.classList.toggle('warn', r.tone === 'warn'); x.el.classList.toggle('bad', r.tone === 'bad');
         if (r.frac != null) { x.f.style.display = ''; x.fi.style.width = Math.max(0, Math.min(100, r.frac * 100)) + '%'; } else x.f.style.display = 'none';
       });
     });
+    fitAll(false);
   }
+  // ---------------------------------------------------------------- fit: a bar never overlaps its own text
+  // Whenever the bar width or its content changes, the bar is fitted from scratch by measuring the real modules. The steps, cheapest first, each applied to the
+  // LONGEST module that can still take it, until the modules add up to the bar:
+  //   space  empty-space spacers shrink (free room is always used first: the zones only pack the modules, nothing is stretched)
+  //   drop   labels and secondary parts of a text go ("12.3k XP/hr" -> "12.3k", "Mining 12/50 · 5 min" -> "Mining 12/50"); panel buttons lose their text when they have an icon
+  //   abbr   long numbers become short ones (1,234,567 -> 1.2M)
+  //   tight  gaps and padding shrink to a minimum (the whole bar)
+  //   ell    the flexible text modules get an ellipsis; the full text stays in the hover card
+  //   hide   last resort: the lowest-priority modules move into a "…" menu (the bell, Hit points and the panel buttons never do)
+  const FIT_PHASES = ['space', 'drop', 'abbr', 'tight', 'ell', 'hide'];
+  const FIT_NOELL = new Set(['alerts', 'clock', 'hp', 'gold', 'xp', 'blood', 'inv']);                 // short and numeric: they are hidden last, never cut
+  const FIT_NEVER = new Set(['alerts', 'hp', 'panelbtns', 'pbtn']);                                    // never moved into the "…" menu
+  const FIT_HIDE_ORDER = ['clock', 'blood', 'online', 'world', 'offline', 'event', 'inv', 'gold', 'where', 'xp', 'advisor', 'windows', 'potions', 'task', 'chat'];   // first hidden first
+  const FIT_MIN_W = 64, FIT_BMAX = [260, 120, 80, 56], FIT_ITEMS_MAX = 4;   // smallest width of a cut text module; label widths of a panel-button group per cut level 0..3, level 4 = labels gone
+  const SEP = ' \u00B7 ';
+  const abbrNums = (t) => t.replace(/\b\d{1,3}(?:,\d{3})+\b|\b\d{4,}\b/g, (m) => {
+    const n = Number(m.replace(/,/g, '')), r = (v, u) => (v >= 100 ? Math.round(v) : Math.round(v * 10) / 10) + u;
+    return n >= 1e9 ? r(n / 1e9, 'B') : n >= 1e6 ? r(n / 1e6, 'M') : r(n / 1e3, 'k');
+  });
+  // the steps a module can drop: one for a short form (labels gone), else its ' · ' parts (never all of them; the order may come from the module)
+  function dropOrder(x) {
+    const segs = String(x.full || '').split(SEP), idx = segs.map((_, i) => i), first = (x.dropOrder || []).filter((i) => i < segs.length);
+    return first.concat(idx.filter((i) => !first.includes(i)).reverse()).slice(0, Math.max(0, segs.length - 1));
+  }
+  const dropSteps = (x) => (x.items || x.blank ? 0 : x.short != null ? 1 : dropOrder(x).length);   // (panel buttons lose their text step by step in the ellipsis phase instead)
+  function fitText(x, f0) {
+    const f = f0 || x.fs || {}; let base = x.full == null ? '' : String(x.full);
+    if (f.drop && x.short != null) base = String(x.short);
+    else if (f.drop) { const gone = new Set(dropOrder(x).slice(0, f.drop)); base = base.split(SEP).filter((_, i) => !gone.has(i)).join(SEP); }
+    return f.abbr ? abbrNums(base) : base;
+  }
+  const fitCut = (x) => !!(x.fs && !x.items && !x.blank && (x.fs.drop || x.fs.abbr || x.fs.ell != null));
+  function applyFs(x) {
+    const f = x.fs || (x.fs = { drop: 0, abbr: false, ell: null, spw: 1, hid: false });
+    x.el.classList.toggle('fit-hid', !!f.hid);
+    if (x.blank) { x.el.style.width = Math.max(4, Math.round((x.baseW || 4) * (f.spw == null ? 1 : f.spw))) + 'px'; return; }
+    if (x.items) {
+      const lv = f.ell || 0; x.el.classList.toggle('nolab', lv >= FIT_ITEMS_MAX);
+      if (lv) x.el.style.setProperty('--bmax', FIT_BMAX[Math.min(lv, FIT_BMAX.length - 1)] + 'px'); else x.el.style.removeProperty('--bmax');
+      return;
+    }
+    if (x.t && x.t.style.display !== 'none') { const t = fitText(x); if (x.t.textContent !== t) x.t.textContent = t; }
+    const cut = f.ell != null;
+    x.el.classList.toggle('ell', cut);
+    if (cut) { x.el.style.maxWidth = f.ell + 'px'; if (x.baseW) x.el.style.width = Math.min(x.baseW, f.ell) + 'px'; } else { x.el.style.maxWidth = ''; if (x.baseW) x.el.style.width = x.baseW + 'px'; }
+    if (x.baseTip !== undefined) x.tip = !x.hasRich && fitCut(x) ? (x.full || '') + (x.baseTip ? SEP + x.baseTip : '') : x.baseTip;   // a shortened module keeps its whole text in the hover card
+  }
+  const fitFlexible = (x) => (x.items ? true : !FIT_NOELL.has(x.m.id) || (x.m.id === 'hp' && x.isBar));
+  function fitMeasure(b) {   // widths of the modules in their zones plus the gaps; the only layout read of a step
+    const gap = b.tight ? 1 : 2, pad = b.tight ? 6 : 12; let tot = 2 * gap + pad;
+    ['zl', 'zc', 'zr'].forEach((z) => {
+      let k = 0;
+      Array.from(b[z].children).forEach((e) => { if (e.classList.contains('fit-hid') || e.style.display === 'none' || (!e.dataset.id && !e.classList.contains('ovf'))) return; tot += e.getBoundingClientRect().width; k++; });
+      if (k > 1) tot += (k - 1) * gap;
+    });
+    Object.values(b.mods).forEach((x) => { x.w = x.el.classList.contains('fit-hid') || x.el.style.display === 'none' ? 0 : x.el.getBoundingClientRect().width; });
+    return tot - b.el.clientWidth;
+  }
+  function ovfButton(b) {
+    if (b.ovf) return b.ovf;
+    const e = document.createElement('div'); e.className = 'm clk ovf fit-hid'; e.textContent = '\u2026'; e.setAttribute('role', 'button'); e.tabIndex = 0; e.setAttribute('aria-label', 'More: modules that did not fit');
+    const open = () => {
+      const UI = window.__ccUI; if (!UI || !UI.menu) return; const r = e.getBoundingClientRect();
+      const list = Object.values(b.mods).filter((x) => x.fs && x.fs.hid && x.el.style.display !== 'none');
+      closeMenu();
+      menu = UI.menu([{ head: 'Hidden: the bar is too narrow' }].concat(list.map((x) => ({ label: (x.def.icon ? x.def.icon + '  ' : '') + x.def.label + (x.full ? SEP + x.full : ''), disabled: !x.def.click, onClick: x.def.click ? () => { try { x.def.click(x.m.o || {}); } catch (er) { /* ignore */ } } : undefined }))), r.left, b.pos === 'bottom' ? r.top : r.bottom, { up: b.pos === 'bottom', onClose: () => { menu = null; } });
+    };
+    e.addEventListener('click', (ev) => { ev.stopPropagation(); open(); });
+    e.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } });
+    b.zr.appendChild(e); b.ovf = e; return e;
+  }
+  function fitBar(b) {
+    if (!b || !b.el.isConnected) return;
+    const ms = Object.values(b.mods).filter((x) => x.el.style.display !== 'none' && x.full !== undefined);
+    ms.forEach((x) => { x.fs = { drop: 0, abbr: false, ell: null, spw: 1, hid: false }; applyFs(x); });
+    b.tight = false; b.el.classList.remove('tight'); if (b.ovf) b.ovf.classList.add('fit-hid');
+    let over = fitMeasure(b), phase = -1, guard = 0, hideN = 0;
+    const widest = (list) => list.slice().sort((a, c) => c.w - a.w)[0];
+    const loop = (ph, pick, step) => { while (over > 0.5 && guard++ < 600) { const x = pick(); if (!x) break; phase = Math.max(phase, ph); step(x); applyFs(x); over = fitMeasure(b); } };
+    // space
+    ms.filter((x) => x.blank).sort((a, c) => c.w - a.w).forEach((x) => { if (over <= 0.5) return; phase = 0; const nw = Math.max(4, x.w - over); x.fs.spw = nw / (x.baseW || nw); applyFs(x); over = fitMeasure(b); });
+    // drop labels / secondary parts
+    loop(1, () => widest(ms.filter((x) => !x.blank && !x.fs.hid && x.fs.drop < dropSteps(x))), (x) => { x.fs.drop++; });
+    // abbreviate numbers
+    loop(2, () => widest(ms.filter((x) => !x.blank && !x.items && !x.fs.abbr && fitText(x, Object.assign({}, x.fs, { abbr: true })) !== fitText(x))), (x) => { x.fs.abbr = true; });
+    // tight
+    if (over > 0.5) { phase = 3; b.tight = true; b.el.classList.add('tight'); over = fitMeasure(b); }
+    // ellipsis (water-filling: the longest is cut down towards the next longest first)
+    loop(4, () => widest(ms.filter((x) => !x.blank && fitFlexible(x) && (x.items ? (x.fs.ell || 0) < FIT_ITEMS_MAX : (x.fs.ell == null ? x.w : x.fs.ell) > FIT_MIN_W + 0.5))), (x) => {
+      if (x.items) { x.fs.ell = (x.fs.ell || 0) + 1; return; }
+      const cur = x.fs.ell == null ? x.w : x.fs.ell, others = ms.filter((y) => y !== x && !y.blank && fitFlexible(y) && !y.items).map((y) => (y.fs.ell == null ? y.w : y.fs.ell)), next = Math.max.apply(null, [FIT_MIN_W].concat(others.filter((v) => v < cur)));
+      x.fs.ell = Math.max(FIT_MIN_W, Math.round(cur - Math.max(8, Math.min(over, cur - next))));
+    });
+    // hide (last resort)
+    if (over > 0.5) {
+      const rank = (x) => (x.m.keep === 'first' ? -1 : FIT_HIDE_ORDER.indexOf(x.m.id) < 0 ? 99 : FIT_HIDE_ORDER.indexOf(x.m.id));
+      const never = (x) => x.m.keep === 'never' || (FIT_NEVER.has(x.m.id) && x.m.keep !== 'first') || x.blank;
+      const o = ovfButton(b); o.classList.remove('fit-hid'); over = fitMeasure(b);
+      loop(5, () => ms.filter((x) => !x.fs.hid && !never(x)).sort((a, c) => rank(a) - rank(c))[0], (x) => { x.fs.hid = true; x.fs.hidAt = ++hideN; });
+      if (!ms.some((x) => x.fs.hid)) { o.classList.add('fit-hid'); over = fitMeasure(b); }
+    }
+    b.fitPhase = phase; b.fitOver = over; b.fitN = (b.fitN || 0) + 1;
+    b.fitKey = fitKeyOf(b);
+  }
+  function fitKeyOf(b) {
+    return [b.el.clientWidth, heightPx(), b.sig, Object.values(b.mods).map((x) => (x.el.style.display === 'none' ? 'h' : [String(x.full || '').length, x.short == null ? '' : String(x.short).length, x.baseW || 0, x.isBar ? 1 : 0, x.items ? x.el.querySelectorAll('.pi').length : 0].join(':'))).join(',')].join('|');
+  }
+  const fitQuick = (b) => { try { return b.el.scrollWidth > b.el.clientWidth + 1; } catch (e) { return false; } };   // something still sticks out: fit again
+  function fitAll(force) {
+    if (document.hidden || window.__ccEcoOn) return;
+    Object.keys(bars).forEach((pos) => { const b = bars[pos]; if (force || b.fitKey !== fitKeyOf(b) || fitQuick(b)) fitBar(b); });
+  }
+  let fitRaf = 0;
+  const fitSoon = () => { if (fitRaf) return; fitRaf = requestAnimationFrame(() => { fitRaf = 0; try { fitAll(false); } catch (e) { swal('Info Bar fit', e); } }); };
+  function fitInfo(pos) {   // what the fit did, for the tests and for support
+    const b = bars[pos]; if (!b) return null;
+    const over = fitMeasure(b);
+    return { w: b.el.clientWidth, fits: b.fitN || 0, over: Math.round(over * 10) / 10, tight: !!b.tight, phase: b.fitPhase, phases: FIT_PHASES, hidden: Object.values(b.mods).filter((x) => x.fs && x.fs.hid).sort((a, c) => (a.fs.hidAt || 0) - (c.fs.hidAt || 0)).map((x) => x.m.id),
+      overflow: !!(b.ovf && !b.ovf.classList.contains('fit-hid')),
+      mods: Object.values(b.mods).filter((x) => x.el.style.display !== 'none').map((x) => {
+        const r = x.el.getBoundingClientRect(), shown = !!(x.t && x.t.style.display !== 'none');
+        return { id: x.m.id, s: x.m.s, left: Math.round(r.left * 10) / 10, right: Math.round(r.right * 10) / 10, w: Math.round(r.width * 10) / 10, hid: !!(x.fs && x.fs.hid), drop: x.fs ? x.fs.drop : 0, abbr: !!(x.fs && x.fs.abbr), ell: x.fs ? x.fs.ell : null,
+          cut: fitCut(x), items: !!x.items, rich: !!(x.rich || x.richFn), steps: dropSteps(x), canAbbr: !x.items && !x.blank && fitText(x, Object.assign({}, x.fs, { abbr: true })) !== fitText(x, Object.assign({}, x.fs, { abbr: false })), flex: fitFlexible(x), text: shown ? x.t.textContent : '', full: x.full, clipped: shown ? x.t.scrollWidth > x.t.clientWidth + 1 && !(x.fs && x.fs.ell != null) && getComputedStyle(x.t).textOverflow !== 'ellipsis' : false, tip: x.tip || '' };
+      }) };
+  }
+
   function layout() {
     const wantTop = !!setting('uiBarTop', true), wantBottom = !!setting('uiBarBottom', false), h = heightPx();
     [['top', wantTop], ['bottom', wantBottom]].forEach(([pos, want]) => {
@@ -1246,6 +1388,7 @@ body.cc-hp-hide-orig :is(#ui-container,#hud-layer)>.hp-bar{display:none !importa
       if ((def.opts || []).length || (def.actions || []).length) items.push({ sep: 1 });
       items.push({ label: 'Move to', children: [['l', 'The left'], ['c', 'The middle'], ['r', 'The right']].map(([k, t]) => item(t, () => { mod.s = k; save(); }, { check: side === k })) });
       items.push(item('Move to the ' + other + ' bar', () => { cfg[pos].splice(cfg[pos].indexOf(mod), 1); mod.s = side; cfg[other].push(mod); if (!setting(other === 'top' ? 'uiBarTop' : 'uiBarBottom', false)) put(other === 'top' ? 'uiBarTop' : 'uiBarBottom', true); save(); }));
+      if (modId !== 'space') items.push({ label: 'When the bar is too narrow', children: [[undefined, 'Shorten it as needed, hide it when nothing else helps'], ['first', 'Hide it first'], ['never', 'Never hide it']].map(([k, t]) => item(t, () => { if (k) mod.keep = k; else delete mod.keep; save(); }, { check: (mod.keep || undefined) === k })) });
       items.push(item('Remove', () => { cfg[pos].splice(cfg[pos].indexOf(mod), 1); save(); }));
       items.push({ sep: 1 });
     }
@@ -1289,7 +1432,8 @@ body.cc-hp-hide-orig :is(#ui-container,#hud-layer)>.hp-bar{display:none !importa
   const onResize = () => { try { layout(); } catch (e) { /* ignore */ } };
   function teardown() {
     window.removeEventListener('keydown', onHotkey, true); document.body.classList.remove('cc-hp-hide-orig', 'cc-sp-nohover'); clearInterval(t1); cardApi.destroy(); closeMenu(); hideTip(); document.removeEventListener('mousemove', onMouseX, true); hideStyle.remove(); 
-    Object.values(bars).forEach((b) => b.el.remove());
+    Object.values(bars).forEach((b) => { try { b.ro && b.ro.disconnect(); } catch (e) { /* gone */ } b.el.remove(); });
+    if (fitRaf) cancelAnimationFrame(fitRaf);
     const g = gameBox(); if (g) { g.style.transform = ''; g.style.transformOrigin = ''; }
     edge.top = 0; edge.bottom = 0; edge.reserved = 0; delete window.__ccEdge; delete window.__ccVH; delete window.__ccGameScale;
     style.remove();
@@ -1306,6 +1450,6 @@ body.cc-hp-hide-orig :is(#ui-container,#hud-layer)>.hp-bar{display:none !importa
     save(); Object.values(bars).forEach((bb) => { bb.sig = ''; }); applyHides(); layout(); refresh();
     return true;
   }
-  window[NS] = { version: 1, teardown, edge: () => ({ top: edge.top || 0, bottom: edge.bottom || 0 }), MODULES, hasButton, buttonEl, tasksAnchor, toggleQueue, highlight, cards: cardApi, get config() { return JSON.parse(JSON.stringify(cfg)); }, applyConfig, refresh, playerMenu: openPlayerMenu, get isOpen() { return !!(setting('uiBarTop', true) || setting('uiBarBottom', false)); }, toggle() { put('uiBarTop', !setting('uiBarTop', true)); layout(); } };
+  window[NS] = { version: 1, teardown, fit: (pos) => { if (pos) fitBar(bars[pos]); else fitAll(true); }, fitInfo, edge: () => ({ top: edge.top || 0, bottom: edge.bottom || 0 }), MODULES, hasButton, buttonEl, tasksAnchor, toggleQueue, highlight, cards: cardApi, get config() { return JSON.parse(JSON.stringify(cfg)); }, applyConfig, refresh, playerMenu: openPlayerMenu, get isOpen() { return !!(setting('uiBarTop', true) || setting('uiBarBottom', false)); }, toggle() { put('uiBarTop', !setting('uiBarTop', true)); layout(); } };
   return 'cc bar loaded';
 })();

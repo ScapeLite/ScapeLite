@@ -179,7 +179,16 @@
       if (slotKey(idx) !== before || n > 30) { clearInterval(watchT); refreshAll(true); document.querySelectorAll('.cc-q-row.is-rolling').forEach((r) => r.classList.remove('is-rolling')); }
     }, 80);   // every 80 ms for up to 2.4 s: the new row appears the moment the game has it
   }
-  let renderHold = 0;
+  let renderHold = 0, settleT = 0;
+  // After a move the game needs a moment to reorder its own data. Poll its queue panel (as a reroll does) and redraw the moment the order changed, instead of waiting for the next slow refresh.
+  const orderSig = () => { try { const m = model(); return m ? m.slots.map((x) => x.rkey).join(',') : ''; } catch (e) { return ''; } };
+  function settleAfterReorder(before) {
+    clearInterval(settleT); let n = 0;
+    settleT = setInterval(() => {
+      n++; try { const b = bridge(); if (b && b.refreshQueuePanel) b.refreshQueuePanel(); } catch (e) { /* stale panel */ }
+      if (orderSig() !== before || n > 24) { clearInterval(settleT); renderHold = 0; refreshAll(true); }
+    }, 60);   // every 60 ms for up to 1.4 s
+  }
   function selectOption(slotIdx, k, op) {
     if (!rowsFresh()) { flash('The game’s queue panel is out of date, so nothing was changed. Open the game’s Tasks panel once and try again.'); return false; }
     const rows = Array.from(document.querySelectorAll('#unified-queue-panel .uq-rows .uq-row:not(.uq-current)')), row = rows[slotIdx]; if (!row) return false;
@@ -196,6 +205,7 @@
     if (!rowsFresh()) { flash('The game’s queue panel is out of date, so nothing was moved. Open the game’s Tasks panel once and try again.'); return false; }
     const rs = Array.from(document.querySelectorAll('#unified-queue-panel .uq-rows .uq-row:not(.uq-current)'));
     if (!rs[from] || !rs[to] || from === to) return false;
+    const before = orderSig();
     const ok = laidOut(rs[from], () => {
       const rf = rs[from].getBoundingClientRect(), rt = rs[to].getBoundingClientRect();
       if (!rf.height || !rt.height) return false;
@@ -206,6 +216,7 @@
     });
     if (!ok) return false;
     renderHold = Date.now() + 1600;
+    settleAfterReorder(before);
     fwd();
     return true;
   }
@@ -1227,6 +1238,11 @@
   }
   const allRoots = () => [keptRoot, hoverRoot].filter((r) => r && r.isConnected);
 
+  // The number badges and slot indexes are positions: after a move the rows keep their old values in their new places, so hand the old values out again in the new order at once.
+  function renumber(oldRows, newRows) {
+    const keep = oldRows.map((r) => { const n = r.querySelector('.cc-q-num'); return { s: r.dataset.s, n: n ? n.firstChild && n.firstChild.nodeType === 3 ? n.firstChild.nodeValue : null : null }; });
+    newRows.forEach((r, i) => { const k = keep[i]; if (!k) return; r.dataset.s = k.s; const n = r.querySelector('.cc-q-num'); if (n && n.firstChild && n.firstChild.nodeType === 3 && k.n != null) n.firstChild.nodeValue = k.n; });
+  }
   // ---------------------------------------------------------------- drag to reorder
   function startDrag(ev, root, row) {
     const x0 = ev.clientX, y0 = ev.clientY, list = root.querySelector('.cc-q-list');
@@ -1278,6 +1294,7 @@
         const frag = document.createDocumentFragment(), hp = hopOf(par); if (hp) frag.appendChild(hp); frag.appendChild(par);
         if (to > from) ref.after(frag); else (hopOf(ref) || ref).before(frag);
         par.classList.add('is-dropped');
+        renumber(rs.map((r) => r), rows());
       }
     };
     document.addEventListener('pointermove', move, true); document.addEventListener('pointerup', up, true);
@@ -1481,7 +1498,7 @@
       const ed = E(); P.el.style.maxHeight = Math.max(320, window.innerHeight - (ed.top || 0) - (ed.bottom || 0) - 36) + 'px';
       render(keptRoot); P.setChip(keptRoot._chip || ''); const sb = P.titleEl.querySelector('.cc-q-sum'); if (sb && keptRoot._sum) fillSum(sb, keptRoot._sum);
     }
-    if (hoverRoot && hoverRoot.isConnected && !drag) render(hoverRoot);
+    if (hoverRoot && hoverRoot.isConnected && !drag && (force || Date.now() >= renderHold)) render(hoverRoot);
   }
   function toggle() {
     ensurePanel();

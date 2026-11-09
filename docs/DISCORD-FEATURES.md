@@ -18,6 +18,8 @@ Everything in it is read-only reporting of the player's own state, which the pla
 
 ## 2. What exists today (review of the watcher)
 
+> Update (Discord setup wizard): the user-facing setup is now the in-game **Discord setup wizard** and `docs/DISCORD-RELAY-SETUP.md`. The page collector (`chat-relay-collect.js`) also reads the chat lines the game keeps but does not draw because of its own chat filters (`chatHidden()` in the bridge), so the relay no longer depends on what the player's chat window shows. The text below describes the watcher as it was reviewed.
+
 Sources read: `overlay/panel-resize-watcher.js` (about 2200 lines), `overlay/chat-relay-collect.js`, `overlay/raid-alert.js`, `overlay/game-bridge.js`, `overlay/status-server.js`, `docs/LOGGING.md`, `docs/PLUGIN-AUTHOR-GUIDE.md`.
 
 | Feature | How it posts | Config (secret, git-ignored) | State file |

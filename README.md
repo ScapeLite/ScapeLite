@@ -20,7 +20,7 @@ Pick the plugins you want from a built-in **plugin marketplace**; everything els
 | **Map Route Lanes** | Readable overlapping routes on the World Map |
 | **Side Menu Controls** | Show/hide/pin icons in the left side menu |
 | **Settings Quick-Jump** | Hover a Settings category to jump to its sub-sections |
-| **Chat Relay (Discord)** | Clan/global drops, unlocks and level-ups to your Discord, never lost across restarts |
+| **Chat Relay (Discord)** | Clan/global drops, unlocks and level-ups to your Discord, never lost across restarts. A setup wizard walks you through channels, webhooks and roles ([guide](docs/DISCORD-RELAY-SETUP.md)) |
 | *…and more* | Browse them all in the marketplace |
 
 ## Quick start

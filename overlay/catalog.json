@@ -203,7 +203,8 @@
         "Never loses messages across restarts",
         "Clan hiscores rank tracking",
         "Raid summaries",
-        "Activity digest"
+        "Activity digest",
+        "Team settings: set up once, everyone gathers it"
       ],
       "tags": [
         "discord",
@@ -223,19 +224,19 @@
           },
           {
             "title": "2. Paste it into ScapeLite",
-            "body": "<p>In the game open <b>Settings → Plugins → Chat Relay</b> and paste the URL into <b>Clan Channel Webhook URL</b>. Use the <b>eye</b> button to check it.</p><p>The URL is stored only on this PC. Do the same for the other sections you want (Clan Hiscores, Raid Summary, Activity Digest) — they can use the same or different channels.</p>"
+            "body": "<p>The easiest way is the <b>Discord setup wizard</b>: in the game open <b>Settings → Plugins → Chat Relay</b> and press <b>Open wizard</b> (also in the ScapeLite menu). It lists every channel, checks the address you paste, and has a <b>Test this channel</b> button that sends one clearly labelled test message.</p><p>The address is stored only on this PC, and after you save it the wizard never shows it again. You can also paste it into <b>Clan Channel Webhook URL</b> in the Chat Relay section.</p>"
           },
           {
             "title": "3. Turn on what you want",
-            "body": "<p>Still in <b>Plugins → Chat Relay</b>: switch on <b>Relay Clan Chat</b> (and Global if you want it) and choose which pings to send.</p><p><b>Important:</b> the relay only sees what the game itself shows in chat. In the game’s own <b>Settings → Chat</b>, make sure the Clan channel has the announcement types turned on (rare drops, unlocks, levels, <b>collections</b>, quests). If a type is off there, ScapeLite never sees it.</p>"
+            "body": "<p>Still in <b>Plugins → Chat Relay</b>: switch on <b>Relay Clan Chat</b> (and Global if you want it) and choose which pings to send.</p><p>Nothing needs to be changed in the game’s chat settings: ScapeLite also reads the lines your chat window hides (a greyed-out channel or a filtered message type).</p>"
           },
           {
             "title": "4. Optional extras",
-            "body": "<ul><li><b>Role pings and member list</b> live in the config file (<code>chat-relay-config.json</code> in your ScapeLite data folder; an example file is included).</li><li><b>Ultra rare</b> drops (Shiny / Lucky items) use a separate role.</li><li><b>Digest times:</b> under Activity Digest you can add fixed posting times such as 08:00, 14:00, 20:00.</li></ul>"
+            "body": "<ul><li><b>Role pings</b> are set in <b>Chat Relay Pings</b> (paste the Discord role ID and tick the events). The wizard explains how to get a role ID.</li><li><b>Ultra rare</b> drops (Shiny / Lucky items) use a separate role.</li><li><b>Digest times:</b> under Activity Digest you can add fixed posting times such as 08:00, 14:00, 20:00.</li></ul>"
           },
           {
             "title": "If nothing arrives",
-            "body": "<ul><li>Open the ScapeLite dashboard and check the <b>Discord</b> log pane for errors.</li><li>A wrong or deleted webhook gives an error there; paste a fresh URL.</li><li>Make sure the plugin is on in the marketplace and the game shows the event in its chat.</li><li>The saved log files in the <b>Logs</b> folder show the same lines.</li></ul>"
+            "body": "<ul><li>Open the ScapeLite dashboard and check the <b>Discord</b> log pane for errors.</li><li>A wrong or deleted webhook gives an error there; paste a fresh URL.</li><li>Press <b>Test this channel</b> in the wizard: if the test arrives, the webhook is fine.</li><li>Make sure the plugin is on in the marketplace and you are in a clan (clan events only arrive in a clan).</li><li>The saved log files in the <b>Logs</b> folder show the same lines.</li></ul>"
           }
         ]
       },
@@ -260,6 +261,7 @@
         "Every field opt-in, with a live preview",
         "Offline and idle states",
         "Level-ups of the last 24 hours",
+        "Optional simple cards for clanmates without ScapeLite, made by the host",
         "Works with a plain Discord webhook, no bot"
       ],
       "tags": [

@@ -19,6 +19,7 @@
   var nodeIndex = null, dpsCache = null, projMemo = null; var riskMemo = null, riskAt = 0, riskKey = ''; var huntMemo = null, huntAt = 0;
   // getSkillXpBonus walks every item of the game each call (about 0.1 ms) and a projection asks for it per option: ask once per skill per projection
   var bonusMemo = {}, bonusAt = 0;
+  var chatLineNodes = new WeakMap(), chatLineIds = new WeakMap(), chatLineSeq = 0;   // chatHidden(): one detached line and one id per game chat message
   function bonusOf(sk) { var n = Date.now(); if (n - bonusAt > 1000) { bonusMemo = {}; bonusAt = n; } if (!(sk in bonusMemo)) { try { bonusMemo[sk] = G.getSkillXpBonus(sk) || 0; } catch (e) { bonusMemo[sk] = 0; } } return bonusMemo[sk]; }
   function nodeById(id) {
     if (!nodeIndex) {
@@ -990,7 +991,7 @@
         var dn = function (n) { try { return G.displayName ? G.displayName(n) : n; } catch (e) { return n; } };
         if (!G.clanId) return { state: 'none', tag: '', members: [] };
         if (!G.clan || !G.clan.members) return { state: 'loading', tag: G.clanTag || '', members: [] };
-        return { state: 'ok', tag: G.clanTag || '', members: G.clan.members.map(function (m) { return { id: m.playerId, name: dn(m.displayName) }; }).filter(function (m) { return m.name; }) };
+        return { state: 'ok', tag: G.clanTag || '', members: G.clan.members.map(function (m) { return { id: m.playerId, name: dn(m.displayName), online: !!m.online }; }).filter(function (m) { return m.name; }) };
       } catch (e) { return null; }
     },
     // The queued dividers of the game's Tasks panel (read only): G.queuedCombat is a fight that waits behind skilling tasks, G.queuedSkilling the skilling that resumes after a fight.
@@ -1203,6 +1204,25 @@
     chat: function () {
       if (!C) return null;
       return { active: C._activeChannel, dm: !!C._dmTarget, dmName: C._dmTarget || '', filters: JSON.parse(JSON.stringify(C._filters || {})), send: C.SEND_CHANNELS.slice() };
+    },
+    // Chat lines the game keeps in its message list but does NOT draw because its own chat filters (a channel switched off, a type switched off) hide them. The Discord relay
+    // reads the game's chat from the page; without this it would be blind to everything the player has filtered out. Each entry is { id, node }: a stable id per message and the
+    // line as the game itself would draw it (built once with the game's own line builder and kept detached; never added to the page). all=true also returns the drawn lines (their real nodes).
+    chatHidden: function (all) {
+      try {
+        if (!C || !C._messages || typeof C._buildLine !== 'function') return [];
+        var list = C._messages, out = [];
+        for (var i = Math.max(0, list.length - 400); i < list.length; i++) {
+          var m = list[i];
+          if (!m || (m.channel !== 'clan' && m.channel !== 'game' && m.channel !== 'global')) continue;
+          var node = m._el;
+          if (node) { if (!all) continue; }
+          else { node = chatLineNodes.get(m); if (!node) { try { node = C._buildLine(m); } catch (eb) { continue; } chatLineNodes.set(m, node); } }
+          var id = chatLineIds.get(m); if (!id) { id = ++chatLineSeq; chatLineIds.set(m, id); }
+          out.push({ id: id, node: node });
+        }
+        return out;
+      } catch (e) { return []; }
     },
     setChatChannel: function (ch) {
       if (!C || C.SEND_CHANNELS.indexOf(ch) < 0) return false;

@@ -24,7 +24,7 @@ window.__ccUI = { applyTheme() {} };
 window.__ccBar = { edge: () => ({ top: fx.bars.top, bottom: fx.bars.bottom }) };
 const uiBox = document.getElementById('ui-container');
 const zoom = () => Math.min(innerWidth / 1920, innerHeight / 1080);
-const KIT = ['cc-queue', 'cc-xp-tracker', 'cc-route-panel', 'cc-goals', 'cc-droplog', 'cc-matshort', 'cc-treeadv', 'cc-chat', 'cc-card-inventory', 'cc-card-equipment', 'cc-card-barter', 'cc-card-skills', 'cc-card-quests', 'cc-card-diary', 'cc-card-friends'];
+const KIT = ['cc-queue', 'cc-xp-tracker', 'cc-route-panel', 'cc-goals', 'cc-droplog', 'cc-matshort', 'cc-treeadv', 'cc-chat', 'cc-card-inventory', 'cc-card-equipment', 'cc-card-barter', 'cc-card-skills', 'cc-card-quests', 'cc-card-diary', 'cc-card-friends', 'cc-advisor', 'cc-diary-credits'];
 const GAME = ['tasks', 'inventory', 'equipment', 'barter', 'skills', 'quests', 'diary', 'friends'];
 const RES = KIT.filter((i) => i !== 'cc-route-panel');
 const gPanels = {};
@@ -55,6 +55,9 @@ window.__ccPanelScale = {
   get scales() { return Object.assign({}, fx.scales); },
   setScales(map, replace) { if (replace) fx.scales = {}; Object.keys(map || {}).forEach((id) => { if (map[id] > 0) fx.scales[id] = map[id]; }); GAME.forEach(paintGame); },
 };
+// the plugins that open and close ScapeLite panels (the default layout opens a few and closes the rest); the player starts with Goals and Drop Luck open
+fx.open = { __ccQueue: false, __ccXpTracker: false, __ccChat: false, __ccGoals: true, __ccDropLuck: true, __ccTreeAdvisor: false, __ccAdvisor: false, __ccDiaryCredits: false };
+Object.keys(fx.open).forEach((n) => { window[n] = { get isOpen() { return fx.open[n]; }, toggle() { fx.open[n] = !fx.open[n]; } }; });
 window.fxShow = (on) => { Object.values(kPanels).forEach((p) => { p.style.display = on ? 'block' : 'none'; }); Object.values(gPanels).forEach((p) => { p.style.display = on ? 'block' : 'none'; }); };
 </script>
 </body></html>

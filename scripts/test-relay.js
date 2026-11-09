@@ -439,6 +439,44 @@ test('two instances holding different lease messages (a creation race): the webh
   a.crash();
 }));
 
+test('the lease message says when it was last written, and a change of leader is logged', () => {
+  const head = L.encodeState({ v: 1, id: 'aabbccdd', n: 'Sandis', e: 2, s: 0, t: 1793104926944, lk: [], dg: 0, cl: {} }).split('\n')[0];
+  assert.ok(/leader Sandis · last written <t:1793104926:f> \(<t:1793104926:R>\)/.test(head), head);
+  assert.ok(!/last written/.test(L.encodeState({ v: 1, id: '', n: '', e: 1, s: 0, t: 0 }).split('\n')[0]));
+  assert.ok(L.decodeState(L.encodeState({ v: 1, id: 'aabbccdd', n: 'Sandis', e: 2, s: 0, t: 1793104926944 })));
+});
+
+test('a change of leader is written to the log with the old and the new name', () => withDiscord(async (f) => {
+  const a = makeInstance(f, 'Wulf'); a.start();
+  await until(() => a.role() === 'leader', 6000, 'leader a');
+  a.crash();
+  const b = makeInstance(f, 'Sandis'); b.start();
+  await until(() => b.role() === 'leader', 20000, 'leader b');
+  assert.ok(b.logs.some((l) => /the leader changed from Wulf \[.+\] to Sandis/.test(l)) || b.logs.some((l) => /leader (is|changed)/.test(l)), b.logs.join(' | '));
+  b.crash();
+}));
+
+test('clan board presence and roster card ids live on the lease: written by any instance, seen by the others, kept by the leader heartbeat', () => withDiscord(async (f) => {
+  const insts = ['Wulf', 'Member A'].map((n) => makeInstance(f, n));
+  insts.forEach((i) => i.start());
+  await until(() => leaders(insts).length === 1, 6000);
+  const lead = insts.find((i) => i.role() === 'leader'), fol = insts.find((i) => i.role() !== 'leader');
+  await until(() => insts.every((i) => i.mgr.forWebhook().boardView().known), 8000, 'both instances have read the lease');
+  const hA = L.hash8('member a'), hW = L.hash8('wulf');
+  const ra = await fol.mgr.forWebhook().boardAnnounce(hA); assert.ok(ra.ok, 'a follower can announce itself: ' + JSON.stringify(ra));
+  assert.ok((await lead.mgr.forWebhook().boardAnnounce(hW)).ok, 'and so can the leader');
+  await until(() => insts.every((i) => { const v = i.mgr.forWebhook().boardView(); return v.present.has(hA) && v.present.has(hW); }), 8000, 'everybody sees both entries');
+  const again = await fol.mgr.forWebhook().boardAnnounce(hA); assert.ok(again.ok && again.same, 'announcing twice writes nothing');
+  assert.ok((await lead.mgr.forWebhook().boardSetCards({ [hA]: '123456789012345678', zz: 'x', [hW]: 'not-an-id' })).ok);
+  await until(() => insts.every((i) => Object.keys(i.mgr.forWebhook().boardView().cards).length === 1), 8000, 'the card map is shared and checked');
+  assert.strictEqual(lead.mgr.forWebhook().boardView().cards[hA], '123456789012345678');
+  await sleep(1200);   // some heartbeats later the fields are still there, and an old copy that does not know them keeps them (unknown fields survive)
+  const st = f.state(); assert.ok(st.bm && st.bm[hA] && st.bm[hW] && st.bc && st.bc[hA], JSON.stringify(st));
+  const pruned = await fol.mgr.forWebhook().boardAnnounce(hA, new Set([hA])); assert.ok(pruned.ok);
+  await until(() => !insts[0].mgr.forWebhook().boardView().present.has(hW), 8000, 'entries of players who left the clan are dropped');
+  insts.forEach((i) => i.crash());
+}));
+
 test('the lease message is deleted by hand: the instances create a new one and agree on it', () => withDiscord(async (f) => {
   const insts = ['Wulf', 'Member A', 'Member B'].map((n) => makeInstance(f, n));
   insts.forEach((i) => i.start());

@@ -74,22 +74,86 @@ function part1() {
     const l = D.build(vpOf(1920, 1080, true)).panels, w = D.build(vpOf(2560, 1080, true)).panels;
     return { ok: a === a2 && l['cc-goals'].x === w['cc-goals'].x && w['cc-queue'].x - l['cc-queue'].x === 640, detail: 'queue x ' + l['cc-queue'].x + ' -> ' + w['cc-queue'].x };
   });
+  // ---- the design rules: one grid, one column width, one scale, shared lines, equal margins ------------------------------------------------
+  const near = (a, b, tol) => Math.abs(a - b) <= (tol == null ? 1.5 : tol);
+  const DOCK = ['cc-queue', 'cc-xp-tracker', 'cc-card-inventory', 'cc-card-equipment', 'cc-card-barter', 'cc-card-skills', 'cc-card-quests', 'cc-card-diary', 'cc-card-friends', 'g:inventory', 'g:equipment', 'g:barter', 'g:skills', 'g:quests', 'g:diary', 'g:friends'];
+  check_sync('one column width: everything docked on the right is exactly the same width (352 design px)', () => {
+    const bad = []; SIZES.forEach(([w, h]) => { const b = D.build(vpOf(w, h, true)); DOCK.forEach((id) => { if (!near(b.rects[id].w, D.CW * b.frame.f, 1.5)) bad.push(w + 'x' + h + ' ' + id + ' ' + Math.round(b.rects[id].w) + ' wanted ' + Math.round(D.CW * b.frame.f)); }); });
+    return { ok: !bad.length, detail: bad.slice(0, 3).join(' | ') || DOCK.length + ' panels x ' + SIZES.length + ' sizes' };
+  });
+  check_sync('two docks, shared lines: both columns start at the same y, split at the same y, end at the same bottom edge; gutters are equal (8 design px)', () => {
+    const bad = []; SIZES.forEach(([w, h]) => {
+      const b = D.build(vpOf(w, h, true)), f = b.frame.f, R = b.rects, g = D.GAP * f, tag = w + 'x' + h + ': ';
+      const top = b.frame.top + D.Y1 * f, bottom = b.frame.top + b.frame.uh - D.M * f;
+      if (!near(R['cc-queue'].y, top) || !near(R['g:inventory'].y, top) || !near(R['cc-card-inventory'].y, top)) bad.push(tag + 'row 1 starts at different y');
+      if (!near(R['cc-xp-tracker'].y, R['g:skills'].y) || !near(R['cc-xp-tracker'].y, R['cc-card-skills'].y)) bad.push(tag + 'row 2 starts at different y');
+      if (!near(R['cc-xp-tracker'].y + R['cc-xp-tracker'].h, bottom) || !near(R['cc-card-skills'].y + R['cc-card-skills'].h, bottom)) bad.push(tag + 'bottom edges differ from ' + Math.round(bottom));
+      if (!near(R['cc-xp-tracker'].y - (R['cc-queue'].y + R['cc-queue'].h), g, 2)) bad.push(tag + 'queue/xp gutter ' + Math.round(R['cc-xp-tracker'].y - R['cc-queue'].y - R['cc-queue'].h));
+      if (!near(R['cc-queue'].x - (R['cc-card-inventory'].x + R['cc-card-inventory'].w), g, 2)) bad.push(tag + 'column gutter');
+      if (!near(w - (R['cc-queue'].x + R['cc-queue'].w), Math.max(D.MR * f, 34), 2)) bad.push(tag + 'right margin');
+      if (w - (R['cc-queue'].x + R['cc-queue'].w) < 30) bad.push(tag + 'the Route Advisor handle (30 px) would touch the dock');
+    });
+    return { ok: !bad.length, detail: bad.slice(0, 3).join(' | ') || SIZES.length + ' sizes' };
+  });
+  check_sync('left side: the chat and the helpers keep the same margins; the chat sits D.M above the bottom Info Bar', () => {
+    const bad = []; SIZES.forEach(([w, h]) => {
+      const b = D.build(vpOf(w, h, true)), f = b.frame.f, R = b.rects, tag = w + 'x' + h + ': ';
+      if (!near(R['cc-chat'].x, D.M * f, 1.5)) bad.push(tag + 'chat x ' + Math.round(R['cc-chat'].x));
+      if (!near(R['cc-chat'].y + R['cc-chat'].h, b.frame.top + b.frame.uh - D.M * f, 2)) bad.push(tag + 'chat bottom');
+      ['cc-goals', 'cc-droplog', 'cc-treeadv', 'cc-advisor', 'cc-diary-credits'].forEach((id) => { if (!near(R[id].x, D.HX * f, 1.5) || !near(R[id].y, b.frame.top + D.Y1 * f, 1.5)) bad.push(tag + id + ' not at the helpers spot'); });
+    });
+    return { ok: !bad.length, detail: bad.slice(0, 3).join(' | ') || SIZES.length + ' sizes' };
+  });
+  check_sync('on the 8 px grid at f = 1 (1920 x 1080 with bars): every left edge and every width is a multiple of 8 (kit panels within 1 px)', () => {
+    const b = D.build(vpOf(1920, 1080, true)), bad = []; Object.keys(b.rects).forEach((id) => {
+      const r = b.rects[id], m8 = (v) => { const k = Math.round(v / 8) * 8; return Math.abs(v - k) <= 1; };
+      if (!m8(r.x)) bad.push(id + ' x ' + r.x); if (D.KIT.find((e) => e.id === id && !e.w) === undefined && !m8(r.w)) bad.push(id + ' w ' + Math.round(r.w * 10) / 10);
+    });
+    return { ok: !bad.length, detail: bad.slice(0, 4).join(' | ') || Object.keys(b.rects).length + ' panels' };
+  });
+  check_sync('one scale: every ScapeLite panel gets the same size multiplier at one window size', () => {
+    const bad = []; SIZES.forEach(([w, h]) => { const b = D.build(vpOf(w, h, true)), s = new Set(); Object.keys(b.panels).filter((id) => id.indexOf('cc-') === 0).forEach((id) => s.add(b.panels[id].s)); if (s.size !== 1) bad.push(w + 'x' + h + ' ' + [...s].join(',')); });
+    return { ok: !bad.length, detail: bad.slice(0, 3).join(' | ') };
+  });
+  check_sync('few windows open: only the task queue, the XP tracker and the chat; the Route Advisor is not placed (it keeps its own handle)', () => {
+    const b = D.build(vpOf(1920, 1080, true));
+    return { ok: J(b.open) === J(['__ccQueue', '__ccXpTracker', '__ccChat']) && b.close.length >= 5 && !b.panels['cc-route-panel'] && !b.close.some((n) => b.open.includes(n)), detail: J({ open: b.open, close: b.close.length }) };
+  });
   check_sync('the look is the kit defaults (nothing the player chose for colours is forced onto another look)', () => ({ ok: J(D.LOOK) === J({ uiPalette: 'default', uiDensity: 'cozy', uiFontPx: 0, uiAccent: '' }), detail: J(D.LOOK) }));
 }
 function check_sync(name, fn) { try { const r = fn(); const ok = r === true || (r && r.ok); rows.push({ name, res: ok ? 'PASS' : 'FAIL', detail: (r && r.detail) || '' }); } catch (e) { rows.push({ name, res: 'FAIL', detail: String(e && e.message || e).slice(0, 240) }); } }
 
 // ---- the preview page ---------------------------------------------------------------------------------------------------------------------
+// A mock of the screen at four window sizes: what the layout places, what is open (solid), what is placed but closed (dashed), what is kept clear.
+// node scripts/test-default-layout.js --preview=docs/default-layout-preview.html, then node scripts/shoot-page.js <html> docs/default-layout-preview.png 1360 1240
 function previewHtml() {
-  const NAMEOF = { 'cc-queue': 'Task queue', 'cc-xp-tracker': 'XP tracker', 'cc-route-panel': 'Route Advisor', 'cc-goals': 'Goals / Luck / Materials / Tree (tabs)', 'cc-chat': 'Chat', 'cc-card-inventory': 'Inventory, Equipment, Barter (tabs or window)', 'cc-card-skills': 'Skills, Quests, Diary, Friends (tabs or window)', 'g:tasks': 'Game Tasks window' };
-  const COL = { queue: '#c9a227', xp: '#4aa8ff', route: '#b07cff', helpers: '#5fe06d', chat: '#ff8a5c', slotA: '#e0c15f', slotB: '#7fd1c0' };
-  const shown = ['cc-queue', 'cc-xp-tracker', 'cc-route-panel', 'cc-goals', 'cc-chat', 'cc-card-inventory', 'cc-card-skills'];
-  const cases = [[1920, 1080, 'Common 1080p window (zoom 1.00)'], [2560, 1369, 'Your window: 2560 x 1369 (zoom 1.27)'], [1366, 768, 'Small laptop 1366 x 768 (zoom 0.71)']];
+  const TITLE = { 'cc-queue': 'Task queue', 'cc-xp-tracker': 'XP tracker', 'cc-chat': 'Chat', 'g:inventory': 'Inventory', 'g:skills': 'Skills', 'cc-goals': 'Goals · Drop Luck · Materials · Tree · Advisor · Locations' };
+  const SHOWN = [['cc-queue', 'open'], ['cc-xp-tracker', 'open'], ['cc-chat', 'open'], ['g:inventory', 'game'], ['g:skills', 'game'], ['cc-goals', 'closed']];
+  const cases = [[1920, 1080, '1920 x 1080 (zoom 1.00)'], [2560, 1369, 'Your window: 2560 x 1369 (zoom 1.27)'], [1366, 768, 'Laptop 1366 x 768 (zoom 0.71)'], [1280, 720, 'Small 1280 x 720 (zoom 0.67)']];
   const scene = ([w, h, t]) => {
-    const b = D.build(vpOf(w, h, true)), k = 560 / w, boxes = shown.map((id) => { const r = b.rects[id]; return '<div class="p" style="left:' + r.x * k + 'px;top:' + r.y * k + 'px;width:' + r.w * k + 'px;height:' + r.h * k + 'px;border-color:' + COL[r.stack] + ';background:' + COL[r.stack] + '22"><b>' + NAMEOF[id] + '</b></div>'; }).join('');
-    const ko = D.keepOut(b.frame).map((o) => '<div class="ko" style="left:' + o.x * k + 'px;top:' + o.y * k + 'px;width:' + o.w * k + 'px;height:' + o.h * k + 'px"><i>' + (o.name.indexOf('noti') === 0 ? 'notifications' : 'Info + tab strip') + '</i></div>').join('');
-    return '<div class="sc"><h3>' + t + '</h3><div class="scr" style="width:' + w * k + 'px;height:' + h * k + 'px"><div class="bar" style="height:' + 34 * k + 'px;top:0">Info Bar</div><div class="bar" style="height:' + 34 * k + 'px;bottom:0">Info Bar</div>' + ko + boxes + '</div></div>';
+    const b = D.build(vpOf(w, h, true)), k = 640 / w, fr = b.frame, e = [];
+    const box = (x, y, bw, bh, cls, inner, st) => e.push('<div class="' + cls + '" style="left:' + (x * k).toFixed(1) + 'px;top:' + (y * k).toFixed(1) + 'px;width:' + (bw * k).toFixed(1) + 'px;height:' + (bh * k).toFixed(1) + 'px;' + (st || '') + '">' + (inner || '') + '</div>');
+    box(0, 0, w, fr.top, 'bar', '<i>Info Bar</i>'); box(0, h - fr.bottom, w, fr.bottom, 'bar', '<i>Info Bar</i>');
+    // the game's own things that stay where they are
+    box(0, fr.top, 84 * fr.f, 640 * fr.f, 'strip', '<i>side menu</i>'); box(96 * fr.f, fr.top + 6 * fr.f, 330 * fr.f, 112 * fr.f, 'game', '<b>Info</b><u></u><u></u>');
+    box(w * 0.30, fr.top, w * 0.70, 150 * fr.f, 'ko', '<i>kept clear: invites, task popups, toasts</i>');
+    box(w - 30, Math.max(60, Math.min(h - 170, h * 0.3)), 30, 125, 'handle', '<i>Route Advisor</i>');
+    SHOWN.forEach(([id, kind]) => { const r = b.rects[id]; box(r.x, r.y, r.w, r.h, 'p ' + kind, '<b>' + TITLE[id] + '</b><u></u><u></u><u></u><u></u><u></u><u></u>'); });
+    return '<div class="sc"><h3>' + t + '</h3><div class="scr" style="width:' + (w * k).toFixed(0) + 'px;height:' + (h * k).toFixed(0) + 'px">' + e.join('') + '</div></div>';
   };
-  return '<!doctype html><meta charset="utf-8"><title>ScapeLite default layout, preview</title><style>body{background:#10101a;color:#dcdce8;font:14px system-ui;margin:20px}h1{font-size:20px;color:#ffd24a}h3{margin:14px 0 6px;font-size:14px;color:#dcdce8}.scr{position:relative;background:#1c1c28;border:1px solid #3a3a4c;overflow:hidden}.bar{position:absolute;left:0;right:0;background:#2a2a3a;color:#8a8aa0;font-size:10px;line-height:12px;text-align:center}.p{position:absolute;box-sizing:border-box;border:2px solid;border-radius:5px;font-size:10px;overflow:hidden;padding:2px 4px}.p b{color:#fff;font-weight:600}.ko{position:absolute;background:repeating-linear-gradient(45deg,#ffffff0a,#ffffff0a 5px,#ffffff14 5px,#ffffff14 10px);color:#8a8aa0;font-size:10px}.ko i{padding:2px 4px;display:block;font-style:normal}p{color:#9a9ab0;max-width:760px}</style><h1>ScapeLite default layout</h1><p>Where each panel goes in three window sizes. Hatched areas are kept clear (invites, task popups and toasts at the top; the game’s Info panel and left tab strip). Panels that share a colour share one spot: the pinned cards of one family become tabs, the game’s window of that family sits on the same spot.</p>' + cases.map(scene).join('') + '</body>';
+  const css = 'body{background:#0d0d14;color:#dcdce8;font:14px system-ui;margin:22px 26px}h1{font-size:21px;color:#ffd24a;margin:0 0 4px}p{color:#9a9aae;max-width:1240px;margin:0 0 14px;line-height:1.5}'
+    + '.row{display:flex;gap:26px;flex-wrap:wrap}h3{margin:10px 0 6px;font-size:13px;color:#dcdce8;font-weight:600}.scr{position:relative;background:#171722;border:1px solid #2c2c3c;overflow:hidden}'
+    + '.scr>div{position:absolute;box-sizing:border-box;overflow:hidden}.bar{background:#23232f;color:#6a6a80;font:9px system-ui;display:flex;align-items:center;justify-content:center}'
+    + '.strip{background:#1d1d29;border:1px dashed #34344a;color:#55556a;font:8px system-ui;padding:3px}.game{background:#1d1d29;border:1px solid #34344a;color:#6a6a80;font:8px system-ui;padding:3px}'
+    + '.ko{background:repeating-linear-gradient(135deg,#1a1a26 0 6px,#20202e 6px 12px);border:1px dashed #3c3c52;color:#6a6a80;font:9px system-ui;padding:3px 6px}'
+    + '.handle{background:#1d2a44;border:1px solid #3a5fa0;border-right:0;color:#8fb4ff;font:8px system-ui;writing-mode:vertical-rl;display:flex;align-items:center;justify-content:center;border-radius:4px 0 0 4px}'
+    + '.p{background:#262636;border:1px solid #4a4a64;border-radius:5px;padding:4px 6px;font:9px system-ui}.p b{display:block;color:#e8e8f4;font-weight:600;margin-bottom:4px;padding-bottom:3px;border-bottom:1px solid #3a3a52;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.p u{display:block;height:5px;margin:5px 0;background:#34344a;border-radius:2px;width:86%}.p u:nth-child(odd){width:64%}.p.open{border-color:#c9a227}.p.open b{color:#ffd24a}.p.game{border-color:#4a6a98;background:#232a3a}.p.closed{background:transparent;border:1px dashed #5a5a74;color:#7a7a92}.p.closed u{display:none}'
+    + '.key{display:flex;gap:18px;margin:6px 0 14px;font-size:12px;color:#9a9aae}.key i{display:inline-block;width:14px;height:10px;border-radius:2px;vertical-align:middle;margin-right:6px}';
+  return '<!doctype html><meta charset="utf-8"><title>ScapeLite default layout, preview</title><style>' + css + '</style><h1>ScapeLite default layout</h1>'
+    + '<p>One 8 px grid, one column width, one scale. Two docks on the right share their top, their split and their bottom line. The task queue, the XP tracker and the chat are open; everything else is placed but closed, and opens in its spot from the ScapeLite menu. The Route Advisor keeps its handle on the right edge.</p>'
+    + '<div class="key"><span><i style="background:#c9a227"></i>open by default</span><span><i style="background:#4a6a98"></i>the game\u2019s own window in its slot (opened by you)</span><span><i style="border:1px dashed #7a7a92"></i>placed, closed</span><span><i style="background:#2a2a3a;border:1px dashed #3c3c52"></i>kept clear</span></div>'
+    + '<div class="row">' + cases.map(scene).join('') + '</div>';
 }
 
 // ---- part 2 -------------------------------------------------------------------------------------------------------------------------------
@@ -119,7 +183,7 @@ async function part2() {
     const before = await page.eval(READ);
     await check('the Layout Editor sees the ScapeLite panels and the game’s windows (they live in the HUD layer)', async () => {
       const n = await page.eval(`(() => ({ kit: __ccUIInfo.ids().length, layouts: __ccUILayout.profiles() }))()`);
-      return { ok: n.kit === 15, detail: J(n) };
+      return { ok: n.kit === 17, detail: J(n) };
     });
     await check('the editor bar offers "ScapeLite default" and no way back yet', async () => {
       await page.eval(`__ccUILayout.toggle(); 1`); await sleep(300);
@@ -136,7 +200,7 @@ async function part2() {
         Object.keys(b.rects).forEach((id) => {
           const e = b.rects[id], a = got[id]; if (!a) { bad.push(id + ' missing'); return; }
           if (Math.abs(a[0] - e.x) > 3 || Math.abs(a[1] - e.y) > 3) bad.push(id + ' at ' + Math.round(a[0]) + ',' + Math.round(a[1]) + ' wanted ' + Math.round(e.x) + ',' + Math.round(e.y));
-          else if (Math.abs(a[2] - e.w) > 3) bad.push(id + ' width ' + Math.round(a[2]) + ' wanted ' + Math.round(e.w));
+          else if (!(D.KIT.find((k) => k.id === id) || {}).estW && Math.abs(a[2] - e.w) > 3) bad.push(id + ' width ' + Math.round(a[2]) + ' wanted ' + Math.round(e.w));
         });
         const ids = Object.keys(got);
         for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const A = b.rects[ids[i]], B = b.rects[ids[j]]; if (!A || !B || A.stack === B.stack) continue; const ra = { x: got[ids[i]][0], y: got[ids[i]][1], w: got[ids[i]][2], h: got[ids[i]][3] }, rb = { x: got[ids[j]][0], y: got[ids[j]][1], w: got[ids[j]][2], h: got[ids[j]][3] }; if (hit(ra, rb)) bad.push(ids[i] + ' overlaps ' + ids[j]); }
@@ -146,7 +210,11 @@ async function part2() {
     await check('three tab strips appear (helpers, inventory-type cards, character-type cards) and only one member of each group shows', async () => {
       await page.eval(`__ccUILayout.useDefault(); 1`); await sleep(1500);
       const t = await page.eval(`(() => ({ strips: document.querySelectorAll('#cc-grp-root .strip').length, hidden: document.querySelectorAll('.kp[data-cc-gh]').length }))()`);
-      return { ok: t.strips === 3 && t.hidden === 3 + 2 + 3, detail: J(t) };   // 4+3+4 members, one lead each
+      return { ok: t.strips === 3 && t.hidden === 5 + 2 + 3, detail: J(t) };   // 6+3+4 members, one lead each
+    });
+    await check('the default leaves open only the task queue, the XP tracker and the chat (the other ScapeLite panels are closed)', async () => {
+      const o = await page.eval(`fx.open`), on = Object.keys(o).filter((n) => o[n]).sort();
+      return { ok: J(on) === J(['__ccChat', '__ccQueue', '__ccXpTracker']), detail: J(on) };
     });
     await check('"Back to my old layout" is offered after using the default, and the layout is called ScapeLite default', async () => {
       const s = await page.eval(`(() => ({ can: __ccUILayout.canGoBack, active: __ccUILayout.active(), names: __ccUILayout.profiles() }))()`);
@@ -159,6 +227,10 @@ async function part2() {
       const after = await page.eval(READ), bad = [];
       Object.keys(before).forEach((id) => { const a = after[id], b0 = before[id]; if (!a || Math.abs(a[0] - b0[0]) > 1.5 || Math.abs(a[1] - b0[1]) > 1.5 || Math.abs(a[2] - b0[2]) > 1.5) bad.push(id + ' ' + J(a && a.map(Math.round)) + ' was ' + J(b0.map(Math.round))); });
       return { ok: !bad.length, detail: bad.slice(0, 3).join(' | ') || 'all ' + Object.keys(before).length + ' panels back' };
+    });
+    await check('going back reopens what was open before (Goals, Drop Luck) and closes what the default had opened', async () => {
+      const o = await page.eval(`fx.open`), on = Object.keys(o).filter((n) => o[n]).sort();
+      return { ok: J(on) === J(['__ccDropLuck', '__ccGoals']), detail: J(on) };
     });
     await check('after going back: the saved layouts, the scales and the stored sizes are as before; no way back is offered any more', async () => {
       const s = await page.eval(`(() => ({ can: __ccUILayout.canGoBack, active: __ccUILayout.active(), names: __ccUILayout.profiles(), scales: Object.keys(fx.scales).length, mult: Object.keys(fx.mult).length, sizeKeys: Object.keys(localStorage).filter((k) => k.indexOf('cc-size-') === 0).length }))()`);

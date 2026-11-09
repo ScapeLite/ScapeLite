@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
-const DOCS = { 'plugin-author-guide': 'PLUGIN-AUTHOR-GUIDE.md', 'submit-a-plugin': 'SUBMIT-A-PLUGIN.md', 'plugins': 'PLUGINS.md' };
+const DOCS = { 'plugin-author-guide': 'PLUGIN-AUTHOR-GUIDE.md', 'submit-a-plugin': 'SUBMIT-A-PLUGIN.md', 'plugins': 'PLUGINS.md', 'discord-relay-setup': 'DISCORD-RELAY-SETUP.md' };
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function inline(s) {

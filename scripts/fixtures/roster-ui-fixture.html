@@ -1,0 +1,13 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>roster-ui-fixture</title></head>
+<body style="background:#222;color:#ddd;font:14px system-ui">
+<!-- scripts/test-roster-ui.js: the "Clanmates On The Board" list of overlay/plugins-settings-ui.js (its buildMembersRow function, cut out of the source) against a FAKE clan roster. -->
+<div id="host"></div>
+<script>
+window.fx = { roster: { state: 'ok', tag: 'RAS', members: [{ name: 'Wulf', online: true }, { name: 'Member A', online: true }, { name: 'Member B', online: false }, { name: 'Member C', online: false }] }, values: {}, saves: 0 };
+window.__ccBridge = { clanRoster: () => window.fx.roster };
+window.val = (k) => window.fx.values[k];
+window.setVal = (k, v) => { window.fx.values[k] = v; window.fx.saves++; };
+window.controls = {};
+</script>
+</body></html>

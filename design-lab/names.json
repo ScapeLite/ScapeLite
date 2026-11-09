@@ -3483,6 +3483,21 @@
   "clash": ""
  },
  {
+  "id": "info-bar.overflow-button",
+  "path": "Info Bar > Overflow Button",
+  "name": "Overflow Button",
+  "category": "Bars",
+  "kind": "control",
+  "desc": "The … at the end of a bar that is too narrow for all its modules: it lists the ones that were moved out (lowest priority first; the bell, Hit points and the panel buttons never are).",
+  "selector": ".cc-bar .m.ovf",
+  "file": "overlay/ui-bar.js",
+  "aliases": [
+   "ovf",
+   "more"
+  ],
+  "clash": ""
+ },
+ {
   "id": "info-bar.task-module",
   "path": "Info Bar > Task Module",
   "name": "Task Module",

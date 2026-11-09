@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ScapeLite bar-fit fixture</title>
+<!--
+  A FAKE game for scripts/test-bar-fit.js. It gives the Info Bars (overlay/ui-bar.js) long, realistic module texts (task, location, XP per hour, gold, chat line, event, HP ...)
+  so the fit can be measured at many window widths in a private hidden window. Everything is invented; nothing here can reach the real game or its data.
+  window.fx.data is what the modules read, window.fx.set(patch) changes it.
+-->
+<style>
+  body { margin: 0; background: #14141c; color: #ddd; font: 13px sans-serif; }
+  #ui-container > div { display: none; }
+  .tooltip { display: none; }
+  .panel-tab-btn { display: inline-block; width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<div id="game-container"><div id="ui-container">
+  <div class="ingame-hud">
+    <span class="ingame-hud-world"><span>World 1</span></span>
+    <span class="ingame-hud-online-total"><b>5,993</b><div class="tooltip"><div class="tt-pop-title">All worlds</div></div></span>
+    <span class="ingame-hud-offline"><span>14 h</span><div class="tooltip"><div class="tt-off-body">Your character keeps working.</div></div></span>
+  </div>
+  <div id="tabs">
+    <div class="panel-tab-btn" data-tab="tasks"><img src="data:," alt=""></div><div class="panel-tab-btn" data-tab="skills"><img src="data:," alt=""></div>
+    <div class="panel-tab-btn" data-tab="equipment"><img src="data:," alt=""></div><div class="panel-tab-btn" data-tab="inventory"><img src="data:," alt=""></div>
+    <div class="panel-tab-btn" data-tab="diary"><img src="data:," alt=""></div><div class="panel-tab-btn" data-tab="quests"><img src="data:," alt=""></div>
+    <div class="panel-tab-btn" data-tab="friends"><img src="data:," alt=""></div><div class="panel-tab-btn" data-tab="barter"><img src="data:," alt=""></div>
+  </div>
+</div></div>
+<script>
+const fx = window.fx = { calls: [], hidden: true };
+fx.data = {
+  task: { skill: 'mine', type: 'skilling', activityId: 'mine_mithril', activityName: 'Mining Mithril Ore', quantity: 4800, progress: 1234, nodeId: 'n1', nodeName: 'Dustclaw Foundry Mithril Vein' },
+  state: 'acting', gold: 1234567890, blood: 4321, hp: 1234, maxHP: 5678, invTotal: 200, invUsed: 150,
+  rates: { mine: 123456, smith: 98000 }, alerts: 3,
+  chat: { name: 'SomePlayerName', text: 'does anyone have a spare Dragon Pickaxe for the raid tonight, paying 2,500,000 gold' }, unread: 12,
+  advisor: 'Set Highroot Trail to -1 (and 4 more) in Skills Customization',
+};
+fx.set = (patch) => Object.assign(fx.data, patch);
+// the fake bridge: only what ui-bar.js calls
+window.__ccBridge = {
+  ok: () => true, speed: () => ({ sps: 20 }), onChange: () => () => {}, hop: () => null, remain: () => 0, queued: () => null, queueInsert: () => null, queueCtl: () => null,
+  shortages: () => [], oddsSlay: () => null, oddsSkills: () => null, project: () => ({ head: null, quests: {}, slots: [] }), gearDps: () => null, chat: () => null,
+  social: () => ({ friends: [], clan: { state: 'none', members: [] }, muted: [] }),
+  live: () => ({ task: fx.data.task, state: fx.data.state, at: 'dustclaw_foundry' }),
+  held: () => ({ gold: fx.data.gold, bloodcoins: fx.data.blood }),
+  snapshot: () => ({ held: { gold: fx.data.gold, bloodcoins: fx.data.blood } }),
+  alertState: () => ({ questsReady: [], currentHP: fx.data.hp, maxHP: fx.data.maxHP, invTotal: fx.data.invTotal, invUsed: fx.data.invUsed }),
+  current: () => ({ lv: { level: 81, pct: 45, next: '82' }, combat: false }),
+};
+window.__ccXpTracker = { get rates() { return fx.data.rates; }, toggle() {} };
+window.__ccAlerts = { get alerts() { return new Array(fx.data.alerts); }, toggle() {}, peek() {}, unpeek() {} };
+window.__ccChat = { latest: () => [fx.data.chat], get unread() { return fx.data.unread; }, toggle() {}, peek() {}, unpeek() {} };
+window.__ccAdvisor = { hero: () => ({ text: fx.data.advisor, gain: '+4 s per task', sure: 'B' }) };
+const SET = {};
+window.__ccPluginSettings = { get: (k) => SET[k], set: (k, v) => { SET[k] = v; }, getAll: () => Object.assign({}, SET), onChange: () => () => {} };
+</script>
+</body>
+</html>

@@ -1,91 +1,94 @@
 # ScapeLite default layout
 
-A ready-made arrangement of every panel, worked out for the window you actually have. It is **opt-in**: nothing moves until you press it, your own layouts are never touched, and **Back to my old layout** puts everything back.
+A clean, ready-made arrangement of your panels, worked out for the window you actually have. It is **opt-in**: nothing moves until you press it, your own layouts are never touched, and **Back to my old layout** puts everything back (positions, sizes, scales, the game windows' scales, tab groups, your look, and which panels were open).
+
+![The default layout at four window sizes](default-layout-preview.png)
 
 ## Try it
 
+- First run: the welcome tour has a **Your panel layout** step with a button. Press **Next** to keep what you have.
 - Layout Editor (Ctrl+Alt+L, or **Edit Layout** in the ScapeLite menu) > **ScapeLite default**.
 - Or Settings > Plugins > Panels > **ScapeLite Default Layout** > Use it.
-- To undo: **Back to my old layout** (same two places). It restores the panels' places, their sizes and scales, the game windows' scales, tab groups and your panel look.
+- To undo: **Back to my old layout** (Layout Editor or the same settings page).
 - Pressing **ScapeLite default** again (for example after changing the window size) rebuilds it for the new size; the first "old layout" backup is kept.
-- Tinker freely afterwards: the arrangement is the layout called `ScapeLite default`, so every move you make is saved in it. Use **Save as...** first if you want to keep your tinkering, because pressing the button again rebuilds the original.
+- Tinker freely afterwards: the arrangement is the layout called `ScapeLite default`, so every move you make is saved in it. Use **Save as...** first if you want to keep your tinkering, because pressing the button again rebuilds the arrangement.
 
-A preview of three window sizes is in `docs/default-layout-preview.html`.
+## What was wrong with the first version
 
-## The idea
+Testers found it messy. Looking at it like a designer: three columns of three different widths (378, 302, 378), ScapeLite panels at four different scales (80, 90 %...), tops and bottoms that did not line up, the XP tracker wider than the queue and a few pixels off its edge, a Route Advisor floating in the middle, and every panel placed as if all of them would be open at once. It looked like a pile of boxes.
 
-One design, drawn once on a 1920 x 1012 area (a 1080p window minus the two 34 px Info Bars), then scaled by `f = min(width / 1920, usable height / 1012)`. Columns hug the **right** edge, helper tabs and chat hug the **left**, so a wider window adds empty space in the middle and a smaller one shrinks everything in step.
+## The design rules
+
+| Rule | How |
+| --- | --- |
+| One grid | 16 px margin to the left, top and bottom edges; 8 px gutter between panels; every x and width a multiple of 8 |
+| One column width | 352 px: the task queue, XP tracker, the game's windows and every pinned card are exactly that wide |
+| One scale | Every ScapeLite panel at 15/16 of the game's own size, so text is the same size everywhere |
+| Shared lines | The two right-hand docks start at the same y, split at the same y and end at the same bottom edge |
+| Few windows | Only the **task queue, XP tracker and chat** are open. The rest is placed but closed |
+| Clear zones | The top 150 px (right 70 %) stays empty for invites, task popups and toasts; the game's Info panel and left tab strip are not touched |
+| A rail for the Route Advisor | The right margin is 48 px: the Route Advisor keeps its own handle on the right screen edge and the docks leave it room |
 
 ```
  top Info Bar
  Info (game)        keep clear: invites, task popups, toasts
- Helpers (tabs)                       Route Advisor | Inventory type | Task queue
- Goals, Drop Luck,                                  | Equipment, Barter  |
- Materials, Tree                                    +--------------------+
-                                                    | Skills type        | XP tracker
- Chat                                               | Quests, Diary,     |
-                                                    | Friends            |
+ Helpers (closed,                                    Inventory type | Task queue
+ tab group)                                          ---------------+-----------
+                                                     Skills type    | XP tracker
+ Chat
  bottom Info Bar
 ```
 
 | Spot | Holds | Why there |
 | --- | --- | --- |
-| Right column | Task queue on top, XP tracker below; the game's Tasks window shares the queue's spot | The thing you look at most sits at the edge, out of the middle of the game |
-| Next column left | Slot A: Inventory, Equipment, Barter. Slot B: Skills, Quests, Diary, Friends | Windows and pinned cards of one family share one spot. Pinned cards also become a tab group, so opening two shows a tab strip instead of one on top of the other |
-| Next column left | Route Advisor | Its map drawer opens into the free middle |
-| Left, under the Info panel | Goals, Drop Luck, Materials, Tree Advisor as one tab group | Helpers you open now and then |
+| Right dock, right column | Task queue (top), XP tracker (bottom) | What you look at most sits at the edge, out of the middle of the game. The game's own Tasks window is not moved: the queue replaces it |
+| Right dock, left column | Slot A (top): Inventory, Equipment, Barter. Slot B (bottom): Skills, Quests, Diary, Friends | A game window and the pinned card of the same family share one spot; pinned cards also become a tab group, so opening two shows a tab strip |
+| Left, under the Info panel | Goals, Drop Luck, Materials, Tree Advisor, Advisor, Locations and Free Pips as one tab group (closed) | Helpers you open now and then from the ScapeLite menu. The last two keep their own width because they are wide tables |
 | Bottom left | Chat | Reads like the game's own chat; the left tab strip ends well above it |
-| Top band (150 design px, right 70 %) | nothing | Invites, task popups and toasts appear there |
+| Right screen edge | the Route Advisor's handle | Not moved by the layout |
 
-Not moved: the game's Info panel, Current Task, Raid DPS, Fortress, the left tab strip, the Info Bars, the HP panel and the alert bell. They sit where the game puts them and are treated as fixed.
+On a window taller than 16:9 the bottom row of both docks grows, so the docks always end 16 px above the bottom Info Bar. On a wider window the extra room is added in the middle, never between the docks.
+
+Not moved: the game's Info panel, Current Task, Raid DPS, Fortress, the Tasks window, the left tab strip, the Info Bars, the HP panel and the alert bell.
+
+## Which panels are open
+
+Applying the layout leaves **only the task queue, the XP tracker and the chat** open. Goals, Drop Luck, Tree Advisor, Advisor and Locations and Free Pips are closed (open them from the ScapeLite menu: they land in their spot). The Route Advisor, Materials and pinned cards are left as they are. **Back to my old layout** reopens what was open before and closes what the layout opened.
 
 ## Sizes and scale
 
-Scale uses the on-screen convention of the size menu: 100% is unscaled, ScapeLite panels get 80 to 90 % times `f`, the game windows about 80 % times `f`. The stored multiplier is that divided by the game zoom and the global panel size, so the layout looks the same whatever "Panel size" you picked in Settings. Sizes of resizable panels are stored as before-scaling pixels, the same at every window size; only the scale changes with the window.
+Scale uses the on-screen convention of the size menu: 100 % is unscaled. ScapeLite panels get 93.75 % times `f`; the game windows get 352 px of width, about 94 to 96 % of their own size at your zoom. The stored multiplier is that divided by the game's zoom and your global panel size, so it keeps working if you change either.
+
+`f = min(width / 1920, usable height / 1012)` (a 1080p window minus two 34 px Info Bars is 1920 x 1012), kept between 0.55 and 1.6. Below `f = 0.7` the 48 px right margin is replaced by a 34 px real-pixel rail, so the Route Advisor handle never touches a dock.
 
 The look (colours, spacing, text size, accent) is set to the ScapeLite defaults, so the layout reads like the Design Lab. **Back to my old layout** restores your own look.
 
 ## Per window size
 
-Positions are real screen pixels, Info Bars on. Width and height are what the panel covers on screen.
+Positions are real screen pixels, Info Bars on. `x,y width x height`.
 
-| Window | Panel | x | y | width | height |
-| --- | --- | --- | --- | --- | --- |
-| 1920 x 1080 | Task queue | 1560 | 194 | 352 | 560 |
-|  | XP tracker | 1544 | 778 | 368 | 240 |
-|  | Route Advisor | 838 | 194 | 378 | 640 |
-|  | Inventory type (slot A) | 1225 | 194 | 301 | 352 |
-|  | Skills type (slot B) | 1225 | 554 | 301 | 352 |
-|  | Helper tabs | 96 | 194 | 396 | 450 |
-|  | Chat | 8 | 795 | 522 | 243 |
-| 2560 x 1369 (zoom 1.27) | Task queue | 2097 | 240 | 453 | 720 |
-|  | XP tracker | 2077 | 990 | 473 | 309 |
-|  | Route Advisor | 1169 | 240 | 486 | 823 |
-|  | Inventory type (slot A) | 1667 | 240 | 387 | 453 |
-|  | Skills type (slot B) | 1667 | 702 | 387 | 453 |
-|  | Helper tabs | 123 | 240 | 509 | 579 |
-|  | Chat | 10 | 1012 | 671 | 312 |
-| 1366 x 768 (zoom 0.71) | Task queue | 1117 | 145 | 243 | 387 |
-|  | XP tracker | 1106 | 549 | 255 | 166 |
-|  | Route Advisor | 618 | 145 | 261 | 443 |
-|  | Inventory type (slot A) | 885 | 145 | 208 | 243 |
-|  | Skills type (slot B) | 885 | 394 | 208 | 243 |
-|  | Helper tabs | 66 | 145 | 274 | 311 |
-|  | Chat | 6 | 560 | 361 | 168 |
+| Window | f | Task queue | XP tracker | Slot A | Slot B | Helpers | Chat |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1920 x 1080 | 1.00 | 1520,186 353x416 | 1520,610 353x420 | 1160,186 353x416 | 1160,610 353x420 | 104,186 353x416 | 16,798 416x232 |
+| 2560 x 1369 (zoom 1.27) | 1.29 | 2045,229 453x535 | 2045,774 453x540 | 1582,229 453x535 | 1582,774 453x540 | 134,229 453x535 | 21,1017 535x298 |
+| 1366 x 768 (zoom 0.71) | 0.69 | 1088,139 244x288 | 1088,432 244x291 | 839,139 244x288 | 839,432 244x291 | 72,139 244x288 | 11,563 288x160 |
+| 1280 x 720 (zoom 0.67) | 0.64 | 1019,132 227x268 | 1019,405 227x271 | 787,132 227x268 | 787,405 227x271 | 67,132 227x268 | 10,527 268x149 |
 
-(`npm run test:default-layout` prints the exact numbers it checks; `node scripts/test-default-layout.js --preview=file.html` redraws the preview.)
+(`npm run test:default-layout` prints the exact numbers it checks; `node scripts/test-default-layout.js --preview=docs/default-layout-preview.html` redraws the preview and `node scripts/shoot-page.js docs/default-layout-preview.html docs/default-layout-preview.png 1400 1000` makes the picture.)
+
+Very small windows (under about 1280 wide) shrink everything with `f`, so text gets small; the layout stays tidy but you may want fewer panels open there.
 
 ## What the test proves
 
 `scripts/test-default-layout.js` has two parts and never touches the real game:
 
-1. **Arithmetic**, at ten window sizes with and without Info Bars (1024 x 768 up to 3840 x 2160): every panel inside the usable area, panels of different spots never overlap, the notification band and the Info panel / tab strip stay clear, sizes respect the editors' minimums, every id is accepted by the layout import, tab-group members share one spot, a game window and the pinned card of its family line up.
-2. **The real `ui-layout.js` and `default-layout.js`** on a fake game shell in a private hidden window: the panels really land where the arithmetic says (within 3 px, scaled game windows included) at four window sizes; tab strips appear; **Back to my old layout** restores positions, scales, sizes and stored layouts exactly; your own saved layout is untouched; a game window you move by hand afterwards stays where you put it.
+1. **Arithmetic**, at ten window sizes with and without Info Bars (1024 x 768 up to 3840 x 2160): every panel inside the usable area, panels of different spots never overlap, the notification band and the left tab strip stay clear, sizes respect the panels' minimums, every id is one the layout import accepts. And the design rules above: the same width for everything docked on the right, shared top / split / bottom lines, equal gutters (8 design px) and margins, the 8 px grid at `f = 1`, one scale for all ScapeLite panels, the Route Advisor rail, and exactly three panels open.
+2. **The real `ui-layout.js` and `default-layout.js`** on a fake game shell in a private hidden window: panels land within 3 px of the arithmetic at four window sizes, the tab strips appear, only the three panels are left open, **Back to my old layout** puts everything back (positions, sizes, scales, open panels), your own saved layouts survive, and a game window you move by hand stays where you put it.
 
 ## How it works (for plugin authors)
 
-- `overlay/default-layout.js` is pure arithmetic (no DOM): `build({ w, h, top, bottom, zoom, g })` returns the layout store entries, tab groups, look, the scales for the game's windows and the on-screen rectangles the tests check. It is loaded in front of `ui-layout.js` by the watcher.
-- `ui-layout.js` stores the result as the layout `ScapeLite default`. A game window entry carries `tx`/`ty`, the on-screen spot to land on; when the window opens, the editor nudges its left/top by what it measures (the window may be scaled), and forgets the target as soon as you move the window yourself.
-- The game's own windows were not found by the editor since the game moved them into `#hud-layer`; the lookup now checks there first.
+- `overlay/default-layout.js` is pure arithmetic (no DOM): `build({ w, h, top, bottom, zoom, g })` returns the layout store entries, tab groups, look, the scales for the game's windows, the on-screen rectangles the tests check, and `open` / `close`, the plugin namespaces (`NS`) to have open or closed afterwards.
+- `ui-layout.js` stores the result as the layout `ScapeLite default`. A game window entry carries `tx`/`ty`, the on-screen spot to land on; when the window opens, the editor nudges its left/top by what is missing. Opening and closing goes through each plugin's own `toggle()`, and only for plugins that report `isOpen`.
+- The game's own windows were not found by the editor since the game moved them into `#hud-layer`; the lookup checks there first.
 - `window.__ccPanelScale.setScales(map, replace)` (panel-resize.js) sets or restores the game windows' scales.
-- Everything is display only: positions, sizes and scales; no clicks.
+- Everything is display only: positions, sizes, scales and opening ScapeLite's own panels; no clicks in the game.

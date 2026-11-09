@@ -10,7 +10,10 @@ app.commandLine.appendSwitch('remote-debugging-port', String(port || 9333));
 app.commandLine.appendSwitch('remote-allow-origins', '*');
 app.disableHardwareAcceleration();
 app.whenReady().then(() => {
-  const w = new BrowserWindow({ show: false, width: 1280, height: 800, x: 0, y: 0, webPreferences: { backgroundThrottling: false, contextIsolation: true } });
+  // CC_FIXTURE_SHOW=1 (the bar-fit test): a window that is shown, but far off screen and not focusable, so the page really draws frames (resize observers and animation frames run) without anything appearing for the user
+  const shown = process.env.CC_FIXTURE_SHOW === '1';
+  const w = new BrowserWindow(shown ? { show: true, width: 1280, height: 800, x: -12000, y: -12000, focusable: false, skipTaskbar: true, webPreferences: { backgroundThrottling: false, contextIsolation: true } }
+    : { show: false, width: 1280, height: 800, x: 0, y: 0, webPreferences: { backgroundThrottling: false, contextIsolation: true } });
   w.loadFile(path.resolve(page));
 });
 app.on('window-all-closed', () => app.quit());

@@ -28,7 +28,7 @@ Legend: **kind** = P product / U user-specific / S secret / R runtime or generat
 | `overlay/*.js`, `overlay/logging/*.js`, `app/main.js` | P code | program | yes | yes | source |
 | `overlay/catalog.json`, `community.json`, `app-info.json` | P catalog | program | yes | yes | source |
 | `overlay/catalog-img/*.png`, `overlay/scapewatch-icon*.png`, `branding/**` | P images | program | yes | yes | source |
-| `website/**` (served locally at `/site`), `docs/PLUGINS.md`, `SUBMIT-A-PLUGIN.md`, `PLUGIN-AUTHOR-GUIDE.md` (served at `/docs/..`), `examples/plugins/**` | P | program | yes | yes | source |
+| `website/**` (served locally at `/site`), `docs/PLUGINS.md`, `SUBMIT-A-PLUGIN.md`, `PLUGIN-AUTHOR-GUIDE.md`, `DISCORD-RELAY-SETUP.md` (served at `/docs/..`), `examples/plugins/**` | P | program | yes | yes | source |
 | `overlay/chat-relay-config.example.json`, `digest-`, `clan-hiscores-`, `raid-summary-`, `clan-board-config.example.json` | P hollow templates | program | yes | yes | source; empty values, every feature off |
 | `overlay/chat-relay-config.json` | S webhooks (clan, global, role selector), U ping roles, keywords | per-user | no | **never** | first run from the template; edited by Plugins tab |
 | `overlay/clan-hiscores-config.json` | S webhook, U clan tag, member list | per-user | no | never | first run; Plugins tab; the member list also syncs from the game roster |
@@ -38,6 +38,7 @@ Legend: **kind** = P product / U user-specific / S secret / R runtime or generat
 | `overlay/discord-test-webhook.json` | S owner's private TEST webhook | checkout only | no | never | by hand, tests only |
 | `release.local.json` | S SSH key path, scrub terms, publish identity | checkout only | no | never | by hand (`release.local.example.json`) |
 | `State/chat-relay-seen.json`, `overlay/chat-relay-outbox.json` | R chat text of other players, event ids | per-user | no | never | written by the relay |
+| `State/team-sync-state.json` | R last team-settings version, and the copy kept for Undo (can hold webhook addresses if you applied them) | per-user | no | never | written by Team settings (docs/DISCORD-TEAM-SYNC.md) |
 | `State/clan-hiscores-state.json`, `State/digest-state.json`, `clan-board-state.json`, `raid-summary-pending.json`, `clan-board-levels.json` (legacy) | R member names, ranks, message ids | per-user | no | never | written by the features |
 | `overlay/player-icon-cache.json` | R avatars of named players | per-user | no | never | written by the relay |
 | `*.bak`, `*.corrupt`, `*.tmp` next to any of the above | R safe-json backups and half-written files | per-user | no | never | `safe-json.js` |

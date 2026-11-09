@@ -59,8 +59,8 @@ Inside the game, **Settings → Plugins** has a switch and options for each feat
 ## Optional: Discord relay
 
 1. In Discord: *Channel settings → Integrations → Webhooks → New Webhook → Copy URL*.
-2. Copy `overlay/chat-relay-config.example.json` to `overlay/chat-relay-config.json` and paste the webhook URL (and role IDs if you want pings).
-3. Add the **Chat Relay** plugin in the marketplace. See `overlay/README.md` ("Chat → Discord relay") for every option. The config files are git-ignored: webhook URLs are secrets, never commit them.
+2. In the game open **Settings → Plugins → Chat Relay** and press **Open wizard** (also in the ScapeLite menu). It explains which channels and roles you need, takes each webhook, checks it, and has a **Test this channel** button. The full guide, with a troubleshooting list, is [DISCORD-RELAY-SETUP.md](DISCORD-RELAY-SETUP.md).
+3. Webhook addresses are secrets: they are kept only in your private ScapeLite folder, never in the installer or the repository. (From a source checkout the files are `overlay/*-config.json`, git-ignored; `overlay/README.md` lists every option.)
 
 ## Troubleshooting
 

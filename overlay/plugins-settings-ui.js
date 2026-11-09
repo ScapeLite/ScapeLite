@@ -72,14 +72,16 @@
     { key: 'uiAutoDeselect', type: 'toggle', section: 'ScapeLite Core', label: 'Clear Stray Text Selections', desc: 'Text you select by accident (for example by dragging across a tooltip) is cleared on its own: at once when the selected text is no longer on screen, and after 20 seconds without being touched. Text in input fields is left alone.', default: true },
     { key: 'uiStatusFps', type: 'toggle', section: 'ScapeLite Core', label: 'Show FPS Counter', desc: 'The frame rate next to the Status Indicator dot. Also in the indicator’s right-click menu.', default: true },
     { key: 'hideBeforeLogin', type: 'toggle', section: 'ScapeLite Core', label: 'Hide ScapeLite Before Login', desc: 'On the game\'s main menu / login screen only the Status Indicator is shown; everything else appears once you are in the game.', default: true },
-    { key: 'guideChatRelay', type: 'button', section: 'Chat Relay', label: 'Setup Guide', desc: 'Step-by-step: create a Discord webhook, paste it here, and turn on the right chat announcements in the game.', buttonText: 'Open guide' },
+    { key: 'guideChatRelay', type: 'button', section: 'Chat Relay', label: 'Discord Setup Wizard', desc: 'Step by step: which channels and roles you need, where to paste each webhook, a Test button per channel, and what every feature posts.', buttonText: 'Open wizard' },
     { key: 'relayClanWebhook', type: 'secret', section: 'Chat Relay', label: 'Clan Channel Webhook URL', desc: 'Discord webhook for Clan announcements. Stored only on this PC (overlay config), never in the browser. Click the eye to reveal.', placeholder: 'https://discord.com/api/webhooks/...' },
     { key: 'relayGlobalWebhook', type: 'secret', section: 'Chat Relay', label: 'Global Channel Webhook URL', desc: 'Discord webhook for Global announcements (optional).', placeholder: 'https://discord.com/api/webhooks/...' },
     { key: 'clanRelayEnabled', type: 'toggle', section: 'Chat Relay', label: 'Relay Clan Chat', desc: 'Forward Clan channel events (and optionally plain chat) to Discord.', default: true },
     { key: 'globalRelayEnabled', type: 'toggle', section: 'Chat Relay', label: 'Relay Global Chat', desc: 'Forward Global channel cape/pet milestones to Discord.', default: false },
     { key: 'relayPlainChat', type: 'toggle', section: 'Chat Relay', label: 'Mirror Plain Chat Messages', desc: 'Also relay ordinary Clan banter, not just drops/unlocks/levels.', default: true },
-    { key: 'relayRole', type: 'select', section: 'Chat Relay', label: 'Several ScapeLite Users On This Channel', desc: 'Every clan member sees the same clan chat, so if several members run ScapeLite on the same Discord channel each line would be posted once per member. Automatic (default): with a Shared Lease Webhook (the next setting) the ScapeLite instances agree on ONE that posts the shared messages (clan chat events, digest, clan rank, raid summaries) and another takes over within about two minutes if it goes offline; without one this PC just posts what it sees, and NOTHING extra is ever written to your channels. Always post: you are the only ScapeLite user. Own events only: this PC posts only what happens to your own character (no lease needed, nobody posts twice, but clan mates without ScapeLite are not covered). Never post: this PC stays quiet.', options: [['auto', 'Automatic (lease webhook if set, else post everything)'], ['always', 'Always post from this PC (I am the only ScapeLite user)'], ['own', 'Own events only (no lease needed)'], ['never', 'Never post shared messages from this PC']], default: 'auto' },
-    { key: 'relayLeaseWebhook', type: 'secret', section: 'Chat Relay', label: 'Shared Lease Webhook URL (optional)', desc: 'Only if several clan members run ScapeLite on the same relay. A webhook in a PRIVATE channel (for example a leaders-only channel) that every ScapeLite user pastes here; your clan leader gives it out. ScapeLite keeps one small coordination message there (who is posting, and the newest ScapeLite version in use) and never writes anything to the relay channels. It must not be the same webhook as the relay webhook.', placeholder: 'https://discord.com/api/webhooks/...' },
+    { key: 'relayRole', type: 'select', section: 'Chat Relay', label: 'Several ScapeLite Users', desc: 'Only matters when more than one ScapeLite posts to the same Discord channel (two of your PCs, or clanmates). Automatic: one copy posts, the others wait and take over if it goes offline (works best with the Shared Lease Webhook below). Own events only: this PC posts only what happens to your own character. Always post: use this when you are the only user. Never post: this PC stays quiet. Guide: Open wizard, page 5.', options: [['auto', 'Automatic'], ['own', 'Own events only'], ['always', 'Always post'], ['never', 'Never post']], default: 'auto' },
+    { key: 'relayLeaseWebhook', type: 'secret', section: 'Chat Relay', label: 'Shared Lease Webhook (optional)', desc: 'A webhook in a PRIVATE channel (for example leaders only). The clan leader makes it once and every ScapeLite user pastes the same one here, so the copies can agree who posts. ScapeLite keeps one small message there and never writes to your relay channels. Not the same webhook as the relay webhook.', placeholder: 'https://discord.com/api/webhooks/...' },
+    { key: 'teamSettings', type: 'button', section: 'Chat Relay', label: 'Team Settings', desc: 'Publish your Discord setup to the team, or gather what the team published (ping roles, hiscores, digest, raid rules). Webhook addresses are never included unless you choose it.', buttonText: 'Open' },
+    { key: 'teamAutoSync', type: 'toggle', section: 'Chat Relay', label: 'Keep In Sync Automatically', desc: 'When the team publishes newer settings, apply them (never webhook addresses). You can undo it in the wizard. Needs the shared lease webhook.', default: false },
 
     { key: 'pingRoles', type: 'roles', section: 'Chat Relay Pings', label: 'Ping Roles', desc: 'Create a ping role: paste the Discord role ID and tick the events it should be mentioned for. You can make as many roles as you like, and an event can ping several roles. Right-click a role in Discord (Developer Mode on) and choose Copy Role ID.' },
 
@@ -277,6 +279,8 @@
     { key: 'boardWebhook', type: 'secret', section: 'Clan Status Board', label: 'Board Webhook URL', desc: 'The webhook of your clan\u2019s board channel (your clan leader gives it to you). Stored only on this PC. Everyone who holds this URL could in principle edit any card posted through it; ScapeLite only ever edits your own card, and the clan leader decides who gets the URL.', placeholder: 'https://discord.com/api/webhooks/...' },
     { key: 'clanBoardEnabled', type: 'toggle', section: 'Clan Status Board', label: 'Show My Card On The Clan Board', desc: 'Posts one card under your in-game name in the board channel and keeps it up to date. Only the fields ticked below are sent. Off until you switch it on. Display only: nothing is done in the game.', default: false },
     { key: 'clanBoardIntervalMin', type: 'number', section: 'Clan Status Board', label: 'Refresh Every (minutes)', desc: 'How often the card is updated, when something changed. 1 to 5 minutes; the times on the card (\u201Cdone in 12 minutes\u201D) keep counting on their own between updates.', default: 2, min: 1, max: 5 },
+    { key: 'clanBoardRoster', type: 'toggle', section: 'Clan Status Board', label: 'Also Show Clanmates Without ScapeLite', desc: 'Adds a simple card (online or offline, when you last saw them online, total level) for every clanmate who has no ScapeLite card of their own. Only ONE PC makes them: the host (the PC that leads the shared lease) or, without a lease webhook, this PC. A card disappears by itself when that clanmate starts using ScapeLite. Off until you switch it on.', default: false },
+    { key: 'clanBoardRosterExclude', type: 'members', section: 'Clan Status Board', label: 'Clanmates On The Board', desc: 'Untick a clanmate to leave them off. Only used when the switch above is on. New clanmates start ticked.', default: [] },
     { key: 'clanBoardTask', type: 'toggle', section: 'Clan Status Board', label: 'Field: What I Am Doing', desc: 'The task you are on (skill and activity, or the fight).', default: true },
     { key: 'clanBoardLocation', type: 'toggle', section: 'Clan Status Board', label: 'Field: Where I Am', desc: 'Adds the place of the task (\u201Cat Pinewrap\u201D). Turn off if you do not want to show where you are.', default: true },
     { key: 'clanBoardProgress', type: 'toggle', section: 'Clan Status Board', label: 'Field: Progress And Time Left', desc: 'A progress bar with done/total, and when the task will be finished.', default: true },
@@ -435,6 +439,9 @@
   // Secrets (webhook URLs, keys) are NEVER written to localStorage. They live in page memory only:
   // the watcher seeds them from its own config files and collects edits via takeSecrets().
   const secretVals = {}, pendingSecrets = {};
+  const DISCORD_SECRETS = ['relayClanWebhook', 'relayGlobalWebhook', 'relayLeaseWebhook', 'digestWebhook', 'hiscoresWebhook', 'raidSummaryWebhook', 'boardWebhook'];
+  const TEAM_KEYS = ['clanRelayEnabled', 'globalRelayEnabled', 'relayPlainChat', 'pingRoles', 'hiscoresEnabled', 'hiscoresPollMinutes', 'hiscoresPostIntervalHours', 'hiscoresMajorRankChange', 'digestEnabled', 'digestIntervalHours', 'digestPostTimes', 'raidSummaryEnabled', 'raidSummaryMode', 'raidSummaryPartyOn', 'raidSummaryMinMembers', 'raidSummaryGuildOn', 'raidSummaryGuildMin', 'raidSummaryWaveOn', 'raidSummaryWaveMin', 'raidSummaryDungeons', 'raidSummaryRaids', 'clanBoardRoster', 'clanBoardRosterExclude', 'clanBoardIntervalMin', 'clanBoardTask', 'clanBoardLocation', 'clanBoardProgress', 'clanBoardLevelUps', 'clanBoardTotalLevel', 'clanBoardXpHr', 'clanBoardHp', 'clanBoardSlayer', 'clanBoardFortress', 'clanBoardOnlineSince', 'clanBoardToday'];   // team settings (docs/DISCORD-TEAM-SYNC.md)
+  const DISCORD_TOGGLES = ['teamAutoSync', 'clanRelayEnabled', 'globalRelayEnabled', 'relayPlainChat', 'digestEnabled', 'hiscoresEnabled', 'raidSummaryEnabled', 'clanBoardEnabled'];
 
   function setVal(key, v) {
     values[key] = v;
@@ -501,7 +508,9 @@
       if (item.key === 'useDefaultLayout' && window.__ccUILayout && window.__ccUILayout.useDefault) { try { window.__ccUILayout.useDefault(); } catch (er) { /* the layout editor logs its own problems */ } }
       if (item.key === 'backToOldLayout' && window.__ccUILayout && window.__ccUILayout.backToOld) { try { window.__ccUILayout.backToOld(); } catch (er) { /* nothing to go back to */ } }
       if (item.key === 'showSetup' && window.__ccWelcome && window.__ccWelcome.openSetup) { window.__ccWelcome.openSetup(); try { const m = document.querySelector('.modal-overlay'), b = document.querySelector('.floating-tab-btn[data-tab=settings]'); if (b && m && getComputedStyle(m).display !== 'none') b.click(); } catch (er) {} }
-      if (item.key === 'guideChatRelay' && window.__ccWelcome) { window.__ccWelcome.openGuide('chat-relay'); try { const m = document.querySelector('.modal-overlay'), b = document.querySelector('.floating-tab-btn[data-tab=settings]'); } catch (er) {} }
+      if (item.key === 'teamSettings' && window.__ccDiscordSetup) { window.__ccDiscordSetup.open('team'); }
+      if (item.key === 'guideChatRelay' && window.__ccDiscordSetup) { window.__ccDiscordSetup.open(); }
+      else if (item.key === 'guideChatRelay' && window.__ccWelcome) { window.__ccWelcome.openGuide('chat-relay'); try { const m = document.querySelector('.modal-overlay'), b = document.querySelector('.floating-tab-btn[data-tab=settings]'); } catch (er) {} }
       if (item.key === 'guideRouteAdvisor' && window.__ccWelcome) window.__ccWelcome.openGuide('route-advisor');
       if (item.key === 'guideClanBoard' && window.__ccWelcome) window.__ccWelcome.openGuide('clan-board');
       if (item.key === 'checkUpdates') { window.__ccUpdateReq = 'check'; if (infoEls.aboutInfo && infoEls.aboutInfo.descEl) infoEls.aboutInfo.descEl.textContent = 'Checking\u2026'; setTimeout(refreshAbout, 4000); setTimeout(refreshAbout, 9000); }
@@ -563,6 +572,55 @@
     row.appendChild(input);
     controls[item.key] = { inputEl: input };
     return row;
+  }
+
+  // ---- clanmates list (Clan Status Board): a tick per clanmate, search, All / None. Stores the names that are switched OFF, so new clanmates start on ----
+  function buildMembersRow(item) {
+    const wrap = document.createElement('div'); wrap.className = 'settings-toggle-row'; wrap.style.cssText = 'display:block;';
+    const head = document.createElement('div'); head.className = 'settings-toggle-text';
+    head.innerHTML = '<div class="settings-toggle-label"></div><div class="settings-toggle-desc"></div>';
+    head.firstChild.textContent = item.label; head.lastChild.textContent = item.desc || '';
+    wrap.appendChild(head);
+    const bar = document.createElement('div'); bar.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap;';
+    const q = document.createElement('input'); q.type = 'text'; q.placeholder = 'Search'; q.spellcheck = false; q.autocomplete = 'off';
+    q.style.cssText = 'width:150px;background:var(--cc-sunk);color:var(--cc-text);border:1px solid var(--cc-border-strong);border-radius:4px;padding:4px 8px;font:inherit;';
+    ['keydown', 'keyup', 'keypress'].forEach((t) => q.addEventListener(t, (ev) => ev.stopPropagation()));
+    const mkBtn = (txt, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = txt; b.style.cssText = 'background:var(--cc-bg-3);color:var(--cc-text);border:1px solid var(--cc-border-strong);border-radius:6px;padding:4px 12px;font:inherit;cursor:pointer;'; b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fn(); }); return b; };
+    const list = document.createElement('div'); list.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-top:8px;max-height:260px;overflow:auto;';
+    const lc = (x) => String(x || '').trim().toLowerCase();
+    const off = () => { const v = val(item.key); return Array.isArray(v) ? v.map(String) : []; };
+    const roster = () => { try { const r = window.__ccBridge && window.__ccBridge.clanRoster && window.__ccBridge.clanRoster(); return r && r.state === 'ok' && Array.isArray(r.members) ? r.members.map((m) => ({ name: m.name, online: !!m.online })) : null; } catch (e) { return null; } };
+    function render() {
+      list.textContent = '';
+      const ro = roster(), offSet = new Set(off().map(lc)), term = lc(q.value);
+      if (!ro) { const e = document.createElement('div'); e.textContent = 'The clan list is not available yet. Open the game and join your clan, then press Reload.'; e.style.cssText = 'color:var(--cc-text-dim);font-size:12px;'; list.appendChild(e); }
+      else ro.filter((m) => !term || lc(m.name).indexOf(term) !== -1).forEach((m) => {
+        const lab = document.createElement('label'); lab.style.cssText = 'display:flex;gap:8px;align-items:center;cursor:pointer;padding:2px 0;';
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !offSet.has(lc(m.name));
+        cb.addEventListener('change', () => { const cur = off().filter((n) => lc(n) !== lc(m.name)); if (!cb.checked) cur.push(m.name); setVal(item.key, cur); });
+        const t = document.createElement('span'); t.textContent = m.name + (m.online ? '  · online' : '');
+        lab.append(cb, t); list.appendChild(lab);
+      });
+      // switched-off clanmates who left the clan are remembered (they stay off if they come back) until you forget them
+      if (ro) {
+        const here = new Set(ro.map((m) => lc(m.name)));
+        off().filter((n) => !here.has(lc(n))).forEach((n) => {
+          const row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;align-items:center;color:var(--cc-text-dim);font-size:12px;';
+          const t = document.createElement('span'); t.textContent = n + '  · left the clan, stays off';
+          row.append(t, mkBtn('Forget', () => { setVal(item.key, off().filter((x) => lc(x) !== lc(n))); render(); }));
+          list.appendChild(row);
+        });
+      }
+    }
+    q.addEventListener('input', render);
+    bar.append(q,
+      mkBtn('All', () => { const ro = roster(); const here = new Set((ro || []).map((m) => lc(m.name))); setVal(item.key, off().filter((n) => !here.has(lc(n)))); render(); }),
+      mkBtn('None', () => { const ro = roster(); if (!ro) return; const keep = off().filter((n) => !ro.some((m) => lc(m.name) === lc(n))); setVal(item.key, keep.concat(ro.map((m) => m.name))); render(); }),
+      mkBtn('Reload', render));
+    wrap.append(bar, list);
+    render();
+    controls[item.key] = { rerender: render };
+    return wrap;
   }
 
   // ---- ping roles editor ----
@@ -897,6 +955,7 @@
       else if (item.type === 'hiddenpanels') sec.appendChild(buildHiddenRow(item));
       else if (item.type === 'text') sec.appendChild(buildTextRow(item));
       else if (item.type === 'roles') sec.appendChild(buildRolesRow(item));
+      else if (item.type === 'members') sec.appendChild(buildMembersRow(item));
       else if (item.type === 'boardpreview') sec.appendChild(buildBoardPreviewRow(item));
       else if (item.type === 'prio') sec.appendChild(buildPrioRow(item));
       else if (item.type === 'taskw') sec.appendChild(buildTaskWRow(item));
@@ -1034,6 +1093,14 @@
       for (const key of applied) { const c = controls[key]; if (!c) continue; if (c.switchEl) c.switchEl.classList.toggle('on', !!val(key)); if (c.inputEl) c.inputEl.value = String(val(key)); }
       return { applied, refused };
     },
+    // Team settings: the watcher hands over values it has already checked (overlay/team-sync.js); only the keys of TEAM_KEYS are accepted, a webhook address never.
+    teamApply(obj) {
+      const applied = [];
+      for (const key in (obj || {})) { if (TEAM_KEYS.indexOf(key) >= 0 && SCHEMA.some((it) => it.key === key && it.type !== 'secret')) { values[key] = obj[key]; applied.push(key); } }
+      save();
+      for (const key of applied) { const c = controls[key]; if (!c) continue; if (c.switchEl) c.switchEl.classList.toggle('on', !!val(key)); if (c.inputEl) c.inputEl.value = String(val(key)); if (c.rolesRender) c.rolesRender(); }
+      return applied;
+    },
     get prioProfiles() { return PRIO_PROFILES; },
     // Called by the watcher: returns every current value as a plain
     // object, so Node-side code can decide behavior from it.
@@ -1047,6 +1114,11 @@
     // without this, a watcher restart would show stale localStorage
     // values (or schema defaults) instead of what's actually configured.
     // Secrets: in-memory only; collected by the watcher (it writes them into its own config files).
+    // The Discord setup wizard (discord-setup.js) may put a webhook in, ask whether one is saved and flip the relay switches, for these keys only. It never reads a
+    // webhook back: the saved address stays in this page's memory and goes to the watcher through takeSecrets().
+    discordPut(key, v) { if (DISCORD_SECRETS.indexOf(key) < 0) return false; v = String(v == null ? '' : v).trim(); secretVals[key] = v; pendingSecrets[key] = v; const c = controls[key]; if (c && c.secretEl) c.secretEl.value = v; return true; },
+    discordHas(key) { return DISCORD_SECRETS.indexOf(key) >= 0 && !!secretVals[key]; },
+    discordToggle(key) { if (DISCORD_TOGGLES.indexOf(key) < 0) return false; const next = !val(key); setVal(key, next); const c = controls[key]; if (c && c.switchEl) c.switchEl.classList.toggle('on', next); return next; },
     takeSecrets() { const o = Object.assign({}, pendingSecrets); for (const k in pendingSecrets) delete pendingSecrets[k]; return o; },
     seedSecrets(obj) {
       for (const k in (obj || {})) { if (pendingSecrets[k] !== undefined) continue; secretVals[k] = obj[k]; if (controls[k] && controls[k].secretEl) controls[k].secretEl.value = obj[k] || ''; }

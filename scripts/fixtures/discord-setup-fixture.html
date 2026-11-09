@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>discord-setup-fixture</title></head>
+<body style="background:#222;color:#ddd;font:14px system-ui">
+<!-- scripts/test-discord-setup.js: the real UI kit and the real overlay/discord-setup.js run here against a FAKE Plugins settings object and a FAKE watcher. -->
+<script>
+// a stand-in for the Plugins settings: same three calls the wizard uses, same allow-lists, and it records what would reach the watcher
+window.fxPS = (() => {
+  const SECRETS = ['relayClanWebhook', 'relayGlobalWebhook', 'relayLeaseWebhook', 'digestWebhook', 'hiscoresWebhook', 'raidSummaryWebhook', 'boardWebhook'];
+  const TOGGLES = ['teamAutoSync', 'clanRelayEnabled', 'globalRelayEnabled', 'relayPlainChat', 'digestEnabled', 'hiscoresEnabled', 'raidSummaryEnabled', 'clanBoardEnabled'];
+  const secrets = {}, pending = {}, values = { clanRelayEnabled: true, relayPlainChat: true };
+  return {
+    pending, values, secrets,
+    get: (k) => values[k],
+    discordPut(k, v) { if (SECRETS.indexOf(k) < 0) return false; secrets[k] = String(v || '').trim(); pending[k] = secrets[k]; return true; },
+    discordHas: (k) => SECRETS.indexOf(k) >= 0 && !!secrets[k],
+    discordToggle(k) { if (TOGGLES.indexOf(k) < 0) return false; values[k] = !values[k]; return values[k]; },
+  };
+})();
+window.__ccPluginSettings = window.fxPS;
+</script>
+</body></html>

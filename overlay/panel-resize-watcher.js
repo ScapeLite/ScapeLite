@@ -60,7 +60,9 @@ const { createStore: createOptionLogStore } = require('./option-log-store');   /
 const { createBoard } = require('./clan-board-sync');
 const RelayEvents = require('./relay-events');                           // raw game chat line -> typed event (the one place wording is parsed)
 const { createRelay, leaseGate } = require('./relay-core');              // outbox + gate + posting
-const { createLeaseManager, newInstanceId } = require('./relay-lease');  // one relay leader on the clan's optional private lease webhook (duplicate-instance protection)
+const { createTeamHost } = require('./team-sync-host');   // Team settings sync through the lease webhook (docs/DISCORD-TEAM-SYNC.md)
+const { createLeaseManager, newInstanceId } = require('./relay-lease');
+const { hashOf: rosterHash } = require('./clan-board-roster');  // one relay leader on the clan's optional private lease webhook (duplicate-instance protection)
 const legacyLeaseCleanup = require('./relay-legacy-cleanup');            // removes the visible lease message + webhook-name suffix the first lease version left behind
 // One watcher only (whoever started it: the supervisor, a shortcut, a terminal): a second one would double every Discord post and fight over the game connection.
 // A watcher that is being restarted may need a few seconds to let go, so the new one waits for it.
@@ -102,6 +104,7 @@ const DROPLUCK_SCRIPT_PATH = path.join(__dirname, 'drop-luck.js');
 const GOALS_SCRIPT_PATH = path.join(__dirname, 'goals.js');
 const DIARYCORE_SCRIPT_PATH = path.join(__dirname, 'diary-credits-core.js');
 const DIARYCREDITS_SCRIPT_PATH = path.join(__dirname, 'diary-credits.js');
+const DISCORD_SETUP_SCRIPT_PATH = path.join(__dirname, 'discord-setup.js');
 const ADVISORCORE_SCRIPT_PATH = path.join(__dirname, 'advisor-core.js');
 const ADVISOR_SCRIPT_PATH = path.join(__dirname, 'advisor.js');
 const QWALK_SCRIPT_PATH = path.join(__dirname, 'queue-walk.js');
@@ -259,7 +262,7 @@ async function discordTest(featureId) {
   if (Date.now() - (lastDiscordTest[f.id] || 0) < 10000) return { ok: false, error: 'wait a few seconds between tests' };
   lastDiscordTest[f.id] = Date.now();
   sender.reset(url);
-  const r = await sender.send(f.id, url, { username: 'ScapeLite', content: 'ScapeLite test message' }, { force: true });
+  const r = await sender.send(f.id, url, { username: 'ScapeLite', content: '**ScapeLite test message** for "' + f.label + '". You pressed Test in ScapeLite, so this one message was sent. If you can read this, the channel works. Nothing else is posted by this button.' }, { force: true });
   log('Discord test message (' + f.label + '): ' + (r.ok ? 'accepted' : 'failed -- ' + (r.error || 'unknown error')));
   return r.ok ? { ok: true } : { ok: false, error: r.error || 'failed' };
 }
@@ -269,6 +272,29 @@ async function discordTest(featureId) {
 const clanBoard = createBoard({ sender, log: (t) => log(t), statePath: CLAN_BOARD_STATE_PATH });
 Object.defineProperty(STATUS, 'clanBoard', { enumerable: true, get: () => clanBoard.status() });
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), ms))]);
+// Clan board, who covers whom (overlay/clan-board-roster.js): every ScapeLite that keeps its OWN card announces itself on the lease; the host (the lease leader, or a
+// lone PC without a lease webhook) additionally keeps a simple card for each clanmate who has none -- only when "Also show clanmates who do not run ScapeLite" is on.
+async function boardRosterStep(url, plugin, conn) {
+  const lease = leaseMgr ? leaseMgr.forWebhook() : null;   // null = no lease webhook
+  const boardOn = !!(plugin && plugin.clanBoardEnabled), self = ownPlayerName;
+  const roster = conn ? await withTimeout(conn.evalAwait('window.__ccBridge && window.__ccBridge.clanRoster ? window.__ccBridge.clanRoster() : null', false), 8000).catch(() => null) : null;
+  const inClan = roster && roster.state === 'ok' && Array.isArray(roster.members) ? new Set(roster.members.map((m) => rosterHash(m.name))) : null;
+  const view = lease ? lease.boardView() : { known: false, present: new Set(), cards: {} };
+  // 1. my own card exists: say so on the lease (once; also drops the entries of players who left the clan)
+  if (lease && boardOn && self && url && clanBoard._state().messageId) {
+    const h = rosterHash(self);
+    if (view.known && !view.present.has(h)) lease.boardAnnounce(h, inClan || undefined).catch(() => {});
+  }
+  // 2. roster cards: the host only
+  const host = lease ? lease.canRelay() : true;
+  let hs = null; try { const j = readJsonRecover(CLAN_HISCORES_STATE_PATH, null); hs = j && j.members || null; } catch (e) { /* no hiscores yet */ }
+  await clanBoard.rosterTick({
+    url, enabled: boardOn && !!(plugin && plugin.clanBoardRoster), host, hostName: self, roster, exclude: (plugin && Array.isArray(plugin.clanBoardRosterExclude)) ? plugin.clanBoardRosterExclude : [],
+    self, presence: view.present, leaseCards: view.cards, hiscores: hs,
+    canCreate: Date.now() - STATUS.startedAt > 120000 && (!lease || view.known),   // the others need a moment to announce themselves after a start
+    setCards: lease ? (map) => lease.boardSetCards(map) : null,
+  });
+}
 let boardTickBusy = false;
 async function boardTick() {
   if (boardTickBusy) return;
@@ -281,6 +307,7 @@ async function boardTick() {
       if (plugin && plugin.clanBoardEnabled) snap = await withTimeout(conn.evalAwait('window.__ccClanBoard && window.__ccClanBoard.snapshot ? window.__ccClanBoard.snapshot() : null', false), 8000).catch(() => null);
     }
     await clanBoard.tick({ url, plugin, snap, connected: !!conn });
+    await boardRosterStep(url, plugin, conn);
   } catch (e) { log('Clan board: error -- ' + (e && e.message || e)); }
   finally { boardTickBusy = false; }
 }
@@ -387,6 +414,7 @@ const PLUGIN_DEFS = [
       try { (JSON.parse(fs.readFileSync(path.join(__dirname, 'catalog.json'), 'utf8')).plugins || []).forEach((pl) => { if (pl.guide) guides[pl.id] = pl.guide; }); } catch (e) { /* no catalog */ }
       return `window.__CC_GUIDES = ${JSON.stringify(guides)};\n` + readScript(WELCOME_TOUR_SCRIPT_PATH);
     } },
+  { id: 'discord-setup', core: true, label: 'Discord setup wizard', ns: '__ccDiscordSetup', desc: 'A step-by-step guide to the Discord features: channels, webhooks, roles, a Test button per channel. Posts nothing by itself.', build: () => readScript(DISCORD_SETUP_SCRIPT_PATH) },
   { id: 'presets', core: true, label: 'ScapeLite looks', ns: '__ccPresets', desc: 'Full Vanilla, Combination and ScapeLite only: one choice that sets the Info Bar and the display options, with a one-time chooser on a new install.', build: () => readScript(PRESETS_SCRIPT_PATH) },
   { id: 'settings-nav', core: true, label: 'Settings quick-jump menu', ns: '__ccSettingsNav', desc: 'Hover a Settings category to jump straight to its sub-categories.', build: () => readScript(SETTINGS_NAV_SCRIPT_PATH) },
   { id: 'panel-fuse', core: true, label: 'Panel fuse', ns: '__ccPanelFuse', desc: 'Fuse panels that sit edge to edge: move together, cleaner seam.', build: () => readScript(PANEL_FUSE_SCRIPT_PATH) },
@@ -621,6 +649,7 @@ function loadInstanceId() {
   try { writeJsonAtomic(RELAY_INSTANCE_PATH, { id }, { backup: false }); } catch (e) { /* best effort */ }
   return id;
 }
+let ownNameAt = 0;
 let ownPlayerName = '';           // the in-game name, shown on the lease message as "leader <name>"
 let relayRole = 'auto';           // Plugins > Chat Relay > "Several ScapeLite users": auto | always | never | own
 const SL_VERSION = (() => { try { return String(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version || ''); } catch (e) { return ''; } })();
@@ -1668,6 +1697,45 @@ function writeSecretValue(def, value) {
   o[def.at[def.at.length - 1]] = value;
   writeJsonAtomic(def.file, JSON.stringify(cfg, null, 2), { backup: false });   // no .bak: these configs hold webhooks
 }
+// --- Team settings sync (overlay/team-sync.js + team-sync-host.js, docs/DISCORD-TEAM-SYNC.md) -----------------------------------------
+// The wizard's "Team settings" page hands requests over (window.__ccDiscordSetup.take().team); the host publishes to / gathers from the lease webhook. Settings of the Plugins tab
+// are written through the page (teamApply, a fixed list of keys), the rest into the private config files. Webhook addresses only when the person asked for them by name.
+const TEAM_STATE_PATH = P.runtime('team-sync-state.json');   // { lastVer, undo }: the undo copy can hold webhook addresses, so it lives in State/ (never packaged)
+const TEAM_OPS = ['status', 'preview', 'publish', 'export', 'gather', 'import', 'apply', 'undo'];
+let teamEval = null;   // the page connection of the moment, set by the loop that serves the wizard
+const teamCfg = (file, example) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')) || {}; } catch (e) { try { return JSON.parse(fs.readFileSync(path.join(__dirname, example), 'utf8')) || {}; } catch (e2) { return {}; } } };
+const teamHost = createTeamHost({
+  lease: () => (leaseMgr.configured() ? leaseMgr.forWebhook() : null),
+  name: () => ownPlayerName,
+  log: (t) => log(t),
+  getPlugin: async () => { if (!teamEval) throw new Error('The game is not connected.'); return (await teamEval('window.' + PLUGINS_NS + ' ? window.' + PLUGINS_NS + '.getAll() : {}', false)) || {}; },
+  applyPlugin: async (patch) => { if (!teamEval) throw new Error('The game is not connected.'); await teamEval('window.' + PLUGINS_NS + '.teamApply(' + JSON.stringify(patch) + ')', false); },
+  readFiles: () => {
+    const h = teamCfg(CLAN_HISCORES_CONFIG_PATH, 'clan-hiscores-config.example.json'), c = teamCfg(CHAT_RELAY_CONFIG_PATH, 'chat-relay-config.example.json');
+    return { clanTag: String(h.clanTag || ''), clanMembers: Array.isArray(h.members) ? h.members : [], ultraRareKeywords: Array.isArray(c.ultraRareKeywords) ? c.ultraRareKeywords : [] };
+  },
+  writeFiles: (patch) => {
+    if (patch.clanTag !== undefined || patch.clanMembers !== undefined) {
+      const h = teamCfg(CLAN_HISCORES_CONFIG_PATH, 'clan-hiscores-config.example.json');
+      if (patch.clanTag !== undefined) h.clanTag = patch.clanTag;
+      if (patch.clanMembers !== undefined) h.members = patch.clanMembers;
+      writeJsonAtomic(CLAN_HISCORES_CONFIG_PATH, JSON.stringify(h, null, 2) + '\n', { backup: false });
+    }
+    if (patch.ultraRareKeywords !== undefined) {
+      const c = teamCfg(CHAT_RELAY_CONFIG_PATH, 'chat-relay-config.example.json');
+      c.ultraRareKeywords = patch.ultraRareKeywords;
+      writeJsonAtomic(CHAT_RELAY_CONFIG_PATH, JSON.stringify(c, null, 2) + '\n', { backup: false });
+    }
+  },
+  readSecrets: () => currentSecrets(),
+  writeSecrets: (patch) => {
+    for (const k of Object.keys(patch)) { const def = SECRET_FIELDS[k]; if (def && k !== 'relayLeaseWebhook') writeSecretValue(def, String(patch[k] || '')); }
+    discordUrlCache.at = 0;
+    if (teamEval) teamEval('window.' + PLUGINS_NS + ' && window.' + PLUGINS_NS + '.seedSecrets && window.' + PLUGINS_NS + '.seedSecrets(' + JSON.stringify(patch) + ')', false).catch(() => {});
+  },
+  load: () => readJsonRecover(TEAM_STATE_PATH, {}),
+  save: (st) => writeJsonAtomic(TEAM_STATE_PATH, st, { backup: false }),
+});
 function currentSecrets() {
   const out = {};
   for (const k of Object.keys(SECRET_FIELDS)) out[k] = readSecretValue(SECRET_FIELDS[k]);
@@ -1711,6 +1779,33 @@ async function handleCommandRequests(evalAwait) {
   if (!Array.isArray(recs) || !recs.length) return;
   const write = (rep) => evalAwait('window.__ccCmdReply && window.__ccCmdReply(' + JSON.stringify(rep) + ')', false);   // lines and names are already cleaned by the host
   await commandHost().process(recs, write).catch(() => {});
+}
+// The Discord setup wizard (overlay/discord-setup.js): hands over its Test requests and gets the state of every channel back. Only feature ids from DISCORD_FEATURES are
+// accepted (no address ever travels from the page), and discordTest allows one message per channel every 10 s. While the wizard is closed, nothing is sent to the page.
+async function serveDiscordSetup(evalAwait) {
+  teamEval = evalAwait;
+  let got = null;
+  try { got = await evalAwait("(() => { const w = window.__ccDiscordSetup; return w && w.take ? w.take() : null; })()", false); } catch (e) { return; }
+  if (!got || typeof got !== 'object') return;
+  if (Array.isArray(got.tests) && got.tests.length) { await collectSecrets(evalAwait); discordUrlCache.at = 0; }   // a webhook saved a moment ago is on disk before it is tested
+  for (const t of Array.isArray(got.tests) ? got.tests.slice(0, 5) : []) {
+    const id = t && typeof t.id === 'string' ? t.id : '';
+    if (!DISCORD_FEATURES.some((f) => f.id === id)) continue;
+    const r = await discordTest(id).catch((e) => ({ ok: false, error: String(e && e.message || e) }));
+    try { await evalAwait('window.__ccDiscordSetup && window.__ccDiscordSetup.result(' + JSON.stringify(id) + ', ' + JSON.stringify({ ok: !!r.ok, error: String(r.error || '').slice(0, 160) }) + ')', false); } catch (e) { /* page gone */ }
+  }
+  for (const t of Array.isArray(got.team) ? got.team.slice(0, 3) : []) {   // Team settings page: only the listed operations, arguments are plain data
+    const id = t && typeof t.id === 'string' ? t.id.slice(0, 40) : '', op = t && typeof t.op === 'string' ? t.op : '';
+    if (!id || TEAM_OPS.indexOf(op) < 0) continue;
+    const r = await teamHost.handle(op, t.args && typeof t.args === 'object' ? t.args : {});
+    try { await evalAwait('window.__ccDiscordSetup && window.__ccDiscordSetup.teamResult(' + JSON.stringify(id) + ', ' + JSON.stringify(r) + ')', false); } catch (e) { /* page gone */ }
+  }
+  if (got.want || (got.tests && got.tests.length)) {
+    discordUrlCache.at = 0;   // look at the saved addresses again now: the wizard has just saved one
+    const features = discordHealth().features.map((f) => ({ id: f.id, configured: !!f.configured, lastOkAt: f.lastOkAt || null, lastErrorAt: f.lastErrorAt || null, sent: f.sent || 0, failed: f.failed || 0,
+      lastError: f.lastError ? String(f.lastError).replace(/https?:\/\/\S+/gi, '[link hidden]').slice(0, 160) : null }));   // no address and nothing else leaves this file
+    try { await evalAwait('window.__ccDiscordSetup && window.__ccDiscordSetup.setState(' + JSON.stringify({ features }) + ')', false); } catch (e) { /* page gone */ }
+  }
 }
 async function collectSecrets(evalAwait) {
   let got = null;
@@ -1937,7 +2032,9 @@ function connectAndWatch(target) {
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
         const effectiveCfg = applyPluginOverridesToChatCfg(cfg, plugin);
         if (plugin) setRelayRole(plugin.relayRole);
-        if (!ownPlayerName) { try { ownPlayerName = String(await evalAwait("(document.querySelector('.ingame-hud-name') || {}).textContent || ''", false) || '').trim().slice(0, 24); } catch (e) { /* page not ready */ } }
+        if (plugin) { teamEval = evalAwait; teamHost.tick(!!plugin.teamAutoSync).catch((e) => log('Team settings: automatic sync failed --', String(e && e.message || e).slice(0, 120))); }
+        // the in-game name is looked at again every 30 s (and until it is known): it shows on the lease message as "leader <name>", so a name read once too early, or from before a character switch, must not stay
+        if (!ownPlayerName || Date.now() - ownNameAt > 30000) { ownNameAt = Date.now(); try { const nm = String(await evalAwait("(document.querySelector('.ingame-hud-name') || {}).textContent || ''", false) || '').trim().slice(0, 24); if (nm && nm !== ownPlayerName) { if (ownPlayerName) log('Relay lease: the in-game name changed from ' + ownPlayerName + ' to ' + nm + ', the lease message follows at the next heartbeat.'); ownPlayerName = nm; } } catch (e) { /* page not ready */ } }
         ensureLeases();
         { const dgc = loadDigestConfig(); if (dgc && dgc.enabled && dgc.webhookUrl && relayRole === 'auto' && relayGate(dgc.webhookUrl) === 'standby') syncDigestWithLease(dgc.webhookUrl); }
         processOutbox(effectiveCfg).catch(() => {}); // retry / recover anything still pending first
@@ -2172,7 +2269,7 @@ function connectAndWatch(target) {
       }
       seedPluginSettings(evalAwait);
       if (secretsTimer) clearInterval(secretsTimer);
-      secretsTimer = setInterval(() => { global.__wdLoopAt = Date.now(); handleReloadRequest(evalAwait); collectSecrets(evalAwait); syncDigestTimes(); handleUpdateRequest(evalAwait); handleCommandRequests(evalAwait); syncLogSettings(evalAwait); drainPageLogs(evalAwait); drainOptionLog(evalAwait); }, 3000);
+      secretsTimer = setInterval(() => { global.__wdLoopAt = Date.now(); handleReloadRequest(evalAwait); collectSecrets(evalAwait); serveDiscordSetup(evalAwait); syncDigestTimes(); handleUpdateRequest(evalAwait); handleCommandRequests(evalAwait); syncLogSettings(evalAwait); drainPageLogs(evalAwait); drainOptionLog(evalAwait); }, 3000);
       setTimeout(() => recoverTaskLog(evalAwait), 20000);
       if (perfTimer) clearInterval(perfTimer);
       perfTimer = setInterval(async () => {

@@ -55,13 +55,14 @@
   // already queued but not yet drained, and the "seen" set, must survive the
   // handover -- otherwise every message that arrived since the last drain is
   // silently lost (confirmed 2026-10-07: level-ups missed across a restart).
-  let carriedQueue = [], carriedSeen = [], carriedSeq = 0;
+  let carriedQueue = [], carriedSeen = [], carriedSeq = 0, carriedHidden = null;
   try {
     const prev = window[NS];
     if (prev) {
       if (prev.peek) carriedQueue = prev.peek();
       if (prev.seenKeys) carriedSeen = prev.seenKeys();
       if (prev.lastSeq) carriedSeq = prev.lastSeq();
+      if (prev.hiddenIds) carriedHidden = prev.hiddenIds();
     }
   } catch (e) {}
   try { window[NS] && window[NS].teardown && window[NS].teardown(); } catch (e) {}
@@ -273,12 +274,50 @@
   let observer = null;
   let waiter = null;
 
+  // A line that was already there when this collector started is history: remember it so that the game redrawing its list (a chat filter switched on, the panel
+  // rebuilt) cannot present it as news. Nothing is queued here.
+  function markSeen(node) {
+    try {
+      if (!(node instanceof Element) || !node.classList || !node.classList.contains('chat-message')) return;
+      const channel = node.dataset.channel;
+      if (!CATEGORY_KIND[channel]) return;
+      const parts = extractParts(node, channel);
+      if (parts.player) alreadySeen(channel, parts);
+    } catch (e) { /* history only */ }
+  }
+
   function attach(container) {
+    for (const node of container.children) markSeen(node);
     observer = new MutationObserver((mutations) => {
       for (const mut of mutations) for (const node of mut.addedNodes) onMessageAdded(node);
     });
     observer.observe(container, { childList: true });
   }
+
+  // The game only DRAWS the chat lines its own filters allow (a channel greyed out, a type such as drops or levels switched off), so a collector that only watches the
+  // drawn list is blind to everything the player has filtered out of the default chat. The game still keeps every line in its message list: the bridge hands out the
+  // hidden ones (window.__ccBridge.chatHidden), built the way the game builds them, and they go through exactly the same path as drawn ones (same dedup, same classify).
+  // The first look after a start is history (marked seen, nothing queued); after that every new hidden line is queued like a drawn one.
+  const hiddenDone = new Set(Array.isArray(carriedHidden) ? carriedHidden : []);
+  let hiddenPrimed = Array.isArray(carriedHidden);
+  let hiddenTimer = 0;
+  function scanHidden() {
+    const b = window.__ccBridge;
+    if (!b || typeof b.chatHidden !== 'function') return;
+    let list;
+    try { list = b.chatHidden(false); } catch (e) { return; }
+    if (!Array.isArray(list)) return;
+    const first = !hiddenPrimed;
+    hiddenPrimed = true;
+    for (const it of list) {
+      if (!it || hiddenDone.has(it.id)) continue;
+      hiddenDone.add(it.id);
+      if (first) markSeen(it.node); else onMessageAdded(it.node);
+    }
+    if (hiddenDone.size > 4000) { let n = hiddenDone.size - 3000; for (const k of hiddenDone) { if (n-- <= 0) break; hiddenDone.delete(k); } }
+  }
+  hiddenTimer = setInterval(scanHidden, 1500);
+  scanHidden();
 
   function startWhenReady() {
     const container = window.__ccDom.q('.chat-message-area');
@@ -302,12 +341,13 @@
   function teardown() {
     if (observer) observer.disconnect();
     if (waiter) waiter.disconnect();
+    if (hiddenTimer) { clearInterval(hiddenTimer); hiddenTimer = 0; }
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc chat-relay collector torn down';
   }
 
   window[NS] = {
-    version: 12,
+    version: 13,
     teardown,
     // Called by the watcher process: returns and clears all queued events.
     drain() {
@@ -317,14 +357,17 @@
     },
     peek() { return queue.slice(); },
     seenKeys() { return Array.from(seen); },
+    hiddenIds() { return Array.from(hiddenDone); },
+    scanNow: scanHidden,   // look at the lines the game hides right now (the 1.5 s timer does this on its own)
     // Read-only recovery aid: classify every chat message CURRENTLY in the DOM
     // (ignoring the seen set, queueing nothing) so the watcher side can compare
     // against what was actually relayed.
     rescan() {
       const out = [];
-      const cont = window.__ccDom.q('.chat-message-area');
-      if (!cont) return out;
-      for (const node of cont.children) {
+      let nodes = null;
+      try { const b = window.__ccBridge; const all = b && typeof b.chatHidden === 'function' ? b.chatHidden(true) : null; if (Array.isArray(all) && all.length) nodes = all.map((x) => x.node); } catch (e) { nodes = null; }
+      if (!nodes) { const cont = window.__ccDom.q('.chat-message-area'); if (!cont) return out; nodes = Array.from(cont.children); }
+      for (const node of nodes) {
         if (!node.classList || !node.classList.contains('chat-message')) continue;
         const channel = node.dataset.channel;
         if (!CATEGORY_KIND[channel]) continue;

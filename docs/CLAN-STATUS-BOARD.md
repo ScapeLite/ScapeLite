@@ -24,6 +24,21 @@ The card is green while you play, amber when you are idle ("Idle since 5 minutes
 
 The board needs nothing special for many members: every member's card is its own message, edited only by its owner, so five ScapeLite instances never duplicate each other here. The **chat relay, activity digest, clan rank post and raid summaries** are different: they post the same clan-wide content from every member's PC, so with several ScapeLite users they use a leader lease to post once per channel. The lease lives on an optional private *Shared Lease Webhook* (a webhook in a leaders-only channel that every user pastes in Plugins > Chat Relay) and writes nothing to the relay channels; with none set a PC just posts what it sees, and *Own events only* is the no-setup alternative (setting *Several ScapeLite Users On This Channel*). See `docs/DISCORD-RELAY-AUDIT.md` section 8.
 
+## Several members: who makes whose card
+
+**Your own card is always made by your own ScapeLite**, with everything you ticked (task, progress, level-ups ...). That is all that happens unless you switch on the next setting.
+
+Clanmates who do **not** run ScapeLite can still be on the board. Switch on *Settings > Plugins > Clan Status Board > Also Show Clanmates Without ScapeLite*. Then **one PC, the host,** keeps a simple card for each of them:
+
+* **What the card says:** online or offline, when the host last saw them online, and (if the clan hiscores feature is on) total level and hiscores rank. Nothing else: no task, no progress, no level-ups, because the host cannot see those. The footer says *Seen by <host> - no ScapeLite card*.
+* **Who the host is:** the PC that leads the shared lease (the optional *Shared Lease Webhook*, see `docs/DISCORD-RELAY-SETUP.md`). It changes by itself when the host goes offline; the new host edits the same cards (their message ids are kept on the lease), it does not make a second set. Without a lease webhook, the PC that has the switch on is the host, so switch it on on **one** PC only.
+* **Who is covered automatically:** every ScapeLite that keeps its own card writes one small marker on the lease ("this player has a card"). The host makes no card for them and removes the one it made earlier, so the moment a clanmate starts using ScapeLite, their own live card takes over. Because of this, **everyone who uses the board should also paste the lease webhook** (the leader hands it out with the board webhook). Without it the host cannot see that they have a card and would make a second one.
+* **Per clanmate:** *Clanmates On The Board* lists every clanmate with a tick, a search box and *All* / *None*. Untick someone and their card goes away. New clanmates start ticked. Clanmates you switched off who left the clan are remembered, so they stay off if they come back; *Forget* removes them.
+* **Nothing by surprise:** the switch is off by default, nothing is posted until you switch it on, and switching it off deletes the cards this PC made. A host also waits two minutes after starting before it makes cards, so the others have time to announce themselves.
+* **How often:** cards are made one at a time, a card changes at most every 5 minutes (a minute after someone goes online or offline), and an unchanged card is never edited. A clan has room for five members today.
+* **Secrets:** the board webhook is stored only on the PCs that have it. The lease holds hashes of names and message ids, no webhook URL.
+
+Example with three ScapeLite users (A, B, C) and two clanmates without it (D, E): A, B and C each keep their own live card. If A is the host, A also keeps simple cards for D and E. When A closes the game and the lease moves to B, B edits the same D and E cards.
 ## Setup for the clan leader (once)
 
 1. Make a channel for the board, for example `#clan-board`. Let members **read** it but not write in it, so the cards are the only messages.

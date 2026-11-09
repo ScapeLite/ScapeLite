@@ -14,6 +14,7 @@
 'use strict';
 
 const Card = require('./clan-board-card');
+const Roster = require('./clan-board-roster');
 const { readJsonRecover, writeJsonAtomic } = require('./safe-json');
 
 const OFFLINE_GRACE_MS = 90 * 1000;       // no fresh snapshot for this long = the game is closed (or not logged in)
@@ -49,7 +50,7 @@ function createBoard(o) {
   const withLogo = (payload) => (logo ? Object.assign({}, payload, { attachments: [{ id: 0, filename: logo.name }] }) : payload);
   const fileOpts = () => (logo ? { files: [{ name: logo.name, data: logo.data, type: logo.type }] } : {});
   const sender = o.sender, log = o.log || (() => {}), now = o.now || Date.now, file = o.statePath, urlKeyOf = o.urlKeyOf || ((u) => require('./discord-sender').hashOf(u));
-  const blank = () => ({ v: 1, urlKey: null, messageId: null, createdAt: 0, lastSendAt: 0, lastCreateAt: 0, lastSig: '', lastSentState: null, levels: {}, levelLog: [], day: null, lastSeenAt: 0, onlineSince: 0, idleSince: 0, state: null, lastSnap: null, etaAt: 0, etaKey: '', settings: null });
+  const blank = () => ({ v: 1, urlKey: null, messageId: null, createdAt: 0, lastSendAt: 0, lastCreateAt: 0, lastSig: '', lastSentState: null, levels: {}, levelLog: [], day: null, lastSeenAt: 0, onlineSince: 0, idleSince: 0, state: null, lastSnap: null, etaAt: 0, etaKey: '', settings: null, roster: null });
   let st = Object.assign(blank(), (() => { try { const v = readJsonRecover(file, null); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (e) { return {}; } })());
   const stat = { enabled: false, configured: false, lastEditAt: null, lastError: null, edits: 0, creates: 0, skipped: 0, state: null, nextDueAt: null };
   let busy = false, savedAt = 0, dirty = false;
@@ -180,10 +181,79 @@ function createBoard(o) {
     return { sent: !!r.ok };
   }
 
-  const status = () => Object.assign({}, stat, { hasMessage: !!st.messageId, levelUps24h: st.levelLog.filter((x) => now() - x.t <= 24 * 3600 * 1000).length });
+  // ---- roster cards: simple cards for clanmates who have no ScapeLite card (made by the host only, see overlay/clan-board-roster.js) ----
+  const rstat = { enabled: false, host: false, cards: 0, creates: 0, edits: 0, deletes: 0, lastError: null, wanted: 0, lastTickAt: null };
+  let rbusy = false;
+  const cardMap = (rs) => { const m = {}; Object.keys(rs.cards).forEach((h) => { m[h] = rs.cards[h].id; }); return m; };
+  // ctx: { url, enabled (the roster switch AND the board switch), host (this PC is the lease leader, or there is no lease), hostName, roster ({state, members:[{name, online}]}), exclude [names],
+  //        self (this player), presence (Set of hashes with their own card), leaseCards ({hash: id}), hiscores ({name: {rank, totalLevel}}), setCards(map) (writes the ids to the lease) }
+  async function rosterTick(ctx) {
+    const c = ctx || {}, t = now();
+    const rs = st.roster || (st.roster = { urlKey: null, cards: {}, seen: {}, lastCreateAt: 0, gone: {} });
+    rstat.enabled = !!c.enabled; rstat.host = !!c.host; rstat.lastTickAt = t; rstat.cards = Object.keys(rs.cards).length;
+    if (!c.url) return { why: 'no webhook' };
+    const key = urlKeyOf(c.url);
+    if (rs.urlKey && rs.urlKey !== key) { rs.cards = {}; rs.gone = {}; log('Clan board: the webhook changed, roster cards will be made again.'); }
+    rs.urlKey = key;
+    if (rbusy) return { why: 'busy' };
+    const ids = {};
+    Object.keys(c.leaseCards || {}).forEach((h) => { ids[h] = c.leaseCards[h]; });
+    Object.keys(rs.cards).forEach((h) => { ids[h] = rs.cards[h].id; });
+    let plan;
+    if (!c.enabled) {
+      // switched off: take down what this PC made (only a host, or a lone user, ever made any)
+      if (!c.host || !Object.keys(rs.cards).length) return { why: 'off' };
+      plan = { want: [], remove: Object.keys(rs.cards) };
+    } else if (!c.host) { return { why: 'not host' }; }
+    else {
+      const ro = c.roster;
+      if (!ro || ro.state !== 'ok' || !Array.isArray(ro.members) || !ro.members.length) return { why: 'roster not ready' };   // loading, no clan, or the bridge is not attached: touch nothing
+      const inClan = new Set(ro.members.map((m) => Roster.hashOf(m.name)));
+      ro.members.forEach((m) => { if (m.online) rs.seen[Roster.hashOf(m.name)] = t; });
+      Object.keys(rs.seen).forEach((h) => { if (!inClan.has(h)) delete rs.seen[h]; });
+      plan = Roster.planRoster({ roster: ro.members, exclude: c.exclude, self: c.self, presence: c.presence, ids });
+      rstat.wanted = plan.want.length;
+    }
+    rbusy = true;
+    let changedMap = false, creates = 0;
+    try {
+      for (const h of plan.remove) {
+        const id = ids[h]; if (!id) { delete rs.cards[h]; continue; }
+        const r = await sender.send(FEATURE, c.url, null, { method: 'DELETE', messageId: id });
+        if (r.ok || r.messageGone) { delete rs.cards[h]; delete ids[h]; changedMap = true; rstat.deletes++; log('Clan board: removed a roster card (' + (c.enabled ? 'the member has their own card, left, or is switched off' : 'roster cards are switched off') + ').'); }
+        else rstat.lastError = r.error || 'failed';
+      }
+      for (const m of plan.want) {
+        const h = m.hash, facts = Roster.memberFacts(m, rs.seen, c.hiscores, t), built = Roster.buildRosterCard(facts, c.hostName, t, iconUrl);
+        const cur = rs.cards[h], leaseId = ids[h];
+        if (!cur && !leaseId) {
+          if (c.canCreate === false || creates >= 2 || t - rs.lastCreateAt < Roster.CREATE_GAP_MS || (rs.gone[h] && t - rs.gone[h] < Roster.RECREATE_GAP_MS)) continue;
+          rs.lastCreateAt = t; creates++;
+          const r = await sender.send(FEATURE, c.url, Object.assign({ username: WEBHOOK_NAME }, withLogo(built.payload)), Object.assign({ wait: true }, fileOpts()));
+          if (r.ok && r.id) { rs.cards[h] = { id: r.id, sig: built.sig, sentAt: now(), state: facts.online ? 'online' : 'offline' }; ids[h] = r.id; changedMap = true; rstat.creates++; log('Clan board: roster card created for a clanmate without a ScapeLite card.'); }
+          else rstat.lastError = r.error || 'failed';
+          continue;
+        }
+        const card = cur || (rs.cards[h] = { id: leaseId, sig: '', sentAt: 0, state: null });   // a card the previous host made: adopt it
+        if (!cur) changedMap = true;
+        const stateNow = facts.online ? 'online' : 'offline';
+        if (built.sig === card.sig) continue;
+        if (card.sentAt && t - card.sentAt < (stateNow !== card.state ? Roster.STATE_GAP_MS : Roster.EDIT_GAP_MS)) continue;
+        const r = await sender.send(FEATURE, c.url, withLogo(built.payload), Object.assign({ messageId: card.id, replaceKey: 'roster-card:' + card.id }, fileOpts()));
+        if (r.messageGone) { delete rs.cards[h]; delete ids[h]; rs.gone[h] = t; changedMap = true; log('Clan board: a roster card was deleted in Discord; it will be made again.'); }
+        else if (r.ok) { card.sig = built.sig; card.sentAt = now(); card.state = stateNow; rstat.edits++; }
+        else if (!r.superseded) rstat.lastError = r.error || 'failed';
+      }
+      if (changedMap && typeof c.setCards === 'function') { try { await c.setCards(cardMap(rs)); } catch (e) { /* the lease is written again at the next change */ } }
+      rstat.cards = Object.keys(rs.cards).length;
+      save(true);
+      return { ok: true, creates, changed: changedMap };
+    } finally { rbusy = false; }
+  }
+  const status = () => Object.assign({}, stat, { roster: Object.assign({}, rstat),  hasMessage: !!st.messageId, levelUps24h: st.levelLog.filter((x) => now() - x.t <= 24 * 3600 * 1000).length });
   function forget() { st.messageId = null; st.lastSig = ''; st.lastSendAt = 0; save(true); }
   function flushState() { if (dirty) save(true); }
-  return { tick, shutdown, status, forget, flushState, _state: () => st };
+  return { tick, rosterTick, shutdown, status, forget, flushState, _state: () => st };
 }
 
 module.exports = { createBoard, settingsFrom, fieldsFrom, OFFLINE_GRACE_MS, STALE_SNAP_MS, RECREATE_GAP_MS, STATE_CHANGE_GAP_MS };

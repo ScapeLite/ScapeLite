@@ -77,16 +77,21 @@
     custom: () => '<p>You have a <b>custom mix</b> of bars, buttons and hidden panels. Nothing was changed by this tour.</p>' +
       '<p><b>Right-click</b> an Info Bar to add or remove modules; every option is in <b>Settings → Plugins</b>. Picking a look in step 1 replaces your mix; Undo puts it back.</p>',
   };
-  // an offer, never done for you: the ready-made panel arrangement lives in the Layout Editor
-  const LAYOUT_NOTE = '<p><b>Panel layout:</b> want every panel placed for you? Open the Layout Editor (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd>) and press <b>ScapeLite default</b>. Nothing moves unless you press it, and <b>Back to my old layout</b> undoes it.</p>';
   const buildSteps = () => {
     const P = window.__ccPresets;
     const hasLooks = !!(P && P.picker);
     const first = hasLooks
       ? { title: 'Welcome to ScapeLite', body: INTRO + '<p><b>First, how should it look?</b> Pick a starting point; it only changes what ScapeLite shows. You can switch any time in Settings → Plugins → ScapeLite Look.</p>', look: true }
       : { title: 'Welcome to ScapeLite', body: INTRO + '<p>This short tour shows you where everything lives. It takes about a minute.</p>' };
-    const second = hasLooks ? [{ title: 'Your look', body: () => (LOOK_BODY[look()] || LOOK_BODY.combo)() + LAYOUT_NOTE }] : [];
-    return [first].concat(second, STEPS_REST);
+    const second = hasLooks ? [{ title: 'Your look', body: () => (LOOK_BODY[look()] || LOOK_BODY.combo)() }] : [];
+    // an offer, never done for you: the button applies the ready-made layout (Layout Editor > ScapeLite default) and stays on this step; Next keeps everything as it is
+    const layout = hasLooks && window.__ccDefaultLayout && window.__ccUILayout && window.__ccUILayout.useDefault ? [{
+      title: 'Your panel layout',
+      body: '<p><b>Want a tidy start?</b> The <b>ScapeLite default layout</b> puts your panels on one clean grid: the task queue and XP tracker on the right, the game’s inventory and skills windows beside them at the same width, the chat bottom-left. It opens only those three. Everything else stays closed and opens in its own place from the <b>ScapeLite menu</b>.</p>' +
+        '<p>Nothing moves unless you press the button. <b>Back to my old layout</b> in the Layout Editor (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd>) puts everything back, including which panels were open. Just press <b>Next</b> to keep your layout as it is.</p>',
+      run: ['Use the ScapeLite default layout', () => { try { window.__ccUILayout.useDefault(); } catch (e) { /* editor not loaded */ } }, true, 'Layout applied. Back to my old layout is in the Layout Editor'],
+    }] : [];
+    return [first].concat(second, layout, STEPS_REST);
   };
   const STEPS_REST = [
     {
@@ -218,7 +223,7 @@
     if (s.run) {
       const row2 = document.createElement('div'); row2.className = 'w-link';
       const go2 = document.createElement('button'); go2.className = 'cc-btn'; go2.dataset.v = 'primary'; go2.textContent = s.run[0];
-      go2.addEventListener('click', (e) => { e.stopPropagation(); close(); setTimeout(s.run[1], 150); });
+      go2.addEventListener('click', (e) => { e.stopPropagation(); if (s.run[2]) { s.run[1](); go2.textContent = s.run[3] || 'Done'; go2.disabled = true; return; } close(); setTimeout(s.run[1], 150); });   // run[2]: stay on the step
       row2.appendChild(go2); body.appendChild(row2);
     }
     if (s.ask) {
