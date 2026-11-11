@@ -297,9 +297,25 @@
     }
   }
   function clearNew(id) {
+    const ids = id ? [id] : Object.keys(fresh);
     if (id) delete fresh[id]; else fresh = {};
     saveNew(); markSlots(); sparkle(Object.keys(fresh).length > 0);
+    announceSeen(ids);
   }
+  // Tell the other plugins (the alert list) that these items have been looked at.
+  function announceSeen(ids) {
+    if (!ids || !ids.length) return;
+    try { window.dispatchEvent(new CustomEvent('cc-bank-seen', { detail: { ids } })); } catch (e) { /* never break the bank */ }   // fwd-ok: a ScapeLite-internal event on window, nothing reaches the game
+  }
+  // Hovering ANY bank item for a moment counts as having looked at it (not only the sparkling ones): an alert about it goes away.
+  const lookT = {};
+  document.addEventListener('mouseover', (e) => {
+    const slot = e.target && e.target.closest ? e.target.closest('#tab-bank .bank-slot') : null;
+    if (!slot) return;
+    const id = iconOf(slot.querySelector('img'));
+    if (!id || lookT[id]) return;
+    lookT[id] = setTimeout(() => { delete lookT[id]; if (slot.isConnected ? slot.matches(':hover') : [...document.querySelectorAll('#tab-bank .bank-slot')].some((s) => iconOf(s.querySelector('img')) === id && s.matches(':hover'))) announceSeen([id]); }, 350);
+  }, true);
   // Looking at a new item (hovering it) counts as seen. The game rebuilds bank slots often, which fires mouseout/mouseover pairs under a
   // still cursor, so the timer is not cancelled by those: when it fires we simply check the cursor is still over that item.
   const seenT = {};

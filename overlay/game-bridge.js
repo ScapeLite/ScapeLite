@@ -871,6 +871,8 @@
       } catch (e) { return null; }
     },
     // XP and time of a typical task (100 actions) of one skilling activity at your levels, from the game's own projection. Read only.
+    // Unspent INDIVIDUAL lever credits per skill (the credits of a single skill's lever page), only the ones above 0 -> { fish: { n: 4, name: 'Fishing' }, ... }. Read only.
+    individualCredits: function () { try { var o = {}, ic = (S && S.individualSkillCredits) || {}; Object.keys(ic).forEach(function (k) { if (ic[k] > 0) o[k] = { n: ic[k], name: k === 'slay' ? 'Slay' : (G.getSkillName ? G.getSkillName(k) : k) }; }); return o; } catch (e) { return null; } },
     activityValue: function (skill, act) {
       try {
         var e = { skill: skill, activityId: act, quantity: 100, progress: 0 };

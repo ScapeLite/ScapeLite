@@ -57,6 +57,10 @@
     const FOOT_PEN = 21600;   // seconds charged for a leg the game would teleport on a plan that is meant to be on foot
     const QW = 0.05;          // the Quests path: weight of plain levels next to quest credit
     const BIG = 4e5;          // steps, for a pair of banks the path data does not know
+    // "Stay put": a cost in the SEARCH only (never in a displayed time). Every leg to another place costs MOVE_PEN_S extra, a change of task at the very same
+    // place ACT_PEN_S, so tasks that share a place are stacked unless moving is clearly worth it. The XP floor (input.stay.floor) keeps it honest: the penalised plan
+    // is only taken when its real score is at least that share of the best score without the penalty; otherwise the penalty steps down the ladder.
+    const MOVE_PEN_S = 240, ACT_PEN_S = 80, STAY_LADDER = [1, 0.5, 0.25];
 
     function setData(nodes, lens) {
       byId = {}; bankLen = lens; cache.clear();
@@ -152,6 +156,7 @@
         let v = legCost(S.headD[g], 0);
         const c2 = tpf;
         if (S.ovh && !S.sameHead[g]) v += A * S.ovh;
+        if (S.pen) v += A * (S.headD[g] > 0 ? S.pen : (S.sameHead[g] ? 0 : S.actPen));
         v += base[g] - (cred ? cred[g * Q] : 0) + delta * (S.curPos[r] !== 0 ? 1 : 0);
         const idx = ((((1 << r) * G + g) * C1) + c2) * Q + (nxt ? nxt[g * Q] : 0);
         if (v < dp[idx]) dp[idx] = v;
@@ -170,6 +175,7 @@
                 if ((mask >> r2) & 1) continue;
                 let nv = v + legCost(D[g * G + g2], c) + base[g2] + (S.curPos[r2] !== pos ? delta : 0) + (S.ovh && !S.same[g * G + g2] ? A * S.ovh : 0);
                 const c2 = c + tpf;
+                if (S.pen) nv += A * (D[g * G + g2] > 0 ? S.pen : (S.same[g * G + g2] ? 0 : S.actPen));
                 let q2 = qs;
                 if (cred) { nv -= cred[g2 * Q + qs]; q2 = nxt[g2 * Q + qs]; }
                 const ni = ((((mask | (1 << r2)) * G + g2) * C1) + c2) * Q + q2;
@@ -202,7 +208,9 @@
         return c;
       };
       const all = (input.rows || []).filter(r => r.opts.some(o => byId[o.node]));
-      const rows = all.slice(0, MAX_ROWS).map(r => ({ id: r.id, opts: r.opts.filter(o => byId[o.node]).map(o => ({ node: o.node, selected: o.selected, label: o.label, idx: o.idx, m: o.m ? qm(o.m) : undefined })) }));
+      // input.free: how many rows from the top may be reordered (the rows above the NEW TASKS bar). The rest are LOCKED: like the rows past MAX_ROWS they keep their place and picks.
+      const nFree = Number.isFinite(Number(input.free)) && input.free != null ? Math.max(0, Math.floor(Number(input.free))) : MAX_ROWS;
+      const rows = all.slice(0, Math.min(MAX_ROWS, nFree)).map(r => ({ id: r.id, opts: r.opts.filter(o => byId[o.node]).map(o => ({ node: o.node, selected: o.selected, label: o.label, idx: o.idx, m: o.m ? qm(o.m) : undefined })) }));
       if (!rows.length || !byId[head]) return null;
       const curPlan = rows.map((r, i) => ({ row: i, opt: Math.max(0, r.opts.findIndex(o => o.selected)) }));
       const thr0 = crystals.length ? (THRESH[crystals[0].tier] || 15000) : null;
@@ -210,7 +218,7 @@
       const hm0 = input.hm || null;
       const hm = hm0 ? qm(Object.assign({ sk: {} }, hm0)) : { t: 0, sk: {}, v: 0, qv: 0, k: 'skill' };
       const qi = {}; Object.keys(input.questInfo || {}).forEach(n => { qi[n] = Object.assign({}, input.questInfo[n]); });
-      return { input, head, speed, crystals, rows, curPlan, thr0, chargeThr, hm, qi, n: rows.length, ids: rowIds(rows) };
+      return { input, head, speed, crystals, rows, curPlan, thr0, chargeThr, hm, qi, n: rows.length, total: all.length, ids: rowIds(rows) };
     }
 
     // The three paths (Skilling / Combat / Quests), compared in levels per hour. Every option carries m = {t: action seconds, k: 'skill'|'slay',
@@ -228,6 +236,7 @@
       const wC = input.wCombat != null ? Math.max(0, Number(input.wCombat)) : 1;
       const COMBAT = new Set(['slay', 'spirit', 'life', 'dodge', 'defend', 'strike', 'heft', 'sight', 'draw', 'surge', 'focus', 'fortify']);   // Vigor is trained by plain skilling tasks, so it is not discounted as a combat skill
       const prio = input.prio || {};
+      const stayCfg = input.stay ? { pen: Number.isFinite(Number(input.stay.pen)) ? Math.max(0, Number(input.stay.pen)) : MOVE_PEN_S, act: Number.isFinite(Number(input.stay.act)) ? Math.max(0, Number(input.stay.act)) : ACT_PEN_S, floor: Math.min(1, Math.max(0, input.stay.floor != null && Number.isFinite(Number(input.stay.floor)) ? Number(input.stay.floor) : 0.85)) } : null;
       // "Even progress": no favourites. Skills in the lowest 10-level band count most, the next band a little, the rest normal.
       const evenBand = (() => {
         if (!prio._even) return null;
@@ -292,10 +301,10 @@
         const sim = simulate(head, nodesOf(rows, plan), crystals, speed, tpOn);
         let t = hm.t, v = hm.v || 0, vSkill = hm.k === 'skill' ? (hm.v || 0) : 0, vCombat = hm.k === 'slay' ? (hm.v || 0) : 0;
         const gains = Object.assign({}, hm.sk);
-        let prevKey = headKey, overhead = 0;
-        plan.forEach(p => {
+        let prevKey = headKey, overhead = 0, actMoves = 0;
+        plan.forEach((p, li) => {
           const o = rows[p.row].opts[p.opt], m = o.m, key = taskKey(o.node, m);
-          if (!key || key !== prevKey) overhead += TASK_OVERHEAD_S;
+          if (!key || key !== prevKey) { overhead += TASK_OVERHEAD_S; if (sim.legs[li] && sim.legs[li].dist === 0) actMoves++; }   // a new task at the very same place
           prevKey = key;
           t += m.t; v += m.v || 0;
           if (m.k === 'slay') vCombat += m.v || 0; else vSkill += m.v || 0;
@@ -308,7 +317,8 @@
         let xp = 0; for (const k in gains) xp += gains[k];
         const forced = footLock ? sim.legs.filter(l => l.dist > thr0).length : 0;
         const teff = total + lam * sim.charges + FOOT_PEN * forced;
-        return { sim, action: t, walk: sim.time, overhead, total, teff, levels, xp, q, qBy, charges: sim.charges, used: sim.used, changed, v, vSkill, vCombat, score: teff > 0 ? levels / teff * 3600 : 0 };
+        const moves = sim.legs.filter(l => l.dist > 0).length;   // place changes (a teleported leg is one too)
+        return { sim, action: t, walk: sim.time, overhead, total, teff, levels, xp, q, qBy, charges: sim.charges, used: sim.used, changed, moves, actMoves, v, vSkill, vCombat, score: teff > 0 ? levels / teff * 3600 : 0 };
       };
       const kindVal = (kind, m) => kind === 'skill' ? (m.k === 'skill' ? m.v || 0 : 0) : kind === 'combat' ? (m.k === 'slay' ? m.v || 0 : 0) : QW * (m.v || 0);
       const headVal = kind => kind === 'skill' ? (hm.k === 'skill' ? hm.v || 0 : 0) : kind === 'combat' ? (hm.k === 'slay' ? hm.v || 0 : 0) : (hm.qv || 0) + QW * (hm.v || 0);
@@ -350,7 +360,7 @@
           headD[a] = dist(head, flat[a].node); tAct[a] = flat[a].m.t; kv[a] = kindVal(kind, flat[a].m); optDiff[a] = optOf[a] !== curPlan[rowOf[a]].opt ? 1 : 0;
           for (let b = 0; b < G; b++) D[a * G + b] = dist(flat[a].node, flat[b].node);
         }
-        const S = { n, G, rowOf, optOf, tAct, kv, optDiff, headD, D, curPos: curPlan.map((_, i) => i), A, delta, speed, lam, tpOn, C: 0, thr: chargeThr, foot: footLock, thr0, Q: 1, cred: null, nxt: null, exact: true, ovh: TASK_OVERHEAD_S, sameHead, same };
+        const S = { n, G, rowOf, optOf, tAct, kv, optDiff, headD, D, curPos: curPlan.map((_, i) => i), A, delta, speed, lam, tpOn, C: 0, thr: chargeThr, foot: footLock, thr0, Q: 1, cred: null, nxt: null, exact: true, ovh: TASK_OVERHEAD_S, sameHead, same, pen: 0, actPen: 0 };
         if (tpOn) S.C = chargeThr.length;
         // quest progress as part of the state (Quests path only)
         if (kind === 'quest') {
@@ -400,7 +410,20 @@
           const plan = planOf(S, r), m2 = measure(plan), r2 = rateOf(kind, plan, m2);
           if (r2 > rateOf(kind, best) * (1 + 1e-12) + 1e-15) { best = plan; lamR = r2; } else break;
         }
-        return { plan: best, exact };
+        // Stay put: solve once more at the best rate with the move penalty, stepping the penalty down the ladder until the plan keeps the XP floor.
+        let stayF = 0, pureScore = measure(best).score, pureMoves = measure(best).moves;
+        if (stayCfg && stayCfg.pen > 0) {
+          const baseRate = rateOf(kind, best);
+          for (const f of STAY_LADDER) {
+            S.A = baseRate; S.pen = stayCfg.pen * f; S.actPen = stayCfg.act * f;
+            const r = dpSolve(S); if (!r) break;
+            evaluated += r.states;
+            const plan = planOf(S, r), m2 = measure(plan);
+            if (m2.score >= pureScore * stayCfg.floor - 1e-12) { if (sigOf(plan) !== sigOf(best)) best = plan; stayF = f; break; }
+          }
+          S.pen = 0; S.actPen = 0;
+        }
+        return { plan: best, exact, stayF, pureScore, pureMoves };
       };
 
       // Stops at the same place cost no walking between them, so their order does not matter to the score. Put the bigger task first (fewer
@@ -503,7 +526,7 @@
           const hold = fin === ip && !!(inc.shown && inc.shown[kind]);
           let show = clears(curM, finM, swapsOf(curPlan, fin), hold ? 0.5 : 1);
           if (show && followed && kind !== followed && !(finM.score >= curM.score * (1 + stab.cross))) show = false;   // another path than the one you follow: only for a big gain
-          out.info[kind] = { optSig: sigOf(cand), optScore: candM.score, incSig: ip ? sigOf(ip) : null, incScore: imx ? imx.score : null, finSig: sigOf(fin), finScore: finM.score, curScore: curM.score, kept, shown: show, gain: curM.score > 0 ? finM.score / curM.score - 1 : 0, reasons: why };
+          out.info[kind] = { optSig: sigOf(cand), optScore: candM.score, incSig: ip ? sigOf(ip) : null, incScore: imx ? imx.score : null, finSig: sigOf(fin), finScore: finM.score, curScore: curM.score, kept, shown: show, gain: curM.score > 0 ? finM.score / curM.score - 1 : 0, reasons: why, stay: bro.stayF || 0, pureScore: bro.pureScore, pureMoves: bro.pureMoves, optMoves: candM.moves };
           out.incNext.shown[kind] = show;
           if (show) { out[kind] = pack(fin); out.incNext[kind] = out[kind].plan.map(p => ({ id: P.ids[p.row], node: rows[p.row].opts[p.opt].node })); }
           else out[kind + 'Floor'] = true;
@@ -515,8 +538,14 @@
       // sticky: the path that was best last time stays best unless another is clearly better
       if (inc && inc.best && bk && inc.best !== bk && out[inc.best] && out[bk].m.score < out[inc.best].m.score * (1 + stab.rel * mult)) bk = inc.best;
       out.best = bk; out.evaluated = evaluated;
+      // The tab that is picked for you: Quests while any queued option completes a quest step, else Skilling. Combat is never picked for you. It depends on the SET of
+      // options only (never their order), so reordering the queue cannot change it.
+      out.auto = (input.rows || []).some(r => (r.opts || []).some(o => o.m && (o.m.quest || []).some(cq => cq.current && input.questInfo && input.questInfo[cq.name]))) ? 'quest' : 'skill';
       // for the self-check
-      if (input.keepCtx) out._ctx = { measure, rateOf, questBy, okFor: k => withKeep(okFor(k)), kindVal, headVal, specFor, dpSolve, planOf, curM };
+      if (input.keepCtx) out._ctx = { measure, rateOf, questBy, okFor: k => withKeep(okFor(k)), kindVal, headVal, specFor, dpSolve, planOf, curM,
+        // the penalised objective for a fixed rate A and ladder step f, and its exact minimiser (for the brute-force test)
+        stayCost: (kind, plan, A, f) => { const me = measure(plan); return A * (me.teff + stayCfg.pen * f * me.moves + stayCfg.act * f * me.actMoves) - rateOf(kind, plan, me) * me.teff; },
+        stayPlan: (kind, A, f) => { const S = specFor(kind, withKeep(okFor(kind)), A, 1e-12); if (!S) return null; S.pen = stayCfg.pen * f; S.actPen = stayCfg.act * f; const r = dpSolve(S); return r ? planOf(S, r) : null; } };
       return out;
     }
 
@@ -556,7 +585,14 @@
       bestAll = worth(bestAll, current, 'withTp');
       yield 0.35;
       const paths = yield* buildPaths(P);
-      const result = { rows, head, crystals: input.crystals || [], speed, current, rec, bestAll, bestNoTp, pickOnly: null, fewestCharges: null, paths, evaluated: evaluated + (paths && paths.evaluated || 0), exact: !paths || paths.exact !== false, ids: P.ids };
+      // What the other state of the "reorder past the NEW TASKS bar" switch would give: the same search with every row free, no memory (only run when rows are locked).
+      let past = null;
+      if (input.free != null && P.total > P.n && paths && paths.available) {
+        const P2 = prep(Object.assign({}, input, { free: null, inc: null, keepCtx: false }));
+        const alt = P2 ? yield* buildPaths(P2) : null;
+        if (alt && alt.available) { past = { rows: P2.n }; for (const k of ['skill', 'combat', 'quest']) { const inf = alt.info[k]; past[k] = inf && inf.curScore > 0 ? inf.optScore / inf.curScore - 1 : null; } }
+      }
+      const result = { rows, head, crystals: input.crystals || [], speed, current, rec, bestAll, bestNoTp, pickOnly: null, fewestCharges: null, paths, locked: P.total - P.n, past, evaluated: evaluated + (paths && paths.evaluated || 0), exact: !paths || paths.exact !== false, ids: P.ids };
       if (paths && !input.keepCtx) delete paths._ctx;
       return result;
     }
@@ -569,7 +605,7 @@
       const checks = [], add = (name, ok, detail) => checks.push({ name, ok: !!ok, detail: detail || '' });
       const clone = o => JSON.parse(JSON.stringify(o));
       const KINDS = ['skill', 'combat', 'quest'];
-      const base = clone(input); base.inc = null; delete base.keepCtx;
+      const base = clone(input); base.inc = null; delete base.keepCtx; delete base.stay;   // the checks below are about the pure optimum; the stay-put checks come last
       const fp = r => JSON.stringify(r && r.paths && r.paths.available ? KINDS.map(k => r.paths[k] && r.paths[k].sig).concat([r.paths.best, r.rec.sig]) : [r && r.rec && r.rec.sig]);
       const a = optimize(clone(base)), b2 = optimize(clone(base));
       add('determinism: the same input twice gives the same plans', fp(a) === fp(b2), fp(a));
@@ -617,6 +653,31 @@
           add('path ' + k + ' is the true optimum (all ' + cnt + ' plans tried)', rd >= bestR * (1 - 1e-9) - 1e-15, 'search ' + rd.toFixed(8) + ', best of all ' + bestR.toFixed(8));
         });
       }
+      // stay put: the XP floor holds, and for a fixed rate and penalty step the search is the exact minimiser of the penalised cost
+      if (input.stay && ex.paths && ex.paths.available) {
+        const sy = optimize(Object.assign(clone(base), { stay: input.stay, stab: ZERO, keepCtx: true }));
+        const floor = input.stay.floor != null ? Number(input.stay.floor) : 0.85;
+        KINDS.forEach(k => {
+          const inf = sy.paths.info[k], pure = ex.paths.info[k]; if (!inf || !pure) return;
+          add('stay put (' + k + '): the real score keeps the XP floor', inf.optScore >= pure.optScore * floor - 1e-9 * Math.max(1, pure.optScore), 'plan ' + inf.optScore.toFixed(6) + ' vs best ' + pure.optScore.toFixed(6) + ' x ' + floor);
+          if (n > lim) return;
+          const C = sy.paths._ctx, f = inf.stay || 1, pen = input.stay.pen != null ? Number(input.stay.pen) : MOVE_PEN_S;
+          if (!C || !(pen > 0)) return;
+          const parse = s => s.split(',').map(x => { const [r, oo] = x.split(':').map(Number); return { row: r, opt: oo }; });
+          const A = ex.paths._ctx.rateOf(k, parse(pure.optSig)), okf = C.okFor(k);
+          const dp = C.stayPlan(k, A, f); if (!dp) return;
+          let bestC = Infinity;
+          perms(n, o => {
+            const choose = (i, plan) => {
+              if (i === n) { const c = C.stayCost(k, plan, A, f); if (c < bestC) bestC = c; return; }
+              sy.rows[o[i]].opts.forEach((_, kk) => { if (!okf || okf(o[i], kk)) { plan.push({ row: o[i], opt: kk }); choose(i + 1, plan); plan.pop(); } });
+            };
+            choose(0, []);
+          });
+          const dc = C.stayCost(k, dp, A, f);
+          add('stay put (' + k + '): the penalised search is the true minimum (step ' + f + ')', dc <= bestC + 1e-6 * Math.max(1, Math.abs(bestC)), 'search ' + dc.toFixed(6) + ', best of all ' + bestC.toFixed(6));
+        });
+      }
       return { ok: checks.every(c => c.ok), checks };
     }
 
@@ -624,7 +685,57 @@
   }
   //#core-end
 
-  if (typeof module !== 'undefined' && module.exports) { module.exports = { createCore, polyLen, THRESH, MAX_ROWS }; return; }
+  // ---- The view of a plan: what the panel draws, as plain data (no DOM, no clock; tested in node) ----------------------------------------------
+  // res: the optimiser result. key: 'skill' | 'combat' | 'quest' | 'cur' (your queue as it is). env: { dist(a, b), name(nodeId), speed }.
+  // locked: the rows the search did not see (below the NEW TASKS bar), in queue order, same shape as res.rows.
+  // Returns { key, changed, items, groups, bar, next, metrics }:
+  //   items   one per queue row in the order shown: free rows in the plan's order, then the locked rows in place
+  //   groups  consecutive items at the same place ("stay here"), each with the walk into it
+  //   bar     index of the first locked item (-1 = nothing locked)
+  //   next    the first drag that moves your queue towards the plan: { type: 'move', ... } or { type: 'swap', ... } or null
+  //   metrics { rate, walk, moves }: [now, suggested] each
+  function buildView(res, key, env, locked) {
+    const P = res && res.paths, rows = res.rows;
+    const curPlan = rows.map((r, i) => ({ row: i, opt: Math.max(0, r.opts.findIndex(o => o.selected)) }));
+    const have = !!(P && P.available);
+    const c = have && key !== 'cur' && P[key] ? P[key] : null;
+    const plan = c ? c.plan : curPlan;
+    const legs = have ? (c || P.cur).withTp.legs : [];
+    const speed = env.speed > 0 ? env.speed : 15;
+    const items = [];
+    let prev = res.head;
+    const make = (r, optIdx, was, rowIdx, leg, curOpt) => {
+      const o = r.opts[optIdx], m = o.m || {}, d = leg ? leg.dist : (env.dist(prev, o.node) || 0);
+      const qs = (m.quest || []).filter(q => q.current)[0];
+      const it = { id: r.id, rowIdx, opt: optIdx, curOpt, node: o.node, place: env.name(o.node), title: o.label || m.act || env.name(o.node), act: m.act || '', skill: m.skill || '', kill: m.k === 'slay',
+        sec: m.t || 0, xp: m.x || 0, quest: qs ? qs.name : '', opts: r.opts.length, was, locked: rowIdx < 0, swapped: optIdx !== curOpt,
+        walk: { dist: d, sec: leg && leg.tp ? 0 : d / speed, tp: !!(leg && leg.tp) } };
+      prev = o.node; return it;
+    };
+    plan.forEach((p, i) => items.push(make(rows[p.row], p.opt, p.row + 1, p.row, legs[i], curPlan[p.row].opt)));
+    (locked || []).forEach((r, j) => { const sel = Math.max(0, r.opts.findIndex(o => o.selected)); items.push(make(r, sel, rows.length + j + 1, -1, null, sel)); });
+    items.forEach((it, i) => { it.delta = it.locked ? 0 : it.was - (i + 1); });
+    const groups = [];
+    items.forEach((it, i) => {
+      const g = groups[groups.length - 1];
+      if (g && g.node === it.node && g.locked === it.locked) { g.items.push(i); g.sec += it.sec; }
+      else groups.push({ node: it.node, place: it.place, locked: it.locked, items: [i], sec: it.sec, walk: it.walk });
+    });
+    const bar = items.findIndex(it => it.locked);
+    let next = null;
+    for (let i = 0; i < plan.length && !next; i++) {
+      if (plan[i].row !== i) { const it = items[i]; next = { type: 'move', id: it.id, rowIdx: it.rowIdx, title: it.title, from: it.was, to: i + 1 }; }
+    }
+    for (let i = 0; i < plan.length && !next; i++) {
+      const it = items[i];
+      if (it.swapped) { const r = rows[it.rowIdx]; next = { type: 'swap', id: it.id, rowIdx: it.rowIdx, title: it.title, pos: i + 1, fromLabel: r.opts[it.curOpt].label || '', toLabel: r.opts[it.opt].label || '' }; }
+    }
+    const cm = have ? P.cur.m : null, nm = c ? c.m : cm;
+    const metrics = cm ? { rate: [cm.score, nm.score], walk: [cm.walk, nm.walk], moves: [cm.moves || 0, nm.moves || 0] } : null;
+    return { key: c ? key : 'cur', changed: !!c, items, groups, bar, next, metrics };
+  }
+
+  if (typeof module !== 'undefined' && module.exports) { module.exports = { createCore, polyLen, THRESH, MAX_ROWS, buildView }; return; }
 
   try { window[NS] && window[NS].teardown && window[NS].teardown(); } catch (e) {}
   const life = window.__ccLife.scope('route-advisor');   // page listeners and timers go through it: a re-inject cannot leave a second copy
@@ -960,7 +1071,7 @@ postMessage({ t: 'ready' });`;
     const gk = (keepPicks ? 'K' : 'O'), wasBlocked = gateState[gk] === true;
     const blocked = (b.charges || 0) > 0 && (wasBlocked ? saved < th * 1.15 : saved < th * 0.85);
     gateState[gk] = blocked;
-    if (blocked) { const q = result.q, ms = result.ms; result = off; result.q = q; result.ms = ms; result.gate = { saved, th, blocked: true }; }
+    if (blocked) { const keep = { q: result.q, ms: result.ms, nq: result.nq, free: result.free, barLocked: result.barLocked, lockedRows: result.lockedRows, past: result.past }; result = off; Object.assign(result, keep); result.gate = { saved, th, blocked: true }; }
   }
   const vPct = (x) => (x >= 0 ? '+' : '\u2212') + Math.abs(x * 100).toFixed(1) + '%';
   function cellInfo(vk, ok) {
@@ -980,7 +1091,7 @@ postMessage({ t: 'ready' });`;
   function variantTable(onCell) {
     const wrap = h('div', 'rt-vt');
     const t = h('table'); const hr = h('tr'); hr.appendChild(h('th', null, ''));
-    VARS.forEach((v) => { const th = h('th', null, v.ic); th.title = v.name; hr.appendChild(th); });
+    VARS.forEach((v) => { const th = h('th', null, v.ic); tipOn(th, { t: v.name }); hr.appendChild(th); });
     t.appendChild(hr);
     const det = h('div', 'rt-vdet', 'Hover a value for the details.');
     OBJS.forEach((o) => {
@@ -988,12 +1099,12 @@ postMessage({ t: 'ready' });`;
       VARS.forEach((v) => {
         const ci = cellInfo(v.key, o.key), td = h('td', 'c');
         if (!ci) td.textContent = '\u2026';
-        else if (ci.none) { td.textContent = '±0'; td.className = 'c z'; td.title = 'Nothing beats your current queue here'; }
+        else if (ci.none) { td.textContent = '±0'; td.className = 'c z'; tipOn(td, { t: 'No gain here', b: 'Nothing beats your current queue for this choice.' }); }
         else {
           const g = ci.dScore > 0.0005, line = (g ? vPct(ci.dScore) : '\u00b10') + (ci.dWalk <= -30 ? ' \u00b7 ' + fmtT(-ci.dWalk) : '');
           td.textContent = line; td.className = 'c ' + (g ? 'g' : 'z');
           if (v.key === (keepPicks ? 'K' : 'O') + (tpPref === 'foot' ? 'F' : 'T') && o.key === (bestPathKey() || '')) td.classList.add('cur');
-          td.style.cursor = 'pointer'; td.title = 'Click to use this: ' + o.label + ', ' + v.name;
+          td.style.cursor = 'pointer'; tipOn(td, { t: o.label + ', ' + v.name, b: 'Click to use exactly this combination.' });
           td.addEventListener('click', (e) => { e.stopPropagation(); chooseVariant(v.key, o.key); });
           td.addEventListener('mouseenter', () => {
             det.textContent = '';
@@ -1008,41 +1119,24 @@ postMessage({ t: 'ready' });`;
     wrap.appendChild(t); wrap.appendChild(det);
     return wrap;
   }
-  let vtipEl = null;
-  function hideVTip() { vtipEl = null; document.querySelectorAll('#cc-route-vtip').forEach((e) => e.remove()); }   // every copy, including ones left by an older load
+  function hideVTip() { document.querySelectorAll('#cc-route-vtip').forEach((e) => e.remove()); }   // the old badge table tooltip is gone: this only sweeps up a copy an older load left behind
   hideVTip();
-  function showVTip(anchor) {
-    hideVTip();
-    if (!result || !Object.keys(variantsFull).length) return;
-    vtipEl = h('div', 'rt-vtip'); vtipEl.id = 'cc-route-vtip';
-    vtipEl.appendChild(h('div', 'rt-vh', 'Best route for each choice'));
-    vtipEl.appendChild(variantTable());
-    vtipEl.appendChild(h('div', 'rt-vleg', '🔒 keep my picks \u00b7 \🔀 optimise picks \u00b7 \🚶 no teleports \u00b7 \u26A1 teleports. Value = levels per hour, then walking saved.'));
-    document.body.appendChild(vtipEl);
-    const r = anchor.getBoundingClientRect(), tr = vtipEl.getBoundingClientRect(), sc = window.__ccScale || 1;
-    vtipEl.style.left = Math.max(4, Math.min(innerWidth - tr.width - 4, r.left)) + 'px';
-    vtipEl.style.top = Math.max(4, r.top - tr.height - 6) + 'px';
-    if (parseFloat(vtipEl.style.top) < 4 || r.top - tr.height - 8 < 4) vtipEl.style.top = (r.bottom + 8) + 'px';
-  }
-  // The badge is rebuilt every few hundred ms, so a mouseleave on it never fires: decide from where the pointer is instead.
-  let vtOut = 0;
-  const vtOver = (e) => {
-    const t = e.target && e.target.closest ? e.target : null;
-    const tri = t && t.closest('#cc-route-alert .tri');
-    if (tri) { vtOut = 0; if (!vtipEl) showVTip(tri); return; }
-    if (!vtipEl) return;
-    if (t && (t.closest('#cc-route-vtip') || t.closest('#cc-route-alert'))) { vtOut = 0; return; }
-    if (!vtOut) vtOut = performance.now();                  // give the pointer a moment to cross the gap to the tooltip
-    else if (performance.now() - vtOut > 350) { vtOut = 0; hideVTip(); }
-  };
-  // Safety net: whatever the events did, the tooltip never outlives the pointer being over the badge or over the tooltip itself.
-  life.every(150, () => { if (!document.querySelector('#cc-route-vtip')) return; if (document.querySelector('#cc-route-vtip:hover') || document.querySelector('#cc-route-alert:hover')) { vtOut = 0; return; } if (!vtOut) vtOut = performance.now(); else if (performance.now() - vtOut > 700) { vtOut = 0; hideVTip(); } });
-  life.on(document, 'mouseover', vtOver, true);
-  life.on(document, 'mousemove', vtOver, true);
-  life.on(window, 'blur', () => hideVTip());
   function scheduleCompute() { clearTimeout(computeTimer); computeTimer = setTimeout(compute, 350); }
   function scheduleRender() { render(); }
 
+  // The NEW TASKS bar: rows at or below it are locked (they keep their place) unless "Reorder past the bar" is on. free = rows above the bar (null = all rows free).
+  const pastOn = () => !!settingOn('routeReorderPastBar', false);
+  function barFree(n) {
+    try {
+      if (pastOn() || !(n > 0) || !window.__ccBridge || !window.__ccBridge.queueInsert) return null;
+      const gi = window.__ccBridge.queueInsert();
+      if (!gi || !gi.movable || gi.at == null) return null;
+      const lo = Math.min(Number(gi.min) || 1, n), at = Math.max(lo, Math.min(n, gi.at));
+      return at >= n ? null : at;
+    } catch (e) { return null; }
+  }
+  const stayFloor = () => Math.min(100, Math.max(0, Number(settingOn('routeStayFloorPct', 85)))) / 100;
+  let allLocked = false;
   function compute() {
     if (dataState !== 'ready') return;
     const q = readQueue();
@@ -1096,6 +1190,9 @@ postMessage({ t: 'ready' });`;
     try { const tw = window.__ccPluginSettings && window.__ccPluginSettings.get('routeTaskWeights'); input.taskW = Array.isArray(tw) ? tw : [{ match: 'swift_potion|fleet_potion|haste_potion', mult: 2.5 }, { match: 'potion_of_discovery', mult: 2.5 }]; } catch (e) { input.taskW = []; }
     input.luckyBoost = Math.max(1, Number(settingOn('routeLuckyBoost', 2)) || 1);
     input.keepPicks = keepPicks;
+    { const fl = stayFloor(); if (fl < 1) input.stay = { floor: fl }; }   // stay put is built in; 100% switches it off
+    { const fr = barFree(q.rows.length); if (fr != null) input.free = fr; }
+    allLocked = input.free === 0;
     input.objective = String(settingOn('routeObjective', 'xp'));
     input.tpSteps = tpPref === 'max' ? 0 : Math.min(tpAggSteps() || tpEachSteps(), tpEachSteps());   // each charge must save this much; the whole set must also clear the total bar (applyGate)
     input.dropBoost = Math.max(1, Number(settingOn('routeDropBoost', 1.3)) || 1);
@@ -1110,6 +1207,7 @@ postMessage({ t: 'ready' });`;
     { const gr = gatherRatio(); if (gr !== 1) { const sc = {}; Object.keys(input.prio).forEach((k) => { sc[k] = GATHER_SK.includes(k) ? input.prio[k] * gr : input.prio[k]; }); GATHER_SK.forEach((k) => { if (sc[k] == null) sc[k] = gr; }); input.prio = sc; } }
     if (bridge && bridge.head && Number.isFinite(bridge.head.timeSec)) input.hm = { t: bridge.head.combat && Number.isFinite(bridge.head.combat.timeSec) ? bridge.head.combat.timeSec : bridge.head.timeSec, x: bridge.head.combat ? bridge.head.combat.total : (bridge.head.totalXp || 0) * (1 + (bridge.head.xpBonus || 0)) };
     if (bridge && input.hm) { const hsk = skMap(bridge.head); Object.assign(input.hm, { sk: hsk, v: lvVal(hsk), lucky: !!bridge.head.lucky, boostDrops: bridge.head.boostDrops || 0, act: bridge.head.act, k: bridge.head.kind === 'slay' ? 'slay' : 'skill', qv: questLv(bridge.head), quest: bridge.head.quest }); }
+    if (allLocked) { calcRun++; calc = null; result = null; render(); return; }
     input.fp = fingerprint(q, input, bridge);
     input.inc = incs[modeKey(input)] || null;
     lastInput = input;
@@ -1122,7 +1220,11 @@ postMessage({ t: 'ready' });`;
     job.done.then((res) => {
       if (run !== calcRun) return; // superseded by a newer calculation
       result = res;
-      if (result) { result.ms = performance.now() - t0; result.q = q; }
+      if (result) {
+        result.ms = performance.now() - t0; result.q = q;
+        result.nq = q.rows.length; result.free = input.free != null ? input.free : null; result.barLocked = input.free != null ? q.rows.length - input.free : 0;
+        const used = new Set(result.rows.map((r) => r.id)); result.lockedRows = input.rows.filter((r) => !used.has(r.id));   // the rows the search did not see: below the NEW TASKS bar
+      }
       if (result) { noteChange(input); rememberPaths(input, result, input.fp); }
       calc = null;
       render();
@@ -1138,7 +1240,7 @@ postMessage({ t: 'ready' });`;
   const LS_INC = 'cc-route-inc-v2';
   let incs = {};
   try { const sv = JSON.parse(localStorage.getItem(LS_INC) || 'null'); if (sv && sv.v === 2 && Date.now() - sv.at < 6 * 3600 * 1000) incs = sv.incs || {}; } catch (e) {}
-  const modeKey = (inp) => (inp.keepPicks ? 'K' : 'O') + inp.tpMode;
+  const modeKey = (inp) => (inp.keepPicks ? 'K' : 'O') + inp.tpMode + (inp.free != null ? 'L' : 'A');
   function rememberPaths(inp, res, fp) {
     const P = res && res.paths; if (!P || !P.available || !P.incNext) return;
     incs[modeKey(inp)] = { skill: P.incNext.skill, combat: P.incNext.combat, quest: P.incNext.quest, shown: P.incNext.shown, followed: P.incNext.followed || null, best: P.best, fp };
@@ -1148,15 +1250,15 @@ postMessage({ t: 'ready' });`;
   // that moved is the clock (progress, rates), and a re-ranking then has to be twice as clear.
   function fingerprint(q, input, bridge) {
     const sk = bridge && bridge.skills ? Object.keys(bridge.skills).sort().map((k) => k + bridge.skills[k].level).join(',') : '';
-    const st = JSON.stringify([input.objective, input.taskW, input.luckyBoost, input.dropBoost, input.tpSteps, input.tpPrice, input.wCombat, input.prio, input.stab && [input.stab.rel, input.stab.perSwap]]);
+    const st = JSON.stringify([input.objective, input.taskW, input.luckyBoost, input.dropBoost, input.tpSteps, input.tpPrice, input.wCombat, input.prio, input.stab && [input.stab.rel, input.stab.perSwap], input.stay ? input.stay.floor : null]);
     return {
       rows: q.rows.map((r) => r.opts.map((o) => o.node + ':' + (o.label || '')).sort().join('/')).sort().join('>'),
       order: q.rows.map((r) => r.opts.map((o) => o.node + (o.selected ? '*' : '')).join('/')).join('>'),
-      head: q.head + '|' + (q.headLabel || ''), levels: sk, settings: st,
+      head: q.head + '|' + (q.headLabel || ''), levels: sk, settings: st, lock: input.free != null ? 'bar' + input.free : 'all',
       crystals: (input.crystals || []).map((c) => c.tier + 'x' + c.charges).join('+'), speed: String(Math.round((input.speed || 0) * 10)),
     };
   }
-  const WHY = { rows: 'the tasks in your queue changed', order: 'you changed your queue', head: 'your current task changed', levels: 'a skill levelled up', settings: 'a Route Advisor setting changed', crystals: 'your teleport crystals changed', speed: 'your movement speed changed', gate: 'teleports now do (or no longer) save enough steps' };
+  const WHY = { rows: 'the tasks in your queue changed', order: 'you changed your queue', head: 'your current task changed', levels: 'a skill levelled up', settings: 'a Route Advisor setting changed', crystals: 'your teleport crystals changed', speed: 'your movement speed changed', lock: 'the NEW TASKS bar moved, or you changed which rows to reorder', gate: 'teleports now do (or no longer) save enough steps' };
   let lastInput = null, lastShown = null, changeInfo = null;
   const trace = [];   // the last suggestions, newest last (window.__ccRouteAdvisor.log): what was suggested, why it changed, what was kept
   function shownOf(res) {
@@ -1229,7 +1331,7 @@ postMessage({ t: 'ready' });`;
     return [q.head, readCrystals().map(c => c.tier + 'x' + c.charges).join('+'), Math.round(readSpeed() * 10),
       q.rows.map(r => r.opts.map(o => o.node + (o.selected ? '*' : '')).join('/')).join('>'),
       // Rates drift slowly (head task progress, levels): refresh once a minute while the bridge is attached.
-      window.__ccBridge && window.__ccBridge.ok && window.__ccBridge.ok() ? 'B' + Math.floor(Date.now() / 60000) : 'b', pr].join('#');
+      window.__ccBridge && window.__ccBridge.ok && window.__ccBridge.ok() ? 'B' + Math.floor(Date.now() / 60000) : 'b', pr, 'F' + barFree(q.rows.length), 'S' + stayFloor() + (pastOn() ? 'P' : '')].join('#');
   }
   function recSig() { if (!result) return ''; const sh = shownOf(result); return sh.sig + '|' + sh.cur; }   // what is SHOWN, so dismissing and notifying follow the plan on screen
 
@@ -1422,6 +1524,88 @@ postMessage({ t: 'ready' });`;
 #cc-route-handle[data-tone=ok]::after{content:"";display:block;width:7px;height:7px;margin:8px auto 0;border-radius:50%;background:#3f9a52}
 #cc-route-handle[data-tone=warn]::after{content:"";display:block;width:7px;height:7px;margin:8px auto 0;border-radius:50%;background:#ffd24a}
 @media (prefers-reduced-motion:reduce){#cc-route-panel[data-dock=r],#cc-route-handle{transition:none}}
+/* ---- redesigned panel: tabs, switch, hero, next move, queue-style rows, one tooltip ---- */
+#cc-route-panel .rt-tabs3{display:flex;gap:4px}
+#cc-route-panel .rt-tab3{flex:1 1 0;min-width:0;text-align:left;padding:6px 8px;border-radius:8px;border:1px solid var(--cc-border-strong);background:var(--cc-bg-2)}
+#cc-route-panel .rt-tab3 .tn{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;white-space:nowrap}
+#cc-route-panel .rt-tab3 .tg2{display:block;margin-top:1px;font-size:11px;color:var(--cc-text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cc-route-panel .rt-tab3 .tg2.g{color:var(--cc-good)}
+#cc-route-panel .rt-tab3.on{border-color:var(--cc-accent);background:var(--cc-accent-bg)}
+#cc-route-panel .rt-tab3.on .tn{color:var(--cc-accent)}
+#cc-route-panel .rt-tab3.off{opacity:.5}
+#cc-route-panel .rt-tag{font-size:10px;font-weight:600;padding:0 5px;border-radius:8px;line-height:15px;background:var(--cc-bg-3);color:var(--cc-text-dim)}
+#cc-route-panel .rt-tag.auto{background:color-mix(in srgb,var(--cc-good) 20%,transparent);color:var(--cc-good)}
+#cc-route-panel .rt-tag.pin{background:color-mix(in srgb,var(--cc-info) 22%,transparent);color:var(--cc-info)}
+#cc-route-panel .rt-autoln{display:flex;align-items:center;gap:8px;margin:6px 0 0;font-size:12px;color:var(--cc-text-dim)}
+#cc-route-panel .rt-lnk{border:0;background:transparent;color:var(--cc-info);padding:0 4px;text-decoration:underline;cursor:pointer}
+#cc-route-panel .rt-sw{display:flex;align-items:center;gap:10px;margin-top:8px;padding:6px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:var(--cc-bg-2);cursor:pointer;font-size:12.5px}
+#cc-route-panel .rt-sw .tgl{position:relative;flex:none;width:30px;height:18px;border-radius:9px;background:var(--cc-border-strong)}
+#cc-route-panel .rt-sw .tgl::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--cc-text);transition:left .15s}
+#cc-route-panel .rt-sw.on .tgl{background:var(--cc-accent)}
+#cc-route-panel .rt-sw.on .tgl::after{left:14px;background:var(--cc-accent-ink,#1a1305)}
+#cc-route-panel .rt-sw:focus-visible{outline:2px solid var(--cc-accent);outline-offset:1px}
+#cc-route-panel .rt-sub{font-size:11.5px}
+#cc-route-panel .rt-hint{display:flex;align-items:center;gap:8px;margin-top:6px;padding:5px 10px;border-radius:8px;background:var(--cc-bg-2);border:1px solid rgba(255,255,255,.08);color:var(--cc-text-dim);font-size:12px}
+#cc-route-panel .rt-hero2{margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--cc-bg-2);border:1px solid rgba(255,255,255,.07)}
+#cc-route-panel .rt-herotop{display:flex;align-items:baseline;gap:8px}
+#cc-route-panel .rt-big2{font-size:19px;font-weight:700}
+#cc-route-panel .rt-big2.good{color:var(--cc-good)}
+#cc-route-panel .rt-m{display:grid;grid-template-columns:92px minmax(0,1fr) 84px;gap:8px;align-items:center;margin-top:6px;font-size:12px;cursor:help}
+#cc-route-panel .rt-bar{height:5px;border-radius:3px;background:var(--cc-border);position:relative}
+#cc-route-panel .rt-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px}
+#cc-route-panel .rt-bar i.n{background:var(--cc-text-faint);opacity:.6}
+#cc-route-panel .rt-bar i.s{background:var(--cc-good)}
+#cc-route-panel .rt-val{text-align:right;white-space:nowrap}
+#cc-route-panel .rt-next{display:flex;align-items:center;gap:10px;margin-top:8px;padding:7px 10px;border-radius:8px;border:1px solid var(--cc-accent);background:var(--cc-accent-bg);color:var(--cc-accent);font-size:12.5px;cursor:help}
+#cc-route-panel .rt-next b{font-weight:600}
+#cc-route-panel .rt-next.done{border-color:color-mix(in srgb,var(--cc-good) 60%,transparent);background:color-mix(in srgb,var(--cc-good) 12%,transparent);color:var(--cc-good);cursor:default}
+#cc-route-panel .rt-listhd{display:flex;align-items:center;gap:6px}
+#cc-route-panel .rt-oldck{display:flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-weight:400;font-size:11.5px;color:var(--cc-text-dim);cursor:pointer}
+#cc-route-panel .rt-gh{display:flex;align-items:center;gap:6px;margin:8px 0 3px 2px;font-size:11px;color:var(--cc-text-dim);cursor:help}
+#cc-route-panel .rt-gh .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+#cc-route-panel .rt-gh .ln{flex:1;height:1px;background:var(--cc-border)}
+#cc-route-panel .rt-wk{display:flex;align-items:center;gap:6px;margin:5px 0 0 10px;font-size:11px;color:var(--cc-text-faint);cursor:help}
+#cc-route-panel .rt-wk::before{content:"";width:0;height:12px;border-left:1.5px dotted var(--cc-border-strong)}
+#cc-route-panel .rt-nbar{display:flex;align-items:center;gap:8px;margin:9px 0 3px;color:var(--cc-warn);font-size:11px;cursor:help}
+#cc-route-panel .rt-nbar::before,#cc-route-panel .rt-nbar::after{content:"";flex:1;height:3px;border-radius:2px;background:color-mix(in srgb,var(--cc-warn) 60%,transparent)}
+#cc-route-panel .rt-nbar b{font-weight:600;padding:1px 8px;border-radius:9px;background:color-mix(in srgb,var(--cc-warn) 14%,transparent)}
+#cc-route-panel .rt-q{position:relative;display:grid;grid-template-columns:26px 38px minmax(0,1fr) auto 10px;align-items:center;column-gap:8px;height:50px;padding:0 8px 0 3px;margin-top:3px;background-color:var(--cc-bg-3);border:2px solid var(--fr,var(--cc-text-faint));border-radius:var(--cc-r-sm,8px);cursor:help;--q-dim:var(--cc-text-dim)}
+#cc-route-panel .rt-q:hover{background-color:var(--cc-bg-hover);--fr:var(--cc-text)}
+#cc-route-panel .rt-q.quest{--fr:var(--cc-info);background-image:linear-gradient(90deg,color-mix(in srgb,var(--cc-info) 13%,transparent),transparent 70%);--q-dim:color-mix(in srgb,var(--cc-text-dim) 30%,var(--cc-text))}
+#cc-route-panel .rt-q.swp{--fr:var(--cc-accent)}
+#cc-route-panel .rt-q.lock{opacity:.5}
+#cc-route-panel .rt-q .nm{text-align:center;font-size:13px;font-weight:700;line-height:1.05;color:var(--q-dim);font-variant-numeric:tabular-nums}
+#cc-route-panel .rt-q .nm i{display:block;margin-top:1px;font-style:normal;font-size:10px;font-weight:600;cursor:help}
+#cc-route-panel .rt-q .nm i.up{color:var(--cc-good)}
+#cc-route-panel .rt-q .nm i.dn{color:var(--cc-bad)}
+#cc-route-panel .rt-q .nm i.mut{color:var(--cc-text-faint)}
+#cc-route-panel .rt-q .tl{position:relative;width:34px;height:34px;display:grid;place-items:center;border:3px solid var(--k);border-radius:7px;background:var(--cc-bg-2);box-shadow:0 0 0 1px rgba(0,0,0,.6),inset 0 0 0 1px rgba(0,0,0,.5)}
+#cc-route-panel .rt-q .tl img{width:78%;height:78%;image-rendering:pixelated;margin:0}
+#cc-route-panel .rt-q .tl em{position:absolute;right:-7px;bottom:-6px;font-style:normal;font-size:12px;line-height:1}
+#cc-route-panel .rt-q .mid{display:flex;flex-direction:column;min-width:0}
+#cc-route-panel .rt-q .tt{font-weight:700;font-size:13px;line-height:1.25;color:var(--cc-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cc-route-panel .rt-q .sb{font-size:11.5px;color:var(--q-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cc-route-panel .rt-q .mt{display:flex;flex-direction:column;align-items:flex-end;white-space:nowrap;font-variant-numeric:tabular-nums}
+#cc-route-panel .rt-q .mt b{font-size:13px;font-weight:600}
+#cc-route-panel .rt-q .mt span{font-size:11.5px;color:var(--q-dim)}
+#cc-route-panel .rt-q .ds{display:flex;flex-direction:column;align-items:center;gap:3px}
+#cc-route-panel .rt-q .ds i{width:5px;height:5px;border-radius:50%;background:var(--cc-border-strong)}
+#cc-route-panel .rt-q .ds i.on{background:var(--cc-accent)}
+#cc-route-panel .rt-q .pk{position:absolute;right:30px;top:-9px;z-index:2;padding:0 8px;border-radius:99px;background:var(--cc-accent);color:var(--cc-accent-ink,#1a1305);font-size:10px;font-weight:700;line-height:15px;box-shadow:0 1px 4px rgba(0,0,0,.5)}
+#cc-route-panel .rt-more{display:block;width:100%;margin-top:12px;padding:6px 10px;text-align:left;font-size:12px;color:var(--cc-text-dim);background:transparent;border:0;border-top:1px solid var(--cc-border);border-radius:0}
+#cc-route-panel .rt-more:hover{color:var(--cc-text)}
+#cc-route-panel .rt-morebox{padding:4px 0 0}
+#cc-route-panel .rt-morebox ol.rt-stops{margin-top:6px}
+#cc-route-tip{position:fixed;z-index:2147482596;width:250px;box-sizing:border-box;padding:9px 11px;border-radius:10px;background:var(--cc-bg,#10101a);border:1px solid var(--cc-border-strong);box-shadow:0 8px 24px rgba(0,0,0,.55);color:var(--cc-text);font:12px/1.45 system-ui,sans-serif;pointer-events:none}
+#cc-route-tip[hidden]{display:none!important}
+#cc-route-tip .tt{font-weight:700;font-size:13px;margin-bottom:3px}
+#cc-route-tip .tb{color:var(--cc-text-dim)}
+#cc-route-tip .tr{display:flex;justify-content:space-between;gap:10px;margin-top:4px}
+#cc-route-tip .tr span:first-child{color:var(--cc-text-dim)}
+#cc-route-tip .tr .g{color:var(--cc-good)}
+#cc-route-tip .tr .bd{color:var(--cc-bad)}
+#cc-route-tip .tf{margin-top:7px;padding-top:6px;border-top:1px solid var(--cc-border);font-size:11px;color:var(--cc-text-faint)}
+#cc-route-alert .tri.pin{color:var(--cc-info);border-color:var(--cc-info)}
 `;
   const panel = document.createElement('div');
   panel.id = 'cc-route-panel'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Route Advisor');
@@ -1453,7 +1637,8 @@ postMessage({ t: 'ready' });`;
     handle.dataset.tone = tone;
     const label = open ? '▸ Route Advisor' : '◂ Route Advisor';
     if (handle.dataset.label !== label) { handle.dataset.label = label; handle.textContent = label; }
-    handle.title = open ? 'Slide the Route Advisor away' : 'Slide the Route Advisor out';
+    const hsaved = result ? prefSaved() : 0, hP = result && result.paths && result.paths.available ? result.paths : null;
+    tipOn(handle, { t: 'Route Advisor', b: open ? 'Slide the advisor away.' : 'Slide the advisor out.', rows: tone === 'warn' && hP && hP[tabKey(hP)] ? [['Waiting', objOf(tabKey(hP)).label + ' ' + pctTxt(hP[tabKey(hP)].m.score, hP.cur.m.score), 'g'], ['Saves', fmtT(hsaved), 'g']] : (tone === 'ok' ? [['Order', 'optimal', 'g']] : []), f: tone === 'warn' ? 'The dot shows a faster order is waiting.' : 'Only this edge tab stays while you play.' });
     // when the drawer is out the tab sits on its outer edge
     const vh = window.__ccVH ? window.__ccVH() : window.innerHeight;   // layout sizes, not the rect: the panel is mid-slide for a moment
     handle.style.right = open && panel.offsetWidth ? panel.offsetWidth + 'px' : '0px';
@@ -1465,6 +1650,7 @@ postMessage({ t: 'ready' });`;
     if (!document.getElementById('cc-route-style')) document.head.appendChild(style);
     if (!document.getElementById('cc-route-panel')) document.body.appendChild(panel);
     if (!document.getElementById('cc-route-alert')) document.body.appendChild(alertEl);
+    if (!document.getElementById('cc-route-tip')) document.body.appendChild(tipEl);
     if (!document.getElementById('cc-route-map')) document.body.appendChild(drawer);
     if (!document.getElementById('cc-route-maptab')) document.body.appendChild(mapTab);
     return true;
@@ -1486,18 +1672,20 @@ postMessage({ t: 'ready' });`;
   const rate = v => (isXp() ? (v * ((result.paths && result.paths.refSpan) || 20000) / 1000).toFixed(1) + 'k xp/hr' : lvFmt(v) + ' lv/hr');
   const unit = () => (isXp() ? 'xp/hr' : 'lv/hr');
   const pctTxt = (a, b) => (b > 0 ? (a >= b ? '+' : '\u2212') + Math.abs((a / b - 1) * 100).toFixed(Math.abs(a / b - 1) < 0.1 ? 1 : 0) + '%' : '');
-  function bestPathKey() {
+  // The tab on show: the one you pinned, else the automatic pick (Quests while a queued option completes a quest step, else Skilling; never Combat). The automatic pick
+  // depends on the set of queued options only, so reordering the queue never changes it.
+  function tabKey(P) { return PATH_DEFS.some(d => d[0] === selectedKey) ? selectedKey : (P && P.auto === 'quest' ? 'quest' : 'skill'); }
+  function bestPathKey() {   // the plan on show (null when that tab has nothing to suggest)
     const P = result && result.paths; if (!P || !P.available) return null;
-    return P.best && P[P.best] ? P.best : null;   // chosen by the optimiser: the best score, the previous winner staying unless another clearly beats it
+    const k = tabKey(P); return P[k] ? k : null;
   }
   function selKey() {
     const P = result && result.paths;
     if (!P || !P.available) return null;
     if (selectedKey === 'cur') return 'cur';
-    // A path you chose stays chosen. When it has nothing left to suggest (your queue already is that plan) the panel and the queue stay on YOUR queue, they never
-    // jump to another path; only the badge on the Tasks panel may point at a better path.
-    if (PATH_DEFS.some(d => d[0] === selectedKey)) return P[selectedKey] ? selectedKey : 'cur';
-    return bestPathKey() || 'cur';
+    // A tab with nothing left to suggest (your queue already is that plan) keeps the panel and the queue on YOUR queue, it never jumps to another tab.
+    const k = tabKey(P);
+    return P[k] ? k : 'cur';
   }
   function planFor(key) {
     if (!result || !result.paths || !result.paths.available) return result ? result.rec : null;
@@ -1506,99 +1694,276 @@ postMessage({ t: 'ready' });`;
   }
   const pathFlags = (c) => { let quest = false; try { quest = c.plan.some(p => { const o = result.rows[p.row].opts[p.opt]; return o.m && o.m.quest && o.m.quest.some(q => q.current); }); } catch (e) {} return (c.m.charges > 0 ? ' tp' : '') + (quest ? ' qst' : ''); };
 
-  function pathCard(def, key, p, isBest, maxScore, curScore) {
-    const [, title, color, tip] = def;
-    const sel = selKey() === key;
-    if (!p) {
-      const off = h('div', 'rt-plan rt-off');
-      const hd = h('h4'); const t = h('span', null, title); t.style.color = color; hd.appendChild(t); off.appendChild(hd);
-      off.appendChild(h('div', 'rt-dim', result.paths && result.paths[key + 'Floor'] ? 'Your current queue is already as good or better for this goal.' : key === 'quest' ? 'No quest steps among your queue options right now.' : 'Nothing in your queue fits this path.'));
-      return off;
-    }
-    const m = p.m;
-    const card = h('div', 'rt-plan' + (sel ? ' sel' : '') + (isBest ? ' best' : '') + pathFlags(p));
-    card.title = tip;
-    const hd = h('h4');
-    const t = h('span', 'rt-ptitle', title); t.style.color = color; hd.appendChild(t);
-    if (isBest) hd.appendChild(h('span', 'rt-badge', 'Best progress'));
-    hd.appendChild(h('span', 'rt-sp'));
-    const big = h('span', 'rt-big', '+' + rate(m.score)); big.title = 'Levels gained per hour: every skill\u2019s XP divided by what its next level costs'; hd.appendChild(big);
-    card.appendChild(hd);
-    const bar = h('div', 'rt-pbar'); const fill = document.createElement('i'); fill.style.width = Math.max(4, Math.round(m.score / (maxScore || 1) * 100)) + '%'; fill.style.background = color; bar.appendChild(fill); card.appendChild(bar);
-    const st = h('div', 'rt-pstats');
-    const stat = (a, b) => { const s2 = h('span'); s2.appendChild(document.createTextNode(a + ' ')); s2.appendChild(h('b', null, b)); return s2; };
-    st.appendChild(stat('Total', fmtT(m.total)));
-    st.appendChild(stat('Walk', fmtT(m.walk)));
-    st.appendChild(stat('XP/hr', fmtXp(m.total > 0 ? m.xp / m.total * 3600 : 0)));
-    if (curScore > 0) { const d = h('span', m.score >= curScore ? 'rt-good' : 'rt-bad', pctTxt(m.score, curScore) + ' vs now'); st.appendChild(d); }
-    card.appendChild(st);
-    const st2 = h('div', 'rt-pstats');
-    st2.appendChild(h('span', m.charges ? 'rt-tpc' : 'rt-dim', m.charges ? '\u21af ' + m.charges + ' teleport' + (m.charges === 1 ? '' : 's') + ' (' + usedText(m.used) + ')' + (p.tpSaved > 0 ? ' \u00b7 saves ' + fmtT(p.tpSaved) : '') : 'no teleports'));
-    st2.appendChild(h('span', p.changed ? 'rt-sw' : 'rt-dim', p.changed ? p.changed + ' pick' + (p.changed === 1 ? '' : 's') + ' swapped' : 'keeps your picks'));
-    if (p.moved) st2.appendChild(h('span', 'rt-dim', p.moved + ' row' + (p.moved === 1 ? '' : 's') + ' moved'));
-    card.appendChild(st2);
-    if (sel) {
-      const sb = h('button', 'rt-steps-btn', stepsOpen ? 'Hide steps' : 'Show steps');
-      sb.addEventListener('click', e => { e.stopPropagation(); stepsOpen = !stepsOpen; render(); });
-      card.appendChild(sb);
-      if (stepsOpen) card.appendChild(stopsList(planFor(key), false));
-    }
-    card.addEventListener('click', () => { selectedKey = key; try { localStorage.setItem('cc-route-sel', key); } catch (e) {} render(); });
-    return card;
+  // ---- ONE tooltip for the panel, the badge on the Tasks panel and the edge handle -------------------------------------------------------------------
+  // spec: { t: title, b: one plain sentence, rows: [[label, value, 'g' | 'b']] (at most 3: green is better, red is worse), f: grey footer }, or a function that returns one.
+  // Elements are rebuilt all the time, so tips are found by looking at what is under the pointer, never by a listener on the element itself.
+  const tipEl = document.createElement('div'); tipEl.id = 'cc-route-tip'; tipEl.hidden = true;
+  const tipReg = new Map(); let tipSeq = 0, tipAnchor = null;
+  function tipOn(el, spec) { if (!el) return el; const id = String(++tipSeq); el.dataset.rtip = id; tipReg.set(id, spec); return el; }
+  function tipHide() { tipEl.hidden = true; tipAnchor = null; }
+  function tipShow(el) {
+    let spec = tipReg.get(el.dataset.rtip); if (typeof spec === 'function') { try { spec = spec(); } catch (e) { spec = null; } }
+    if (!spec) { tipHide(); return; }
+    tipEl.textContent = '';
+    if (spec.t) tipEl.appendChild(h('div', 'tt', spec.t));
+    if (spec.b) tipEl.appendChild(h('div', 'tb', spec.b));
+    (spec.rows || []).slice(0, 3).forEach((r) => { const d = h('div', 'tr'); d.appendChild(h('span', null, r[0])); d.appendChild(h('span', r[2] === 'g' ? 'g' : r[2] === 'b' ? 'bd' : '', String(r[1]))); tipEl.appendChild(d); });
+    if (spec.f) tipEl.appendChild(h('div', 'tf', spec.f));
+    tipEl.hidden = false; tipAnchor = el;
+    const r = el.getBoundingClientRect(), w = tipEl.offsetWidth, th = tipEl.offsetHeight;
+    tipEl.style.left = Math.round(Math.max(6, Math.min(innerWidth - w - 6, r.left + r.width / 2 - w / 2))) + 'px';
+    let y = r.top - th - 8; if (y < 6) y = r.bottom + 8;   // above by default, below when there is no room
+    tipEl.style.top = Math.round(Math.max(6, Math.min(innerHeight - th - 6, y))) + 'px';
   }
+  life.on(document, 'mouseover', (e) => { const el = e.target && e.target.closest ? e.target.closest('[data-rtip]') : null; if (el) { if (el !== tipAnchor) tipShow(el); } else if (tipAnchor) tipHide(); }, true);
+  life.every(200, () => { if (tipAnchor && (!tipAnchor.isConnected || !tipAnchor.matches(':hover'))) tipHide(); });   // the element was rebuilt under the pointer, or the pointer left
+  life.on(window, 'blur', tipHide);
 
-  function planBody(body) {
+  const TAB_ORDER = ['quest', 'skill', 'combat'];
+  const objOf = (k) => OBJS.find((o) => o.key === k);
+  const rateN = (v) => (isXp() ? (v * ((result.paths && result.paths.refSpan) || 20000) / 1000).toFixed(1) + 'k' : lvFmt(v));   // the number only: the unit sits next to it
+  const skillIcon = (sk) => '/assets/icons/skills/' + (sk || 'slay') + '.png';
+  function tabInfo(k) {
     const P = result.paths;
-    const cr = result.crystals;
-    if (!P || !P.available) {
-      body.appendChild(h('div', 'rt-dim', xpTbl ? 'Waiting for the game data bridge (it attaches a few seconds after the game loads) \u2013 task times and XP are needed to compare paths.' : 'Loading level data\u2026'));
-      const best = result.rec, dTp = prefSaved();
-      const card = h('div', 'rt-plan sel');
-      const hd = h('h4'); hd.appendChild(h('span', null, 'Shortest walk \u00b7 keeps your picks')); hd.appendChild(h('span', 'rt-sp')); hd.appendChild(h('span', 'rt-big', fmtT(best[prefKey()].time)));
-      card.appendChild(hd); card.appendChild(h('div', 'rt-dim', dTp >= 1 ? 'Saves ' + fmtT(dTp) + ' of walking' : 'Your order is already the shortest'));
-      body.appendChild(card);
-      return;
+    if (P[k]) return { has: true, txt: pctTxt(P[k].m.score, P.cur.m.score) + ' ' + unit() };
+    if (P.info && P.info[k]) return { has: false, txt: 'already best' };
+    if (!pastOn() && result.barLocked > 0 && result.past && result.past[k] != null) return { has: false, none: true, txt: 'below the bar' };   // only rows under the NEW TASKS bar have it
+    return { has: false, none: true, txt: 'nothing queued' };
+  }
+  function tabTip(k, ti, on, pinned) {
+    const P = result.paths, o = objOf(k), wc = Math.round(Number(settingOn('routeCombatWeightPct', 40)) || 0);
+    const body = { quest: 'Counts the quest steps your queue completes. Picked for you while a queued task completes a quest step.', skill: 'Counts XP in every skill, by how much each level is worth to you. Picked for you when no quest step is queued.', combat: 'Counts combat XP only, at your combat weight (' + wc + '%). Never picked for you: you choose it yourself.' }[k];
+    const g = ti.has && P.cur.m.score > 0 ? P[k].m.score / P.cur.m.score - 1 : 0;
+    return { t: o.label, b: body, rows: ti.has ? [['Now', rateN(P.cur.m.score) + ' ' + unit()], ['Suggested', rateN(P[k].m.score) + ' ' + unit(), 'g'], ['Change', pctTxt(P[k].m.score, P.cur.m.score), g > 0 ? 'g' : '']] : [],
+      f: on ? (pinned ? 'You pinned this tab. Use "Back to auto" to let the advisor choose.' : 'Picked for you.') : k === 'combat' ? 'Manual only. Click to use it.' : 'Click to pin this tab.' };
+  }
+  function pickTab(k) { selectedKey = k; try { localStorage.setItem('cc-route-sel', k); } catch (e) {} render(); }
+  function tabsRow() {
+    const P = result.paths, on = tabKey(P), pinned = PATH_DEFS.some((d) => d[0] === selectedKey);
+    const wrap = h('div', 'rt-tabs3');
+    TAB_ORDER.forEach((k) => {
+      const o = objOf(k), ti = tabInfo(k);
+      const b = h('button', 'rt-tab3' + (k === on ? ' on' : '') + (ti.none ? ' off' : '')); b.type = 'button';
+      const tn = h('span', 'tn'); tn.appendChild(h('span', null, o.ic)); tn.appendChild(h('span', null, o.label));
+      if (k === on) tn.appendChild(h('span', 'rt-tag ' + (pinned ? 'pin' : 'auto'), pinned ? 'pinned' : 'auto'));
+      else if (k === 'combat') tn.appendChild(h('span', 'rt-tag man', 'manual'));
+      b.appendChild(tn); b.appendChild(h('span', 'tg2' + (ti.has ? ' g' : ''), ti.txt));
+      b.addEventListener('click', (e) => { e.stopPropagation(); pickTab(k); });
+      tipOn(b, () => tabTip(k, ti, k === on, pinned));
+      wrap.appendChild(b);
+    });
+    const line = h('div', 'rt-autoln');
+    if (pinned) {
+      line.appendChild(h('span', null, 'You chose ' + objOf(on).label + '.'));
+      const bk = h('button', 'rt-lnk', 'Back to auto'); bk.type = 'button';
+      bk.addEventListener('click', (e) => { e.stopPropagation(); selectedKey = 'auto'; try { localStorage.setItem('cc-route-sel', 'auto'); } catch (er) {} render(); });
+      line.appendChild(bk);
+    } else line.appendChild(h('span', null, 'Auto: Quests first while a quest step is queued, then Skilling. Combat is always your choice.'));
+    const frag = document.createDocumentFragment(); frag.appendChild(wrap); frag.appendChild(line); return frag;
+  }
+  // "Reorder past the NEW TASKS bar": a switch (the setting of the same name), what it locks, and what the other state would give
+  function reorderSwitch(tk, shownGain) {
+    const on = pastOn(), nq = result.nq || 0, lockedN = result.barLocked || 0;
+    const sw = h('div', 'rt-sw' + (on ? ' on' : '')); sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', on ? 'true' : 'false'); sw.tabIndex = 0;
+    sw.appendChild(h('span', 'tgl')); sw.appendChild(h('span', null, 'Reorder past the NEW TASKS bar')); sw.appendChild(h('span', 'rt-sp'));
+    sw.appendChild(h('span', 'rt-dim rt-sub', on ? 'whole queue' : lockedN > 0 ? (lockedN === 1 ? 'row ' + nq : 'rows ' + (nq - lockedN + 1) + ' to ' + nq) + ' locked' : 'nothing below the bar'));
+    const flip = () => { try { window.__ccPluginSettings.set('routeReorderPastBar', !on); } catch (e) { /* settings not there */ } lastSig = ''; scheduleCompute(); render(); };
+    sw.addEventListener('click', (e) => { e.stopPropagation(); flip(); });
+    sw.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); flip(); } });
+    tipOn(sw, { t: 'NEW TASKS bar', b: 'New tasks land at the gold bar. While this is off, the rows below it stay exactly where they are.', rows: [['Reordered', on ? 'every row' : lockedN > 0 ? 'rows 1 to ' + (nq - lockedN) : 'every row'], ['Locked', on || !lockedN ? 'none' : lockedN + (lockedN === 1 ? ' row' : ' rows')]], f: 'Follows the bar in the game. Display only.' });
+    const frag = document.createDocumentFragment(); frag.appendChild(sw);
+    const pg = result.past && result.past[tk];
+    if (!on && lockedN > 0 && pg != null && pg > shownGain + 0.01) {
+      const hint = h('div', 'rt-hint');
+      hint.appendChild(h('span', null, (lockedN === 1 ? 'Row ' + nq + ' is' : 'Rows ' + (nq - lockedN + 1) + ' to ' + nq + ' are') + ' locked. Past the bar: ' + (pg >= 0 ? '+' : '−') + Math.abs(pg * 100).toFixed(1) + '%.'));
+      hint.appendChild(h('span', 'rt-sp'));
+      const bt = h('button', 'rt-seg', 'Include them'); bt.type = 'button'; bt.addEventListener('click', (e) => { e.stopPropagation(); flip(); }); hint.appendChild(bt);
+      frag.appendChild(hint);
     }
-    const prefRow = h('div', 'rt-prefrow');
-    prefRow.appendChild(h('span', 'rt-dim', 'Teleports'));
+    return frag;
+  }
+  function heroBox(v) {
+    const m = v.metrics, hero = h('div', 'rt-hero2');
+    const g = m && m.rate[0] > 0 ? m.rate[1] / m.rate[0] - 1 : 0;
+    const top = h('div', 'rt-herotop');
+    top.appendChild(h('span', 'rt-big2' + (g > 0.0002 ? ' good' : ''), v.changed && g > 0.0002 ? pctTxt(m.rate[1], m.rate[0]) : '±0%'));
+    top.appendChild(h('span', 'rt-dim', unit() + ' vs your queue now'));
+    hero.appendChild(top);
+    const line = (label, a, b, fmt, spec, lowerBetter) => {
+      const mx = Math.max(a, b, 1e-9) * 1.04, r = h('div', 'rt-m');
+      r.appendChild(h('span', 'rt-dim', label));
+      const bars = h('div'), b1 = h('div', 'rt-bar'), b2 = h('div', 'rt-bar'), i1 = document.createElement('i'), i2 = document.createElement('i');
+      b1.style.marginBottom = '3px'; i1.className = 'n'; i1.style.width = (a / mx * 100) + '%'; i2.className = 's'; i2.style.width = (b / mx * 100) + '%';
+      b1.appendChild(i1); b2.appendChild(i2); bars.appendChild(b1); bars.appendChild(b2); r.appendChild(bars);
+      const val = h('span', 'rt-val'); val.appendChild(document.createTextNode(fmt(a) + ' → ')); val.appendChild(h('span', (lowerBetter ? b < a : b > a) ? 'rt-good' : '', fmt(b))); r.appendChild(val);
+      return tipOn(r, spec);
+    };
+    const sv = m.walk[0] - m.walk[1];
+    hero.appendChild(line('Levels an hour', m.rate[0], m.rate[1], rateN, { t: 'Levels an hour', b: 'Weighted levels for this tab, divided by the total time with walking and banking.', rows: [['Now', rateN(m.rate[0]) + ' ' + unit()], ['Suggested', rateN(m.rate[1]) + ' ' + unit(), g > 0.0002 ? 'g' : ''], ['Change', v.changed && g > 0.0002 ? pctTxt(m.rate[1], m.rate[0]) : '±0%', g > 0.0002 ? 'g' : '']] }, false));
+    hero.appendChild(line('Walking', m.walk[0], m.walk[1], fmtT, { t: 'Walking', b: 'Time spent walking between tasks. Teleports are not counted.', rows: [['Now', fmtT(m.walk[0])], ['Suggested', fmtT(m.walk[1]), sv > 1 ? 'g' : ''], ['Saved', sv > 1 ? fmtT(sv) : 'none', sv > 1 ? 'g' : '']] }, true));
+    hero.appendChild(line('Place changes', m.moves[0], m.moves[1], (x) => String(Math.round(x)), { t: 'Place changes', b: 'How often you leave one place for another. Each change also costs about a minute of banking.', rows: [['Now', m.moves[0]], ['Suggested', m.moves[1], m.moves[1] < m.moves[0] ? 'g' : '']], f: 'Fewer is calmer to play.' }, true));
+    return hero;
+  }
+  function qKey(row) { return row.opts.map((o) => o.node).sort().join(','); }
+  function qNth(row) { const all = result && result.q ? result.q.rows : result.rows; return all.filter((r2) => r2.id < row.id && qKey(r2) === qKey(row)).length; }
+  let flashT = 0;
+  function flashRow(n) {
+    const row = result.rows[n.rowIdx]; if (!row) return;
+    const o = row.opts.find((x) => x.selected) || row.opts[0];
+    try { if (window.__ccBar && window.__ccBar.highlight) window.__ccBar.highlight(qKey(row), qNth(row), o.node); } catch (e) { /* bar not there */ }
+    clearTimeout(flashT); flashT = setTimeout(clearHl, 2600);
+  }
+  function nextStrip(v) {
+    const n = v.next, d = h('div', 'rt-next' + (n ? '' : ' done'));
+    if (!n) { d.appendChild(h('span', null, 'Nothing to move. Your queue is already the best order for this.')); return d; }
+    const t = h('span');
+    if (n.type === 'move') { t.appendChild(document.createTextNode('Next move: drag ')); t.appendChild(h('b', null, n.title)); t.appendChild(document.createTextNode(' from row ' + n.from + ' to row ' + n.to)); }
+    else { t.appendChild(document.createTextNode('Next: in row ' + n.pos + ' pick ')); t.appendChild(h('b', null, n.toLabel || 'the other option')); if (n.fromLabel) t.appendChild(document.createTextNode(' instead of ' + n.fromLabel)); }
+    d.appendChild(t); d.appendChild(h('span', 'rt-sp'));
+    const bt = h('button', 'rt-seg', 'Find it'); bt.type = 'button'; bt.addEventListener('click', (e) => { e.stopPropagation(); flashRow(n); }); d.appendChild(bt);
+    tipOn(d, { t: 'Next move', b: 'Do one drag at a time. The advisor checks again after each change, so the plan stays honest.', f: 'Find it flashes the row in your queue. The advisor never moves anything.' });
+    return d;
+  }
+  const PLACE_COLORS = ['--cc-info', '--cc-good', '--cc-warn', '--cc-magic', '--cc-bad'];
+  const placeColor = (node) => { let x = 0; String(node).split('').forEach((c) => { x = (x * 31 + c.charCodeAt(0)) >>> 0; }); return 'var(' + PLACE_COLORS[x % PLACE_COLORS.length] + ')'; };
+  // One row, drawn like a card of the Tasks panel: number, tile with a coloured outline, name and place, time and XP, the three option dots.
+  function orderRow(it, i, showOld, view) {
+    const row = h('div', 'rt-q' + (it.quest ? ' quest' : '') + (it.locked ? ' lock' : '') + (it.swapped ? ' swp' : '')); row.style.setProperty('--k', it.kill ? 'var(--cc-q-kill, #ee5a5a)' : 'var(--cc-good)');
+    const nm = h('span', 'nm', String(showOld ? it.was : i + 1));
+    if (!showOld && it.delta !== 0 && !it.locked) { const dl = h('i', it.delta > 0 ? 'up' : 'dn', (it.delta > 0 ? '↑' : '↓') + Math.abs(it.delta)); tipOn(dl, { t: 'Compared with now', b: 'Green: this row moves earlier. Red: it moves later. Your queue is not changed.', f: 'Tick "show old numbers" to see where each row is today.' }); nm.appendChild(dl); }
+    else if (showOld && it.delta !== 0 && !it.locked) nm.appendChild(h('i', 'mut', 'now ' + (i + 1)));
+    row.appendChild(nm);
+    const tl = h('span', 'tl'); const im = document.createElement('img'); im.src = skillIcon(it.kill ? 'slay' : it.skill); im.alt = ''; tl.appendChild(im);
+    if (it.quest) tl.appendChild(h('em', null, '📜'));
+    row.appendChild(tl);
+    const mid = h('span', 'mid'); mid.appendChild(h('span', 'tt', it.title)); mid.appendChild(h('span', 'sb', it.place + (it.quest ? ' · ' + it.quest : '')));
+    row.appendChild(mid);
+    const mt = h('span', 'mt'); mt.appendChild(h('b', null, fmtT(it.sec))); mt.appendChild(h('span', null, fmtXp(it.xp) + ' xp')); row.appendChild(mt);
+    const ds = h('span', 'ds'); for (let k = 0; k < Math.max(1, it.opts); k++) ds.appendChild(h('i', k === it.opt ? 'on' : '')); row.appendChild(ds);
+    if (it.swapped) row.appendChild(h('span', 'pk', 'swap pick'));
+    const why = [];
+    if (it.locked) why.push('Locked below the NEW TASKS bar. The advisor leaves it where it is.');
+    else { if (it.delta !== 0) why.push('Moved ' + (it.delta > 0 ? 'up' : 'down') + ' from row ' + it.was + '.'); if (i > 0 && view.items[i - 1].node === it.node) why.push('Same place as the row before, so no walking.'); if (it.swapped) why.push('Uses another option than your pick.'); if (!why.length) why.push('Already in a good spot.'); }
+    tipOn(row, { t: it.title, b: it.place + (it.act ? ' · ' + String(it.act).replace(/_/g, ' ') : ''), rows: [['Task time', fmtT(it.sec)], ['XP', fmtXp(it.xp)]].concat(it.quest ? [['Quest', it.quest, 'g']] : []), f: why.join(' ') });
+    const resRow = it.rowIdx >= 0 ? result.rows[it.rowIdx] : null;
+    const qrow = resRow || (result.lockedRows || []).find((r) => r.id === it.id) || null;
+    row.addEventListener('mouseenter', () => { clearHl(); if (qrow) { try { if (window.__ccBar && window.__ccBar.highlight) window.__ccBar.highlight(qKey(qrow), qNth(qrow), qrow.opts[it.opt].node); } catch (e) { /* bar not there */ } } });
+    row.addEventListener('mouseleave', clearHl);
+    return row;
+  }
+  function orderList(view, showOld) {
+    const wrap = h('div', 'rt-order');
+    view.groups.forEach((g, gi) => {
+      const afterBar = g.locked && (gi === 0 || !view.groups[gi - 1].locked);
+      if (afterBar) {
+        const nb = h('div', 'rt-nbar'); nb.appendChild(h('b', null, '🔒 NEW TASKS bar')); tipOn(nb, { t: 'NEW TASKS bar', b: 'Rows below this line are locked. They keep their order while "Reorder past the NEW TASKS bar" is off.' }); wrap.appendChild(nb);
+      } else if (g.walk.dist > 0) {
+        const wk = h('div', 'rt-wk', g.walk.tp ? '↯ teleport to ' + g.place : 'walk ' + fmtT(g.walk.sec) + ' to ' + g.place);
+        tipOn(wk, { t: g.walk.tp ? 'Teleport' : 'Walk', b: g.walk.tp ? 'A teleport charge takes you there instead of walking.' : 'Walking time to the next place at your current speed.', rows: g.walk.tp ? [] : [['Distance', fmtN(g.walk.dist) + ' steps']] });
+        wrap.appendChild(wk);
+      }
+      const gh = h('div', 'rt-gh'); gh.style.setProperty('--c', placeColor(g.node));
+      gh.appendChild(h('i', 'dot')); gh.appendChild(h('span', null, g.place)); gh.appendChild(h('span', 'ln')); gh.appendChild(h('span', null, g.items.length > 1 ? 'stay ' + fmtT(g.sec) : '1 task'));
+      tipOn(gh, { t: g.items.length > 1 ? 'Stay here' : g.place, b: g.items.length > 1 ? 'These ' + g.items.length + ' tasks are in the same place, so you do not walk between them.' : 'One task at this place.', rows: [['Time here', fmtT(g.sec)]] });
+      wrap.appendChild(gh);
+      g.items.forEach((i) => {
+        const it = view.items[i];
+        wrap.appendChild(orderRow(it, i, showOld, view));
+        const sw = it.swapped && !it.locked ? currentSwaps()[it.rowIdx] : null;
+        if (sw) wrap.appendChild(swapWhyEl(sw, result.rows[it.rowIdx]));
+      });
+    });
+    return wrap;
+  }
+  const currentSwaps = () => { const c = planFor(selKey()); return (c && c.swaps) || {}; };
+  // "Why is this pick swapped": the same numbers the step list always had
+  function swapWhyEl(sw, row) {
+    const oldO = row.opts[sw.from];
+    const why = h('div', 'rt-why'), head = h('div', 'rt-why-h');
+    head.appendChild(h('b', null, '⇄ Swap'));
+    head.appendChild(document.createTextNode(' instead of ' + (oldO && oldO.label ? oldO.label : 'your pick')));
+    why.appendChild(head);
+    const bl = (txt, good) => { why.appendChild(h('div', 'rt-why-l' + (good == null ? '' : good ? ' good' : ' bad'), txt)); };
+    bl('This pick: ' + fmtT(sw.newT) + ' for +' + fmtXp(sw.newXp) + ' xp (' + rate(sw.newRate) + ')', null);
+    bl('Your pick: ' + fmtT(sw.oldT) + ' for +' + fmtXp(sw.oldXp) + ' xp (' + rate(sw.oldRate) + ')', null);
+    if (sw.newQuest && !sw.oldQuest) bl('Completes a quest step your pick does not', true);
+    const dT = sw.dTotal, dL = sw.dLevels;
+    bl('Effect on this path with only this swap: ' + (sw.dScore >= 0 ? '+' : '−') + Math.abs(sw.dScore * 100).toFixed(1) + '% ' + unit() + ' · ' + (dL >= 0 ? '+' : '−') + Math.abs(dL).toFixed(2) + ' levels · ' + (dT <= 0 ? fmtT(-dT) + ' less' : fmtT(dT) + ' more') + ' time' + (Math.abs(sw.dWalk) >= 1 ? ' (' + (sw.dWalk <= 0 ? fmtT(-sw.dWalk) + ' less' : fmtT(sw.dWalk) + ' more') + ' walking)' : ''), sw.dScore >= 0);
+    if (sw.dScore < 0) { const dk = PATH_DEFS.find((d) => d[0] === selKey()); if (dk) bl('Kept for this tab’s goal: it only counts ' + ({ skill: 'skilling XP', combat: 'combat XP', quest: 'quest progress' }[dk[0]]) + ', so it can cost overall ' + unit() + '.', null); }
+    if (sw.dCharges) bl((sw.dCharges > 0 ? 'Uses ' + sw.dCharges + ' more' : 'Saves ' + -sw.dCharges) + ' teleport charge' + (Math.abs(sw.dCharges) === 1 ? '' : 's'), sw.dCharges < 0);
+    return why;
+  }
+  let moreOpen = false;
+  try { moreOpen = localStorage.getItem('cc-route-more') === '1'; } catch (e) {}
+  const envOf = () => ({ dist: (a, b) => core.dist(a, b), name: (id) => { const n = core.node(id); return n ? n.name : id; }, speed: result ? result.speed : 15 });
+  let showOld = false;
+  try { showOld = localStorage.getItem('cc-route-old') === '1'; } catch (e) {}
+  // The collapsed "More" section: everything the old panel showed at the top that you rarely change
+  function moreSection(body) {
+    const cr = result.crystals;
+    const hd = h('button', 'rt-more' + (moreOpen ? ' open' : ''), (moreOpen ? '▾' : '▸') + ' More: teleports, picks, other routes'); hd.type = 'button';
+    hd.addEventListener('click', (e) => { e.stopPropagation(); moreOpen = !moreOpen; try { localStorage.setItem('cc-route-more', moreOpen ? '1' : '0'); } catch (er) {} render(); });
+    body.appendChild(hd);
+    if (!moreOpen) return;
+    const box = h('div', 'rt-morebox');
+    const prefRow = h('div', 'rt-prefrow'); prefRow.appendChild(h('span', 'rt-dim', 'Teleports'));
     const showMax = settingOn('routeShowMaxTp', false) || tpPref === 'max';
-    [['foot', 'On foot', 'Plan without teleport crystals'], ['eff', 'Efficient', 'The recommended mode. Teleports are used only when they save at least ' + tpAggSteps().toLocaleString('en-US') + ' steps over the whole route (Settings > Plugins > Route Advisor)']].concat(showMax ? [['max', 'Max', 'Use charges freely, fastest possible. Never chosen automatically: only when you pick it here']] : []).forEach(([k, label, tip]) => {
-      const b = h('button', 'rt-seg' + (tpPref === k ? ' on' : ''), label); b.title = tip;
-      b.addEventListener('click', e => { e.stopPropagation(); tpPref = k; try { localStorage.setItem('cc-route-tp-pref', k); } catch (er) {} lastSig = ''; scheduleCompute(); render(); });
+    [['foot', 'On foot', 'Plan without teleport crystals.'], ['eff', 'Efficient', 'The recommended mode. Teleports are used only when they save at least ' + tpAggSteps().toLocaleString('en-US') + ' steps over the whole route (Settings > Plugins > Route Advisor).']].concat(showMax ? [['max', 'Max', 'Use charges freely, fastest possible. Never chosen automatically: only when you pick it here.']] : []).forEach(([k, label, tip]) => {
+      const b = h('button', 'rt-seg' + (tpPref === k ? ' on' : ''), label); b.type = 'button'; tipOn(b, { t: label, b: tip });
+      b.addEventListener('click', (e) => { e.stopPropagation(); tpPref = k; try { localStorage.setItem('cc-route-tp-pref', k); } catch (er) {} lastSig = ''; scheduleCompute(); render(); });
       prefRow.appendChild(b);
     });
-    prefRow.appendChild(h('span', 'rt-sp'));
-    prefRow.appendChild(h('span', 'rt-dim', cr.length ? cr.map(c => c.charges + '\u00d7 ' + (TIER_NAME[c.tier] || 'T' + c.tier)).join(', ') : 'no crystals'));
-    body.appendChild(prefRow);
-    const keepRow = h('div', 'rt-prefrow');
-    keepRow.appendChild(h('span', 'rt-dim', 'Picks'));
-    [[false, 'Optimise', 'May swap which option you picked in a row when that is better'], [true, 'Keep mine', 'Never change your picks: only reorder the rows and plan teleports']].forEach(([k, label, tip]) => {
-      const b = h('button', 'rt-seg' + (keepPicks === k ? ' on' : ''), label); b.title = tip;
-      b.addEventListener('click', e => { e.stopPropagation(); keepPicks = k; try { localStorage.setItem('cc-route-keep', k ? '1' : '0'); } catch (er) {} lastSig = ''; scheduleCompute(); render(); });
+    prefRow.appendChild(h('span', 'rt-sp')); prefRow.appendChild(h('span', 'rt-dim', cr.length ? cr.map((c) => c.charges + '× ' + (TIER_NAME[c.tier] || 'T' + c.tier)).join(', ') : 'no crystals'));
+    box.appendChild(prefRow);
+    const keepRow = h('div', 'rt-prefrow'); keepRow.appendChild(h('span', 'rt-dim', 'Picks'));
+    [[false, 'Optimise', 'May swap which option you picked in a row when that is better.'], [true, 'Keep mine', 'Never changes your picks: only reorders the rows and plans teleports.']].forEach(([k, label, tip]) => {
+      const b = h('button', 'rt-seg' + (keepPicks === k ? ' on' : ''), label); b.type = 'button'; tipOn(b, { t: label, b: tip });
+      b.addEventListener('click', (e) => { e.stopPropagation(); keepPicks = k; try { localStorage.setItem('cc-route-keep', k ? '1' : '0'); } catch (er) {} lastSig = ''; scheduleCompute(); render(); });
       keepRow.appendChild(b);
     });
-    body.appendChild(keepRow);
+    box.appendChild(keepRow);
     const up = tpUpsell();
     if (up) {
       const note = h('div', 'rt-upsell');
-      note.appendChild(document.createTextNode('\u21af Teleports would save ' + fmtT(up.saves) + ' on this queue (' + up.used + ' charge' + (up.used === 1 ? '' : 's') + ', about ' + fmtT(up.perCharge) + ' each). '));
-      const use = h('button', 'rt-seg', 'Use teleports');
-      use.addEventListener('click', e => { e.stopPropagation(); tpPref = 'eff'; try { localStorage.setItem('cc-route-tp-pref', 'eff'); } catch (er) {} lastSig = ''; scheduleCompute(); render(); });
-      note.appendChild(use); body.appendChild(note);
+      note.appendChild(document.createTextNode('↯ Teleports would save ' + fmtT(up.saves) + ' on this queue (' + up.used + ' charge' + (up.used === 1 ? '' : 's') + ', about ' + fmtT(up.perCharge) + ' each). '));
+      const use = h('button', 'rt-seg', 'Use teleports'); use.type = 'button';
+      use.addEventListener('click', (e) => { e.stopPropagation(); tpPref = 'eff'; try { localStorage.setItem('cc-route-tp-pref', 'eff'); } catch (er) {} lastSig = ''; scheduleCompute(); render(); });
+      note.appendChild(use); box.appendChild(note);
     }
-    const best = bestPathKey();
-    const maxScore = Math.max(P.cur.m.score, ...PATH_DEFS.map(d => (P[d[0]] ? P[d[0]].m.score : 0)));
-    PATH_DEFS.forEach(d => body.appendChild(pathCard(d, d[0], P[d[0]], d[0] === best, maxScore, P.cur.m.score)));
-    // Baseline: the queue as it is now.
-    const cur = P.cur, cm = cur.m;
-    const row = h('div', 'rt-curnow' + (selKey() === 'cur' ? ' sel' : ''));
-    row.appendChild(h('span', null, 'Your queue now'));
-    row.appendChild(h('b', null, '+' + rate(cm.score)));
-    row.appendChild(h('span', 'rt-dim', fmtT(cm.total) + ' \u00b7 walk ' + fmtT(cm.walk) + (cm.charges ? ' \u00b7 \u21af' + cm.charges : '')));
-    row.addEventListener('click', () => { selectedKey = 'cur'; try { localStorage.setItem('cc-route-sel', 'cur'); } catch (e) {} render(); });
-    body.appendChild(row);
-    const lg = h('div', 'rt-legend'); lg.appendChild(h('span', 'lp', '\u25a0 purple border')); lg.appendChild(document.createTextNode(' = uses teleports \u00b7 ')); lg.appendChild(h('span', 'lq', '\u25a0 blue')); lg.appendChild(document.createTextNode(' = includes a quest step'));
-    body.appendChild(lg);
+    if (result.gate) box.appendChild(h('div', 'rt-dim', result.gate.blocked ? 'Teleports would save ' + Math.round(result.gate.saved).toLocaleString('en-US') + ' steps over the whole route, under your ' + result.gate.th.toLocaleString('en-US') + '-step bar, so they are not used.' : 'Teleports save ' + Math.round(result.gate.saved).toLocaleString('en-US') + ' steps over the whole route (bar: ' + result.gate.th.toLocaleString('en-US') + ').'));
+    if (Object.keys(variantsFull).length) { const wi = h('div', 'rt-wi'); wi.appendChild(h('h4', null, 'What you could gain')); wi.appendChild(variantTable()); wi.appendChild(h('div', 'rt-dim', '🔒 keep my picks · 🔀 optimise picks · 🚶 no teleports · ⚡ teleports. Highlighted = what you use now.')); box.appendChild(wi); }
+    const k = selKey(), c = k ? planFor(k) : null;
+    if (c) {
+      const sb = h('button', 'rt-steps-btn', stepsOpen ? 'Hide step details' : 'Show step details'); sb.type = 'button';
+      sb.addEventListener('click', (e) => { e.stopPropagation(); stepsOpen = !stepsOpen; render(); });
+      box.appendChild(sb);
+      if (stepsOpen) box.appendChild(stopsList(c, false));
+    }
+    body.appendChild(box);
+  }
+  // No game data bridge yet (or it cannot give task times): only the walking order can be shown
+  function fallbackBody(body) {
+    body.appendChild(h('div', 'rt-dim', xpTbl ? 'Waiting for the game data bridge (it attaches a few seconds after the game loads) – task times and XP are needed to compare paths.' : 'Loading level data…'));
+    const best = result.rec, dTp = prefSaved();
+    const card = h('div', 'rt-plan sel');
+    const hd = h('h4'); hd.appendChild(h('span', null, 'Shortest walk · keeps your picks')); hd.appendChild(h('span', 'rt-sp')); hd.appendChild(h('span', 'rt-big', fmtT(best[prefKey()].time)));
+    card.appendChild(hd); card.appendChild(h('div', 'rt-dim', dTp >= 1 ? 'Saves ' + fmtT(dTp) + ' of walking' : 'Your order is already the shortest'));
+    body.appendChild(card);
+  }
+  function planBody(body) {
+    const P = result.paths, tk = tabKey(P), key = selKey();
+    const view = buildView(result, key === 'cur' ? 'cur' : key, envOf(), result.lockedRows || []);
+    body.appendChild(tabsRow());
+    const shownGain = view.metrics && view.metrics.rate[0] > 0 ? view.metrics.rate[1] / view.metrics.rate[0] - 1 : 0;
+    body.appendChild(reorderSwitch(tk, shownGain));
+    if (view.metrics) body.appendChild(heroBox(view));
+    body.appendChild(nextStrip(view));
+    const lab = h('div', 'rt-h rt-listhd'); lab.appendChild(h('span', null, 'Suggested order')); lab.appendChild(h('span', 'rt-sp'));
+    const lb = h('label', 'rt-oldck'); const ck = document.createElement('input'); ck.type = 'checkbox'; ck.checked = showOld;
+    ck.addEventListener('change', (e) => { e.stopPropagation(); showOld = ck.checked; try { localStorage.setItem('cc-route-old', showOld ? '1' : '0'); } catch (er) {} render(); });
+    lb.appendChild(ck); lb.appendChild(document.createTextNode(' show old numbers')); lab.appendChild(lb);
+    body.appendChild(lab);
+    body.appendChild(orderList(view, showOld));
   }
 
   function stopsList(c, noTp) {
@@ -1621,23 +1986,7 @@ postMessage({ t: 'ready' });`;
       }
       if (tp) li.appendChild(tp);
       const sw = c.swaps && c.swaps[p.row];
-      if (sw) {
-        const oldO = row.opts[sw.from];
-        const why = h('div', 'rt-why');
-        const head = h('div', 'rt-why-h');
-        head.appendChild(h('b', null, '\u21c4 Swap'));
-        head.appendChild(document.createTextNode(' instead of ' + (oldO && oldO.label ? oldO.label : 'your pick')));
-        why.appendChild(head);
-        const bl = (txt, good) => { const d = h('div', 'rt-why-l' + (good == null ? '' : good ? ' good' : ' bad'), txt); why.appendChild(d); };
-        bl('This pick: ' + fmtT(sw.newT) + ' for +' + fmtXp(sw.newXp) + ' xp (' + rate(sw.newRate) + ')', null);
-        bl('Your pick: ' + fmtT(sw.oldT) + ' for +' + fmtXp(sw.oldXp) + ' xp (' + rate(sw.oldRate) + ')', null);
-        if (sw.newQuest && !sw.oldQuest) bl('Completes a quest step your pick does not', true);
-        const dT = sw.dTotal, dL = sw.dLevels;
-        bl('Effect on this path with only this swap: ' + (sw.dScore >= 0 ? '+' : '\u2212') + Math.abs(sw.dScore * 100).toFixed(1) + '% ' + unit() + ' \u00b7 ' + (dL >= 0 ? '+' : '\u2212') + Math.abs(dL).toFixed(2) + ' levels \u00b7 ' + (dT <= 0 ? fmtT(-dT) + ' less' : fmtT(dT) + ' more') + ' time' + (Math.abs(sw.dWalk) >= 1 ? ' (' + (sw.dWalk <= 0 ? fmtT(-sw.dWalk) + ' less' : fmtT(sw.dWalk) + ' more') + ' walking)' : ''), sw.dScore >= 0);
-        if (sw.dScore < 0) { const dk = PATH_DEFS.find(d => d[0] === selKey()); if (dk) bl('Kept for this path’s goal: the ' + dk[1] + ' path only counts ' + ({ skill: 'skilling XP', combat: 'combat XP', quest: 'quest progress' }[dk[0]]) + ', so it can cost overall lv/hr.', null); }
-        if (sw.dCharges) bl((sw.dCharges > 0 ? 'Uses ' + sw.dCharges + ' more' : 'Saves ' + -sw.dCharges) + ' teleport charge' + (Math.abs(sw.dCharges) === 1 ? '' : 's'), sw.dCharges < 0);
-        li.appendChild(why);
-      }
+      if (sw) li.appendChild(swapWhyEl(sw, row));
       li.addEventListener('mouseenter', () => { clearHl(); if (q && q.rowEl) q.rowEl.classList.add('cc-route-hl'); try { if (window.__ccBar && window.__ccBar.highlight) window.__ccBar.highlight(rowKey(row), rowNth(row), opt.node); } catch (e) { /* bar not there */ } });
       li.addEventListener('mouseleave', clearHl);
       ol.appendChild(li);
@@ -1725,6 +2074,7 @@ postMessage({ t: 'ready' });`;
   }
 
   function render() {
+    tipReg.clear();   // every tooltip of the panel, the badge and the handle is registered again below
     insertUi();
     const enabled = settingOn('routeAdvisorEnabled', true);
     const mapActive = document.body.classList.contains('map-active');
@@ -1732,8 +2082,8 @@ postMessage({ t: 'ready' });`;
     wasMapActive = mapActive;
     const drawerOn = settingOn('routeAdvisorDrawer', true);
     // drawer: the panel is docked to the screen edge and slides out; while the World Map is open only its handle shows until you open it
-    const wantPanel = enabled && (result || calc) && (userOpen || (mapActive && settingOn('routeAdvisorAutoMap', drawerOn ? false : true) && !userClosedOnMap));
-    panel.hidden = !(wantPanel || (drawerOn && enabled && (result || calc) && mapActive));
+    const wantPanel = enabled && (result || calc || allLocked) && (userOpen || (mapActive && settingOn('routeAdvisorAutoMap', drawerOn ? false : true) && !userClosedOnMap));
+    panel.hidden = !(wantPanel || (drawerOn && enabled && (result || calc || allLocked) && mapActive));
     panel.dataset.dock = drawerOn ? 'r' : '';
     panel.dataset.state = wantPanel ? 'open' : 'closed';
     dockHandle(drawerOn && enabled && !!(result || calc), wantPanel);   // the handle stays on the screen edge whether or not the World Map is open
@@ -1747,22 +2097,27 @@ postMessage({ t: 'ready' });`;
     const alertOn = enabled && settingOn('routeAdvisorAlert', true) && (result || calc) && !wantPanel;
     const warn = saved >= minSave && recSig() !== dismissedSig;
     alertEl.hidden = !alertOn;
+    const P0 = result && result.paths && result.paths.available ? result.paths : null, tk0 = P0 ? tabKey(P0) : 'skill', o0 = objOf(tk0);
     if (alertOn && (calc || settling)) {
       alertEl.textContent = ''; alertEl.classList.remove('ok');
-      const tri = h('button', 'tri calc'); tri.appendChild(h('span', 'rt-spin')); tri.appendChild(document.createTextNode(' Calculating\u2026'));
+      const tri = h('button', 'tri calc'); tri.appendChild(h('span', 'rt-spin')); tri.appendChild(document.createTextNode(' Calculating…'));
       tri.addEventListener('click', e => { e.stopPropagation(); userOpen = true; render(); });
+      tipOn(tri, { t: 'Calculating', b: 'Checking every order of your queue. This takes a moment.' });
       alertEl.appendChild(tri); placeAlert();
     } else if (alertOn) {
       alertEl.textContent = '';
       alertEl.classList.toggle('ok', !warn);
-      const canSave = saved >= minSave;
-      const tri = h('button', 'tri' + (warn ? '' : ' ok'), warn ? '\u26a0 \u2212' + fmtT(saved) : canSave ? '\u21af \u2212' + fmtT(saved) + ' possible' : '\u2713 Route optimal');
-
+      const canSave = saved >= minSave, combatPin = selectedKey === 'combat' && (warn || canSave);
+      const tri = h('button', 'tri' + (warn ? '' : ' ok') + (combatPin ? ' pin' : ''), warn ? o0.ic + ' −' + fmtT(saved) : canSave ? '↯ −' + fmtT(saved) + ' possible' : '✓ Route optimal');
+      const gainTxt = P0 && P0[tk0] && P0.cur.m.score > 0 ? pctTxt(P0[tk0].m.score, P0.cur.m.score) : '';
+      tipOn(tri, () => (warn || canSave
+        ? { t: combatPin ? 'Combat pinned' : 'A faster order is waiting', b: combatPin ? 'You turned Combat on. It stays on until you go back to auto in the advisor.' : o0.label + ': the same progress, sooner.', rows: [['Saves', fmtT(saved), 'g']].concat(gainTxt ? [['Levels an hour', gainTxt, 'g']] : [], P0 && P0[tk0] ? [['Rows to move', P0[tk0].moved]] : []), f: 'Click to open the advisor.' + (warn ? ' The cross hides this until something changes.' : '') }
+        : { t: 'Order is optimal', b: 'The best order found for ' + o0.label + '. Nothing to move.', rows: [['Checked', (result.evaluated || 0).toLocaleString('en-US') + ' states']], f: 'Click to open the advisor.' }));
       tri.addEventListener('click', e => { e.stopPropagation(); userOpen = true; render(); });
       alertEl.appendChild(tri);
       if (warn) {
-        const x = h('button', 'x', '\u00d7');
-        x.title = 'Dismiss the warning (the badge stays, in green)';
+        const x = h('button', 'x', '×');
+        tipOn(x, { t: 'Hide the warning', b: 'The badge stays, in green.' });
         x.addEventListener('click', e => { e.stopPropagation(); dismissedSig = recSig(); try { localStorage.setItem(LS_DISMISS, dismissedSig); } catch (err) {} render(); });
         alertEl.appendChild(x);
       }
@@ -1773,14 +2128,24 @@ postMessage({ t: 'ready' });`;
     const prevBody = panel.querySelector('.rt-body');
     const prevScroll = prevBody ? prevBody.scrollTop : 0;
     panel.textContent = '';
+    const closeBtn = () => {
+      const close = h('button', 'rt-x', '×'); tipOn(close, { t: 'Close' });
+      close.addEventListener('click', e => { e.stopPropagation(); userOpen = false; if (mapActive) userClosedOnMap = true; render(); });
+      return close;
+    };
 
     if (!result) {
-      // First calculation: nothing to show yet, just the progress.
+      // First calculation (or every task is below the bar): nothing to show yet
       const hd = h('div', 'rt-head');
       hd.appendChild(h('span', 'rt-ttl', 'Route Advisor')); hd.appendChild(h('span', 'rt-sp'));
-      const cl = h('button', 'rt-x', '\u00d7'); cl.addEventListener('click', e => { e.stopPropagation(); userOpen = false; if (mapActive) userClosedOnMap = true; render(); });
-      hd.appendChild(cl); panel.appendChild(hd); wireDrag(hd);
-      panel.appendChild(calcStrip());
+      hd.appendChild(closeBtn()); panel.appendChild(hd); wireDrag(hd);
+      if (allLocked) {
+        const body = h('div', 'rt-body'); panel.appendChild(body);
+        body.appendChild(h('div', 'rt-dim', 'Every task in your queue is below the gold NEW TASKS bar, so there is nothing to reorder. Turn on "Reorder past the NEW TASKS bar" to include them.'));
+        const bt = h('button', 'rt-seg', 'Include them'); bt.type = 'button'; bt.style.marginTop = '8px';
+        bt.addEventListener('click', (e) => { e.stopPropagation(); try { window.__ccPluginSettings.set('routeReorderPastBar', true); } catch (er) { /* settings not there */ } lastSig = ''; scheduleCompute(); render(); });
+        body.appendChild(bt);
+      } else panel.appendChild(calcStrip());
       panel.classList.remove('calculating');
       restorePos(); placeExtras();
       return;
@@ -1791,19 +2156,18 @@ postMessage({ t: 'ready' });`;
     const head = h('div', 'rt-head');
     head.appendChild(h('span', 'rt-ttl', 'Route Advisor'));
     if (P && P.available) {
-      const up = bk && P.cur.m.score > 0 ? P[bk].m.score / P.cur.m.score - 1 : 0;
-      const pill = h('span', 'rt-pill' + (up >= 0.02 ? ' good' : ''), up >= 0.0002 ? 'Best: +' + (up < 0.1 ? (up * 100).toFixed(1) : Math.round(up * 100)) + '% ' + unit() : 'Optimal ✓');
-      if (up < 0.0002) pill.title = 'Your queue is the best order found after checking ' + (result.evaluated || 0).toLocaleString('en-US') + ' search states (the search is exact for up to ' + MAX_ROWS + ' rows, so no better order exists).';
+      const up = bk && P.cur.m.score > 0 ? P[bk].m.score / P.cur.m.score - 1 : 0, tkh = tabKey(P);
+      const pill = h('span', 'rt-pill' + (up >= 0.02 ? ' good' : ''), up >= 0.0002 ? pctTxt(P[bk].m.score, P.cur.m.score) + ' possible' : 'Optimal ✓');
+      tipOn(pill, up >= 0.0002
+        ? { t: 'A better order exists', b: objOf(tkh).label + ': following it reaches the same progress sooner.', rows: [['Saves', fmtT(prefSaved()), 'g'], ['Levels an hour', pctTxt(P[bk].m.score, P.cur.m.score), 'g']] }
+        : { t: 'Optimal', b: 'Your queue is the best order found for ' + objOf(tkh).label + '. The search is exact for up to ' + MAX_ROWS + ' rows.', rows: [['Checked', (result.evaluated || 0).toLocaleString('en-US') + ' states']] });
       head.appendChild(pill);
     } else {
       const dTp = prefSaved();
-      head.appendChild(h('span', 'rt-pill' + (dTp >= 1 ? ' good' : ''), dTp >= 1 ? '\u2212' + fmtT(dTp) + ' walking' : 'Already optimal'));
+      head.appendChild(h('span', 'rt-pill' + (dTp >= 1 ? ' good' : ''), dTp >= 1 ? '−' + fmtT(dTp) + ' walking' : 'Already optimal'));
     }
     head.appendChild(h('span', 'rt-sp'));
-    const close = h('button', 'rt-x', '\u00d7');
-    close.title = 'Close';
-    close.addEventListener('click', e => { e.stopPropagation(); userOpen = false; if (mapActive) userClosedOnMap = true; render(); });
-    head.appendChild(close);
+    head.appendChild(closeBtn());
     panel.appendChild(head);
     wireDrag(head);
     if (calc) panel.appendChild(calcStrip());
@@ -1811,10 +2175,8 @@ postMessage({ t: 'ready' });`;
     const body = h('div', 'rt-body');
     panel.appendChild(body);
     { const cl = changeLine(); if (cl) body.appendChild(cl); }
-    planBody(body);
-    if (result.gate) body.appendChild(h('div', 'rt-dim', result.gate.blocked ? 'Teleports would save ' + Math.round(result.gate.saved).toLocaleString('en-US') + ' steps over the whole route, under your ' + result.gate.th.toLocaleString('en-US') + '-step bar, so they are not used.' : 'Teleports save ' + Math.round(result.gate.saved).toLocaleString('en-US') + ' steps over the whole route (bar: ' + result.gate.th.toLocaleString('en-US') + ').'));
-    if (Object.keys(variantsFull).length) { const wi = h('div', 'rt-wi'); wi.appendChild(h('h4', null, 'What you could gain')); wi.appendChild(variantTable()); wi.appendChild(h('div', 'rt-dim', '🔒 keep my picks \u00b7 \🔀 optimise picks \u00b7 \🚶 no teleports \u00b7 \u26A1 teleports. Highlighted = what you use now.')); body.appendChild(wi); }
-    body.appendChild(h('div', 'rt-note', 'Display only \u2013 apply a suggestion by dragging queue rows / picking options yourself. lv/hr = weighted levels gained per hour (combat levels count ' + Math.round((Number(settingOn('routeCombatWeightPct', 40)) || 0)) + '%, see Settings > Plugins > Route Advisor). ' +
+    if (P && P.available) { planBody(body); moreSection(body); } else fallbackBody(body);
+    body.appendChild(h('div', 'rt-note', 'Display only – you apply a suggestion by dragging queue rows and picking options yourself. Levels an hour is the weighted levels you gain per hour (combat levels count ' + Math.round((Number(settingOn('routeCombatWeightPct', 40)) || 0)) + '%, see Settings > Plugins > Route Advisor). ' +
       (result.evaluated || 0).toLocaleString('en-US') + ' search states in ' + Math.round(result.ms) + ' ms' + (result.rows.length < (result.q ? result.q.rows.length : 0) ? '; first ' + result.rows.length + ' rows optimised' : '') + '.'));
     body.scrollTop = prevScroll;
     restorePos();
@@ -1841,7 +2203,7 @@ postMessage({ t: 'ready' });`;
     const sub = h('span', 'rt-dim', key === 'cur' ? 'Your queue now' : def ? def[1] + ' path' : 'Recommended');
     if (def) sub.style.color = def[2];
     hd.appendChild(sub); hd.appendChild(h('span', 'rt-sp'));
-    const x = h('button', 'rt-x', '\u00d7'); x.title = 'Hide the map';
+    const x = h('button', 'rt-x', '\u00d7'); tipOn(x, { t: 'Hide the map' });
     x.addEventListener('click', e => { e.stopPropagation(); mapOpen = false; try { localStorage.setItem('cc-route-map-open', '0'); } catch (er) {} placeExtras(); });
     hd.appendChild(x); drawer.appendChild(hd);
     if (polyState === 'idle') loadPolylines();
@@ -1961,7 +2323,7 @@ postMessage({ t: 'ready' });`;
     } catch (e) {}
   }
   function addGrip() {
-    const g = h('div', 'rt-grip'); g.title = 'Drag to resize \u00b7 double-click to reset';
+    const g = h('div', 'rt-grip'); tipOn(g, { t: 'Resize', b: 'Drag to resize the panel. Double-click to reset the size.' });
     g.addEventListener('mousedown', e => {
       e.preventDefault(); e.stopPropagation(); moving = true;
       const r = panel.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, sc = (r.width / (panel.offsetWidth || 1)) || 1;   // the panel is scaled with the window: CSS size = screen size / scale
@@ -2042,7 +2404,7 @@ postMessage({ t: 'ready' });`;
 
   function teardown() {
     calcRun++; if (offSpeed) offSpeed(); life.dispose(); solver.dispose(); clearTimeout(timerId); clearTimeout(computeTimer); try { if (rzObs) rzObs.disconnect(); } catch (e) { /* gone */ }
-    hideVTip(); panel.remove(); handle.remove(); alertEl.remove(); drawer.remove(); mapTab.remove(); style.remove(); clearHl();
+    hideVTip(); tipEl.remove(); panel.remove(); handle.remove(); alertEl.remove(); drawer.remove(); mapTab.remove(); style.remove(); clearHl();
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc route-advisor torn down';
   }

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "rev": 212,
-  "updated": "2026-11-09T08:07:35.975Z",
+  "rev": 215,
+  "updated": "2026-11-10T11:28:41.065Z",
   "title": "ScapeLite roadmap",
   "note": "Edit with the page (/roadmap), the CLI (npm run roadmap) or by hand. Order of items inside a list is the order here. See roadmap/README.md.",
   "areas": [
@@ -80,7 +80,7 @@
     "repo": 50,
     "lab": 10,
     "log": 18,
-    "adv": 36
+    "adv": 39
   },
   "items": [
     {
@@ -6346,6 +6346,70 @@
       "source": "subagent: team sync",
       "created": "2026-11-09",
       "updated": "2026-11-09",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-037",
+      "title": "Route Advisor redesign: priority tabs, built-in stay put with XP floor, NEW TASKS bar lock, queue-style order list, next move, one tooltip",
+      "notes": "User-approved concept 2026-11-10. Engine: MOVE_PEN_S/ACT_PEN_S in the search only, floor ladder, input.free lock, paths.auto. UI: tabs, switch, hero bars, next-move strip, grouped rows like the Tasks panel, More section, unified tooltip (panel, badge, handle).",
+      "area": "adv",
+      "status": "done",
+      "priority": "P2",
+      "effort": "L",
+      "tags": [
+        "route-advisor",
+        "ui"
+      ],
+      "source": "claude",
+      "created": "2026-11-10",
+      "updated": "2026-11-10",
+      "done": "2026-11-10",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-038",
+      "title": "Route Advisor: let the user steer how strongly it stays put (a slider next to the XP floor)",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "route-advisor"
+      ],
+      "source": "subagent: route advisor redesign",
+      "created": "2026-11-10",
+      "updated": "2026-11-10",
+      "done": "",
+      "links": [],
+      "public": false,
+      "milestone": "",
+      "summary": "",
+      "reason": ""
+    },
+    {
+      "id": "adv-039",
+      "title": "Route Advisor: apply a plan as a guided queue of single drags (step through next moves, re-check after each)",
+      "notes": "",
+      "area": "adv",
+      "status": "idea",
+      "priority": "P2",
+      "effort": "M",
+      "tags": [
+        "route-advisor"
+      ],
+      "source": "subagent: route advisor redesign",
+      "created": "2026-11-10",
+      "updated": "2026-11-10",
       "done": "",
       "links": [],
       "public": false,

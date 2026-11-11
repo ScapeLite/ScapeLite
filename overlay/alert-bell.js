@@ -44,6 +44,22 @@
     if (s.levers.slay >= Math.max(5, Math.floor(min / 5))) out.push({ key: 'lever-slay', text: s.levers.slay + ' unspent slay lever credits', sub: 'Slay mob weights can use them.', sig: s.levers.slay, tab: 'skillcustom', dest: 'Slay levers' });
     return out;
   } });
+  // One skill's own lever credits (its lever page). Only when the Lever Advisor really has changes for that skill (gain of at least 1 percent), so lots of unspent credits
+  // with nothing worth changing stay quiet. It is answered by applying the changes (nothing left to recommend) or by looking at the skill's page for a few seconds
+  // (the advisor remembers that exact advice as seen); different credits or different advice bring it back.
+  addCheck({ id: 'SkillLever', icon: '🎚️', label: 'Skill lever credits with advice', check: (b) => {
+    const la = window.__ccLeverAdvisor; if (!la || !la.skillAdvice || !b.individualCredits) return [];
+    const all = b.individualCredits(); if (!all) return [];
+    const out = [], st = { left: 3 };   // at most 3 fresh calculations per poll: the rest follow on the next one, so a poll never stalls a frame
+    Object.keys(all).forEach((sk) => {
+      if (sk === 'slay') return;   // the Slay page has its own alert above
+      const adv = la.skillAdvice(sk, st); if (!adv || !adv.changes.length || !adv.sig) return;
+      if (la.skillSeen && la.skillSeen(sk) === adv.sig) return;
+      const nm = all[sk].name, up = adv.changes.filter((e) => e.to > e.from).map((e) => e.name), down = adv.changes.filter((e) => e.to < e.from).map((e) => e.name);
+      out.push({ key: 'lever-skill-' + sk, text: plural(adv.credits, 'unused ' + nm + ' credit', 'unused ' + nm + ' credits') + ': the Lever Advisor has changes for you', sub: (up.length ? 'Raise ' + up.slice(0, 3).join(', ') + (up.length > 3 ? ' and ' + (up.length - 3) + ' more' : '') + '. ' : '') + (down.length ? 'Lower ' + down.slice(0, 3).join(', ') + (down.length > 3 ? ' and ' + (down.length - 3) + ' more' : '') + '. ' : '') + 'About +' + adv.gain.toFixed(1) + '% XP per hour. Open the ' + nm + ' page of Skills Customization.', sig: adv.sig, tab: 'skillcustom', dest: nm + ' levers' });
+    });
+    return out;
+  } });
   addCheck({ id: 'Chest', icon: '🎁', label: 'Unopened chests and lamps', check: (b) => {
     const s = b.alertState && b.alertState(); if (!s) return [];
     const out = [];
@@ -95,7 +111,7 @@
     (d.lucky || []).forEach((l) => { lucky[l.skill] = [l.owned ? 1 : 0, l.shinyOwned ? 1 : 0]; });
     if (!first) {
       (d.pets || []).forEach((p) => { const o = snap.pets[p.skill] || [0, 0]; if ((p.shiny || 0) > o[1]) out.push({ key: 'pet-s-' + p.skill + '-' + p.shiny, text: 'SHINY ' + p.name + ' pet!', sub: 'A shiny pet dropped.', open: '__ccDropLuck', dest: 'Drop Luck' }); else if ((p.normal || 0) > o[0]) out.push({ key: 'pet-' + p.skill + '-' + p.normal, text: 'New ' + p.name + ' pet!', sub: 'A pet dropped.', open: '__ccDropLuck', dest: 'Drop Luck' }); });
-      (d.lucky || []).forEach((l) => { const o = snap.lucky[l.skill] || [0, 0]; if (l.shinyOwned && !o[1]) out.push({ key: 'lucky-s-' + l.skill, text: 'SHINY ' + l.name + '!', sub: 'A shiny lucky tool dropped.', open: '__ccDropLuck', dest: 'Drop Luck' }); else if (l.owned && !o[0]) out.push({ key: 'lucky-' + l.skill, text: l.name + '!', sub: 'A lucky tool dropped.', open: '__ccDropLuck', dest: 'Drop Luck' }); });
+      (d.lucky || []).forEach((l) => { const o = snap.lucky[l.skill] || [0, 0]; if (l.shinyOwned && !o[1]) out.push({ key: 'lucky-s-' + l.skill, text: 'SHINY ' + l.name + '!', sub: 'A shiny lucky tool dropped.', open: '__ccDropLuck', dest: 'Drop Luck', itemId: l.sid || '' }); else if (l.owned && !o[0]) out.push({ key: 'lucky-' + l.skill, text: l.name + '!', sub: 'A lucky tool dropped.', open: '__ccDropLuck', dest: 'Drop Luck', itemId: l.id || '' }); });
     }
     snap.pets = pets; snap.lucky = lucky;
     return out;
@@ -105,7 +121,7 @@
     const min = Math.max(2, Number(setting('alertRareMin', 500)) || 500), out = [], first = !snap.drops, drops = {};
     (d.mobs || []).forEach((m) => (m.drops || []).forEach((x) => {
       if (!(x.n >= min)) return; const k = m.id + '|' + x.id; drops[k] = x.got || 0;
-      if (!first && (x.got || 0) > (snap.drops[k] || 0)) out.push({ key: 'rare-' + k + '-' + x.got, text: 'Rare drop: ' + x.name, sub: '1 in ' + x.n.toLocaleString('en-US') + ' from ' + m.name, open: '__ccDropLuck', dest: 'Drop Luck' });
+      if (!first && (x.got || 0) > (snap.drops[k] || 0)) out.push({ key: 'rare-' + k + '-' + x.got, text: 'Rare drop: ' + x.name, sub: '1 in ' + x.n.toLocaleString('en-US') + ' from ' + m.name, open: '__ccDropLuck', dest: 'Drop Luck', itemId: x.id });
     }));
     snap.drops = drops;
     return out;
@@ -285,7 +301,7 @@
   let menu = null;
   const closeMenu = () => { if (menu) { try { window.__ccUI.closeMenu(); } catch (e) { /* kit gone */ } menu = null; } };
   // right-click: lock / reset, and Filter > Categories / Individual alerts with check marks (each switches the same setting as Settings > Alerts)
-  const GROUPS = [['Progress', ['Tree', 'Lever', 'Chest', 'Quest', 'QuestSlot', 'Barter', 'Gear', 'Craft']], ['Events while you were away', ['Pets', 'Rare']], ['Status', ['Idle', 'Inventory', 'Potions', 'Event']]];
+  const GROUPS = [['Progress', ['Tree', 'Lever', 'SkillLever', 'Chest', 'Quest', 'QuestSlot', 'Barter', 'Gear', 'Craft']], ['Events while you were away', ['Pets', 'Rare']], ['Status', ['Idle', 'Inventory', 'Potions', 'Event']]];
   const isOn = (id) => { const c = CHECKS.find((x) => x.id === id); return !!setting('alert' + id, !c || c.def !== false); };
   const setOn = (id, v) => { try { window.__ccPluginSettings && window.__ccPluginSettings.set && window.__ccPluginSettings.set('alert' + id, !!v); } catch (e) { /* settings not there */ } };
   const refilter = () => { setTimeout(() => { try { run(); } catch (e) { /* next poll */ } }, 120); };
@@ -332,6 +348,22 @@
 
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
   function dismiss(a) { dismissed[a.key] = a.sig == null ? '' : String(a.sig); saveDis(); alerts = alerts.filter((x) => x.key !== a.key); render(); }
+  // Looking at an item in the bank (hover, or the bank's own "seen" clearing) answers an alert that points at it: the alert goes away by itself.
+  // A different better item later has another key, so it still alerts.
+  window.addEventListener('cc-bank-seen', (e) => {
+    const ids = e && e.detail && e.detail.ids; if (!ids || !ids.length) return;
+    // gear upgrades (find.itemId) and lucky tools (itemId; older saved ones have none, so it is looked up from their skill)
+    const itemOf = (a) => {
+      if (a.itemId) return a.itemId; if (a.find && a.find.itemId) return a.find.itemId;
+      const rr = /^rare-[^|]+\|(.+)-[^-]+$/.exec(a.key || ''); if (rr) return rr[1];   // a very rare drop: the item id sits in the key
+      const m = /^lucky-(s-)?(.+)$/.exec(a.key || ''); if (!m) return '';
+      try { const d = bridge() && bridge().dropState && bridge().dropState(); const l = d && (d.lucky || []).filter((x) => x.skill === m[2])[0]; return l ? (m[1] ? l.sid : l.id) || '' : ''; } catch (er) { return ''; }
+    };
+    const hit = alerts.filter((a) => ids.indexOf(itemOf(a)) >= 0);
+    if (!hit.length) return;
+    hit.forEach((a) => { dismissed[a.key] = a.sig == null ? '' : String(a.sig); });
+    saveDis(); alerts = alerts.filter((x) => hit.indexOf(x) < 0); render();
+  });
   function render() {
     if (!on()) { el.style.display = 'none'; return; }
     el.style.display = '';

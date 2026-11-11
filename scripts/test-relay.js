@@ -257,13 +257,13 @@ function fakeDiscord() {
 }
 async function withDiscord(fn) { const f = await fakeDiscord(); try { await fn(f); } finally { f.server.close(); f.server.closeAllConnections && f.server.closeAllConnections(); } }
 
-const FAST = { ttlMs: 700, fenceMs: 350, heartbeatMs: 100, pollMs: 100, takeoverJitterMs: 40, verifyDelayMs: 40, discoverRetryMs: 100, claimSettleMs: 40, claimRetries: 3 };
+const FAST = { ttlMs: 700, fenceMs: 350, heartbeatMs: 100, pollMs: 100, takeoverJitterMs: 40, verifyDelayMs: 40, discoverRetryMs: 100, claimSettleMs: 40, claimRetries: 3, preemptRetryMs: 200 };
 
 function makeInstance(f, name, o) {
   const opts = Object.assign({ mode: 'auto', id: L.newInstanceId() }, o || {});
   const sender = S.createSender({ timeoutMs: 1000, bucketSize: 100, bucketWindowMs: 50, backoffBaseMs: 10, backoffMaxMs: 40, cooldownMaxMs: 60, brokenProbeMs: 60000, maxWaitMs: 5000 });
   const logs = [];
-  const mgr = L.createLeaseManager({ send: sender.send, label: () => name, instanceId: opts.id, options: FAST, log: (t) => logs.push(t), messageId: opts.messageId, leaseUrl: opts.lease === false ? '' : f.leaseUrl, version: opts.version });
+  const mgr = L.createLeaseManager({ send: sender.send, label: () => name, instanceId: opts.id, options: FAST, log: (t) => logs.push(t), prefer: () => !!opts.prefer, messageId: opts.messageId, leaseUrl: opts.lease === false ? '' : f.leaseUrl, version: opts.version });
   let store = { keys: [], outbox: [] };
   const relay = C.createRelay({
     send: sender.send, isBroken: sender.isBroken, log: (...a) => logs.push(a.join(' ')),
@@ -477,6 +477,30 @@ test('clan board presence and roster card ids live on the lease: written by any 
   insts.forEach((i) => i.crash());
 }));
 
+test('a PC set to prefer being host takes the lead from a healthy leader that does not prefer it, and keeps it', () => withDiscord(async (f) => {
+  const sandis = makeInstance(f, 'Member A'); sandis.start();
+  await until(() => sandis.role() === 'leader', 6000, 'member A leads');
+  const main = makeInstance(f, 'Main', { prefer: true }); main.start();
+  await until(() => main.role() === 'leader', 8000, 'the preferred PC leads');
+  await until(() => sandis.role() === 'follower', 6000, 'member A yields');
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.strictEqual(leaders([sandis, main]).length, 1); assert.strictEqual(main.leader(), true);   // no ping-pong
+  assert.ok(f.state().pf === 1);
+  sandis.crash(); main.crash();
+}));
+
+test('a PC that does not prefer it never takes the lead from a healthy leader, and two preferred PCs do not fight', () => withDiscord(async (f) => {
+  const a = makeInstance(f, 'Member A', { prefer: true }); a.start();
+  await until(() => a.role() === 'leader', 6000, 'a leads');
+  const b = makeInstance(f, 'Member B', { prefer: true }); b.start();
+  const c = makeInstance(f, 'Member C'); c.start();
+  await new Promise((r) => setTimeout(r, 1500));
+  assert.strictEqual(leaders([a, b, c]).length, 1); assert.strictEqual(a.leader(), true);
+  a.crash();   // if the preferred host goes away, somebody else takes over as before
+  await until(() => leaders([b, c]).length === 1, 8000, 'a new leader after the preferred host left');
+  b.crash(); c.crash();
+}));
+
 test('the lease message is deleted by hand: the instances create a new one and agree on it', () => withDiscord(async (f) => {
   const insts = ['Wulf', 'Member A', 'Member B'].map((n) => makeInstance(f, n));
   insts.forEach((i) => i.start());
@@ -603,7 +627,7 @@ test('version signalling: instances behind the newest version in the lease know 
   assert.strictEqual(info(junk).version, ''); assert.strictEqual(info(junk).newerVersion, '', 'an invalid version string is not shared and not compared');
   assert.strictEqual(info(none).newerVersion, '', 'an instance that does not report a version says nothing and is told nothing');
   assert.ok(!/[a-z]/i.test(JSON.stringify(f.state().mv)), 'only a version number');
-  assert.deepStrictEqual(Object.keys(f.state()).sort(), ['cl', 'dg', 'e', 'id', 'lk', 'mv', 'n', 's', 't', 'v'], 'no other personal or setup data in the record');
+  assert.deepStrictEqual(Object.keys(f.state()).sort(), ['cl', 'dg', 'e', 'id', 'lk', 'mv', 'n', 'pf', 's', 't', 'v'], 'no other personal or setup data in the record');
   assert.strictEqual(f.posts().length, 0);
   [old, newer, mid, junk, none].forEach((i) => i.crash());
 }));

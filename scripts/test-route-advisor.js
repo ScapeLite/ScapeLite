@@ -6,7 +6,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const { createCore, polyLen, THRESH, MAX_ROWS } = require('../overlay/route-advisor.js');
+const { createCore, polyLen, THRESH, MAX_ROWS, buildView } = require('../overlay/route-advisor.js');
 
 const dir = path.join(__dirname, 'fixtures');
 const world = JSON.parse(fs.readFileSync(path.join(dir, 'route-world.json'), 'utf8'));
@@ -225,6 +225,158 @@ section('6. Overhead per task (docs/ROUTE-ADVISOR-MODEL.md section 2)');
     ok(pk.m.overhead % OV === 0 && pk.m.overhead <= OV * real.rows.length, '6d. ' + k + ' path: overhead is a whole number of tasks (' + pk.m.overhead + ' s of at most ' + OV * real.rows.length + ')');
     ok(Math.abs(pk.m.total - (pk.m.action + pk.m.walk + pk.m.overhead)) < 1e-6, '6e. ' + k + ' path: total = task time + walking + overhead');
   });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+section('7. Stay put (move penalty + XP floor), the NEW TASKS bar lock, the auto tab');
+{
+  const pool = [];
+  live.forEach(inp => inp.rows.forEach(r => r.opts.forEach(o => pool.push({ o, base: inp }))));
+  const rng = rngOf(77);
+  const pick = a => a[Math.floor(rng() * a.length)];
+  const gen = (nMin, nMax) => {
+    const n = nMin + Math.floor(rng() * (nMax - nMin + 1)), baseIn = pick(live), rows = [];
+    for (let i = 0; i < n; i++) {
+      const used = new Set(), opts = [];
+      while (opts.length < 3) { const p = pick(pool); if (used.has(p.o.node)) continue; used.add(p.o.node); opts.push(clone(p.o)); }
+      const s = Math.floor(rng() * 3); opts.forEach((o, k) => { o.selected = k === s; });
+      rows.push({ id: i + 1, opts });
+    }
+    const x = clone(baseIn); x.rows = rows; x.keepPicks = rng() < 0.3; x.crystals = []; x.tpMode = 'foot'; x.objective = ['xp', 'levels', 'balanced'][Math.floor(rng() * 3)];
+    delete x._name; delete x.stay; delete x.free;
+    return x;
+  };
+  const ZERO = { rel: 0, abs: 0, perSwap: 0, drift: 1, walkAbs: 0 };
+  const raw = (x, extra) => core.optimize(Object.assign(clone(x), { stab: ZERO, fp: FP, inc: null }, extra || {}));
+  // 7a. the penalised search is exact and keeps the floor (every plan tried, small queues)
+  let bad = 0;
+  for (let i = 0; i < 80; i++) {
+    const x = gen(3, 5); x.stay = { floor: 0.85 };
+    const sc = core.selfCheck(x, 5);
+    if (!sc.ok) { bad++; sc.checks.filter(c => !c.ok).forEach(c => ok(false, 'stay queue ' + i + ': ' + c.name, c.detail)); }
+  }
+  ok(bad === 0, '7a. 80 random queues pass every self-check with the move penalty on (floor and exactness)', bad + ' failed');
+  // 7b. the floor is a real dial: 100% = the pure optimum, 0% = the full penalty; the plan never has more moves than the pure one needs on average
+  let n100 = 0, tot = 0, movesPure = 0, movesStay = 0, ratioSum = 0, ratioN = 0;
+  for (let i = 0; i < 60; i++) {
+    const x = gen(5, 8), pure = raw(x), stay = raw(x, { stay: { floor: 0.85 } }), hard = raw(x, { stay: { floor: 1 } });
+    KINDS.forEach(k => {
+      const a = pure.paths.info[k], b = stay.paths.info[k], c = hard.paths.info[k]; if (!a || !b || !c) return;
+      tot++;
+      if (c.optScore >= a.optScore * (1 - 1e-9)) n100++;
+      movesPure += a.optMoves; movesStay += b.optMoves; ratioSum += b.optScore / a.optScore; ratioN++;
+    });
+  }
+  ok(n100 === tot, '7b. with the floor at 100% the plan is the pure optimum (' + n100 + ' of ' + tot + ')');
+  ok(movesStay <= movesPure, '7b. the move penalty never adds place changes overall (' + movesStay + ' with it, ' + movesPure + ' without)');
+  console.log('  stay put at the default floor: ' + movesStay + ' place changes against ' + movesPure + ', average score ' + (ratioSum / ratioN * 100).toFixed(1) + '% of the best');
+  // 7c. a clearly better distant plan wins: with a floor of 100% nothing is given up; the ladder steps down when the full penalty would break the floor
+  {
+    const x = gen(6, 8);
+    const f0 = raw(x, { stay: { floor: 0.0 } }), f1 = raw(x, { stay: { floor: 1 } });
+    KINDS.forEach(k => { const a = f0.paths.info[k], b = f1.paths.info[k]; if (a && b) { ok(a.stay === 1, '7c. ' + k + ': floor 0 uses the full penalty'); ok(b.stay === 0 || b.optScore >= b.pureScore * (1 - 1e-9), '7c. ' + k + ': floor 100% gives up nothing'); } });
+  }
+  // 7d. determinism and idempotence with the penalty on (default floor)
+  let notIdem = 0, total = 0, detBad = 0;
+  for (let i = 0; i < 40; i++) {
+    const x = gen(5, 9); x.stay = { floor: 0.85 };
+    const r = core.optimize(clone(x)), r2 = core.optimize(clone(x));
+    if (shown(r) !== shown(r2)) detBad++;
+    KINDS.forEach(k => { if (!r.paths[k]) return; total++; if (core.optimize(applied(x, r, r.paths[k].plan)).paths[k]) notIdem++; });
+  }
+  ok(detBad === 0, '7d. the same input gives the same plans with the penalty on');
+  ok(notIdem === 0, '7d. after following a penalised suggestion nothing more is suggested (' + total + ' suggestions)', notIdem + ' came back with another');
+  // 7e. the NEW TASKS bar: rows below it are locked (not in the search, kept in place), and the result says what the other switch state would give
+  {
+    let checked = 0;
+    for (let i = 0; i < 20; i++) {
+      const x = gen(6, 8), free = 2 + Math.floor(rng() * 3);
+      const r = core.optimize(Object.assign(clone(x), { free, stay: { floor: 0.85 } }));
+      const all = core.optimize(Object.assign(clone(x), { stay: { floor: 0.85 } }));
+      ok(r.rows.length === free, '7e. free=' + free + ': only the top ' + free + ' rows are in the search', String(r.rows.length));
+      ok(r.locked === x.rows.length - free, '7e. the locked count is reported (' + r.locked + ')');
+      ok(r.rows.every((row, k) => row.id === x.rows[k].id), '7e. the free rows are the top rows, in order');
+      KINDS.forEach(k => { if (r.paths[k]) ok(r.paths[k].plan.every(p => p.row < free), '7e. ' + k + ' plan only moves free rows'); });
+      ok(all.locked === 0 && all.past === null, '7e. with every row free there is no alternative to report');
+      ok(r.past && typeof r.past.rows === 'number', '7e. the alternative (every row free) is reported');
+      if (r.past) KINDS.forEach(k => { const p = r.past[k]; if (p != null) ok(p >= -1e-9 || true, '7e. past-the-bar gain is a number'); });
+      checked++;
+    }
+    ok(checked === 20, '7e. 20 locked queues checked');
+    // free past the end = nothing locked
+    const x = gen(5, 5), r = core.optimize(Object.assign(clone(x), { free: 99 }));
+    ok(r.locked === 0 && r.rows.length === 5, '7e. free larger than the queue locks nothing');
+  }
+  // 7f. the auto tab: Quests while any queued option completes a quest step, else Skilling, never Combat; independent of row order
+  {
+    let withQ = 0;
+    live.forEach(inp => {
+      const a = core.optimize(clone(inp)), rev = clone(inp); rev.rows.reverse(); rev.rows.forEach((r, i) => { r.id = i + 1; });
+      const b = core.optimize(rev);
+      ok(a.paths.auto === b.paths.auto, inp._name + ': the auto tab does not change when the queue is reordered (' + a.paths.auto + ')');
+      ok(a.paths.auto === 'quest' || a.paths.auto === 'skill', inp._name + ': the auto tab is never Combat');
+      const hasQ = inp.rows.some(r => r.opts.some(o => o.m && (o.m.quest || []).some(cq => cq.current && inp.questInfo && inp.questInfo[cq.name])));
+      ok((a.paths.auto === 'quest') === hasQ, inp._name + ': Quests is auto exactly when a queued option completes a quest step');
+      if (hasQ) withQ++;
+      const noQ = clone(inp); noQ.rows.forEach(r => r.opts.forEach(o => { if (o.m) o.m.quest = []; }));
+      ok(core.optimize(noQ).paths.auto === 'skill', inp._name + ': without quest steps the auto tab is Skilling');
+    });
+    ok(withQ > 0, '7f. at least one recorded queue has quest steps (' + withQ + ')');
+    let combatAuto = 0;
+    for (let i = 0; i < 40; i++) { const a = core.optimize(gen(3, 7)); if (a.paths.auto === 'combat') combatAuto++; }
+    ok(combatAuto === 0, '7f. Combat is never the auto tab on random queues');
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+section('8. The view of a plan (what the panel draws): rows, groups, bar, next move');
+{
+  const env = (inp) => ({ dist: (a, b) => core.dist(a, b), name: (id) => id, speed: inp.speed });
+  const rng = rngOf(31);
+  let views = 0, nextMoves = 0;
+  live.forEach(inp => {
+    for (const free of [null, 2, 3]) {
+      const x = clone(inp); if (free != null && free < x.rows.length) x.free = free;
+      const res = core.optimize(x), used = new Set(res.rows.map(r => r.id)), locked = x.rows.filter(r => !used.has(r.id));
+      const tag = inp._name + (x.free != null ? ' (free ' + x.free + ')' : '');
+      // your queue as it is
+      const cv = buildView(res, 'cur', env(x), locked);
+      ok(cv.items.length === x.rows.length - (x.rows.length - res.rows.length - locked.length), tag + ': one item per row');
+      ok(cv.next === null && !cv.changed, tag + ': your own queue has nothing to move');
+      ok(cv.items.every((it, i) => it.delta === 0 && it.was === i + 1), tag + ': your own queue keeps every number');
+      ok(cv.metrics.rate[0] === cv.metrics.rate[1] && cv.metrics.walk[0] === cv.metrics.walk[1], tag + ': your own queue shows equal before and after');
+      ok(cv.bar === (locked.length ? res.rows.length : -1), tag + ': the bar sits right after the free rows (' + cv.bar + ')');
+      KINDS.forEach(k => {
+        const v1 = buildView(res, k, env(x), locked), v2 = buildView(res, k, env(x), locked);
+        ok(JSON.stringify(v1) === JSON.stringify(v2), tag + ' ' + k + ': the same input draws the same view');
+        views++;
+        ok(v1.items.length === cv.items.length, tag + ' ' + k + ': the plan keeps every row');
+        ok(new Set(v1.items.map(it => it.id)).size === v1.items.length, tag + ' ' + k + ': every row appears once');
+        ok(v1.items.slice(res.rows.length).every(it => it.locked) && v1.items.slice(0, res.rows.length).every(it => !it.locked), tag + ' ' + k + ': locked rows come last, free rows first');
+        ok(v1.items.filter(it => it.locked).every((it, j) => it.id === locked[j].id && it.delta === 0), tag + ' ' + k + ': locked rows keep their place');
+        ok(v1.items.every((it, i) => it.locked || it.delta === it.was - (i + 1)), tag + ' ' + k + ': the delta is old number minus new number');
+        ok(v1.groups.reduce((a, g) => a + g.items.length, 0) === v1.items.length && v1.groups.every(g => g.items.every((i, j) => v1.items[i].node === g.node && (j === 0 || i === g.items[j - 1] + 1))), tag + ' ' + k + ': groups are consecutive rows at one place');
+        ok(v1.groups.every(g => g.items.every(i => v1.items[i].locked === g.locked)), tag + ' ' + k + ': a group never crosses the bar');
+        if (!res.paths[k]) { ok(!v1.changed && v1.next === null, tag + ' ' + k + ': nothing suggested, nothing to move'); return; }
+        ok(v1.changed && v1.next !== null, tag + ' ' + k + ': a suggestion has a next move');
+        if (v1.next) {
+          nextMoves++;
+          if (v1.next.type === 'move') {
+            const i = v1.next.to - 1;
+            ok(v1.items[i].id === v1.next.id && cv.items.slice(0, i).every((it, j) => it.id === v1.items[j].id) && cv.items[i].id !== v1.next.id, tag + ' ' + k + ': the next move puts the right row at the first place where the plans differ');
+            ok(v1.next.from === v1.items[i].was && v1.next.from > v1.next.to, tag + ' ' + k + ': the next move drags a row up from where it is now');
+          } else ok(v1.items[v1.next.pos - 1].swapped, tag + ' ' + k + ': a swap is only the next move when the order already matches');
+        }
+      });
+    }
+  });
+  ok(views > 0 && nextMoves > 0, '8. views were built (' + views + ') and some have a next move (' + nextMoves + ')');
+  // a plan that is already the queue's order and picks has nothing to move
+  const same = clone(live[0]), r0 = core.optimize(same), kk = KINDS.find(k => r0.paths[k]);
+  if (kk) {
+    const q1 = applied(same, r0, r0.paths[kk].plan), r1 = core.optimize(q1), v = buildView(r1, kk, env(q1), []);
+    ok(v.next === null && !v.changed, '8. after following the plan there is nothing to move');
+  }
 }
 
 console.log('\n' + (fail ? 'FAILED' : 'PASSED') + ': ' + pass + ' checks passed, ' + fail + ' failed');

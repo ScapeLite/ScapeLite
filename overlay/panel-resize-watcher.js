@@ -651,6 +651,7 @@ function loadInstanceId() {
 }
 let ownNameAt = 0;
 let ownPlayerName = '';           // the in-game name, shown on the lease message as "leader <name>"
+let relayPreferHost = false;     // Plugins > Chat Relay > "Prefer This PC As Host": take the lead from a healthy leader that does not prefer it (per PC, never synced)
 let relayRole = 'auto';           // Plugins > Chat Relay > "Several ScapeLite users": auto | always | never | own
 const SL_VERSION = (() => { try { return String(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version || ''); } catch (e) { return ''; } })();
 // The lease lives on the OPTIONAL lease webhook (Plugins > Chat Relay > Shared Lease Webhook, a webhook in a private channel). None set = no lease and nothing extra in any channel.
@@ -661,7 +662,7 @@ function leaseWebhookUrl() {
   const posting = [SECRET_FIELDS.relayClanWebhook, SECRET_FIELDS.relayGlobalWebhook, SECRET_FIELDS.digestWebhook, SECRET_FIELDS.hiscoresWebhook, SECRET_FIELDS.raidSummaryWebhook].map(readSecretValue);
   return posting.indexOf(u) === -1 ? u : '';
 }
-const leaseMgr = createLeaseManager({ send: (f, u, pl, o) => sender.send(f, u, pl, o), label: () => ownPlayerName, instanceId: loadInstanceId(), leaseUrl: leaseWebhookUrl, version: SL_VERSION, log: (t) => log(t) });
+const leaseMgr = createLeaseManager({ send: (f, u, pl, o) => sender.send(f, u, pl, o), label: () => ownPlayerName, prefer: () => relayPreferHost, instanceId: loadInstanceId(), leaseUrl: leaseWebhookUrl, version: SL_VERSION, log: (t) => log(t) });
 const relayGate = leaseGate(leaseMgr, () => relayRole);
 const relay = createRelay({
   send: (feature, url, payload) => postToDiscord(feature, url, payload),
@@ -2031,7 +2032,7 @@ function connectAndWatch(target) {
         if (!cfg || !cfg.channels) return;
         const plugin = await evalAwait(`window.${PLUGINS_NS} ? window.${PLUGINS_NS}.getAll() : null`, false).catch(() => null);
         const effectiveCfg = applyPluginOverridesToChatCfg(cfg, plugin);
-        if (plugin) setRelayRole(plugin.relayRole);
+        if (plugin) { setRelayRole(plugin.relayRole); relayPreferHost = !!plugin.relayPreferHost; }
         if (plugin) { teamEval = evalAwait; teamHost.tick(!!plugin.teamAutoSync).catch((e) => log('Team settings: automatic sync failed --', String(e && e.message || e).slice(0, 120))); }
         // the in-game name is looked at again every 30 s (and until it is known): it shows on the lease message as "leader <name>", so a name read once too early, or from before a character switch, must not stay
         if (!ownPlayerName || Date.now() - ownNameAt > 30000) { ownNameAt = Date.now(); try { const nm = String(await evalAwait("(document.querySelector('.ingame-hud-name') || {}).textContent || ''", false) || '').trim().slice(0, 24); if (nm && nm !== ownPlayerName) { if (ownPlayerName) log('Relay lease: the in-game name changed from ' + ownPlayerName + ' to ' + nm + ', the lease message follows at the next heartbeat.'); ownPlayerName = nm; } } catch (e) { /* page not ready */ } }

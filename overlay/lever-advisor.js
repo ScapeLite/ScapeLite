@@ -340,8 +340,9 @@
   function render() {
     const Tb = on() ? tabEl() : null;
     P.attach();
-    if (!Tb) { P.show(false); if (lastKey) { clearMarks(); lastKey = ''; } return; }
+    if (!Tb) { P.show(false); curView = null; viewSince = 0; if (lastKey) { clearMarks(); lastKey = ''; } return; }
     const page = pageOf(Tb);
+    if (page !== 'skill') { curView = null; viewSince = 0; }
     if (page === 'other') {
       P.show(true); lastKey = '';
       clearMarks();
@@ -370,7 +371,7 @@
     const cr = credits(Tb);
     lastOther = page === 'slay' && !!data.other;
     const key = [page, route, cr, data.master ? data.master.id : '', focusK(route), Math.round(data.rows.reduce((t, r) => t + r.x, 0)), (() => { try { return window.__ccPluginSettings.get('routeGatherRatio') + JSON.stringify(window.__ccPluginSettings.get('routePriorities')); } catch (e) { return ''; } })(), data.rows.map((r) => r.id + ':' + r.p).join(',')].join('|');
-    if (key === lastKey) { applyMarks(Tb, page); return; } // the game rebuilds these rows often: keep the outlines on the new buttons
+    if (key === lastKey) { applyMarks(Tb, page); seenTick(); return; } // the game rebuilds these rows often: keep the outlines on the new buttons
     lastKey = key;
     data.focus = page === 'slay' ? applyFocus(data, route, cr) : null;
     const res = optimise(data.rows, data.K, cr, data.wm);
@@ -421,7 +422,55 @@
         ? 'Which task of this skill gets rolled, valued by the game’s XP per hour at your levels. Locked tasks and the location levers (Nodes column) are not covered yet. Nothing is pressed for you.'
         : 'Skill values come from the route. A weight is how likely that skill is to be rolled. The yellow buttons are the ones to press; nothing is pressed for you.';
     lastOut = { page, route, pulls: pulls.length, rels: rels.length, gain };
+    // The bell's per-skill alert is about the default route of a single skill's page: remember what this page is showing so seenTick() can tell when it has been looked at.
+    if (page === 'skill' && route === 'xp' && data.skill) {
+      const nv = { skill: data.skill, sig: pulls.length || rels.length ? sigOf(cr, data.rows, res.pos) : '' };
+      if (!curView || curView.skill !== nv.skill || curView.sig !== nv.sig) viewSince = 0;
+      curView = nv;
+    } else { curView = null; viewSince = 0; }
+    seenTick();
   }
+
+  // ------------------------------------------------------------------ headless advice for ONE skill (the bell's per-skill alert)
+  // The same rows the skill page reads from its window, but taken from game state (bridge.oddsTiers + activityValue), and the SAME optimise(): the alert and
+  // the page agree. Cached per skill; only recomputed when the credits, the level or a lever position change. Pure read, nothing is pressed.
+  const sigOf = (cr, rows, pos) => cr + '|' + rows.map((r, i) => (pos[i] !== r.p ? r.id + ':' + pos[i] : '')).filter(Boolean).sort().join(',');
+  const SA = new Map();
+  const LS_SEEN = 'cc-lever-seen';
+  const MIN_GAIN = 1;   // percent: below this the alert stays quiet
+  function skillAdvice(skill, st) {
+    const b = bridge(); if (!b || !b.individualCredits || !b.oddsTiers || !b.activityValue) return null;
+    const ic = b.individualCredits(), cr = ic && ic[skill] ? ic[skill].n : 0;
+    if (!(cr > 0)) return { skill, credits: 0, changes: [], gain: 0, sig: '' };
+    const t = b.oddsTiers(skill); if (!t) return null;
+    const key = cr + '|' + t.map((a) => a.id + ':' + a.weight + (a.open ? '' : 'x')).join(',');
+    const c = SA.get(skill); if (c && c.key === key) return c.out;
+    if (st && st.left <= 0) return null;                 // the caller's budget for fresh work is spent: finish on the next poll
+    if (st) st.left--;
+    const rows = [];
+    t.forEach((a) => { if (!a.open) return; const v = b.activityValue(skill, a.id); if (v) rows.push({ id: a.id, name: a.name, p: a.weight, x: v.x, t: v.t }); });
+    let out = { skill, credits: cr, changes: [], gain: 0, sig: '' };
+    if (rows.length) {
+      const res = optimise(rows, 5, cr, 1);
+      const changes = rows.map((r, i) => ({ id: r.id, name: r.name, from: r.p, to: res.pos[i] })).filter((e) => e.to !== e.from);
+      const gain = res.r0 > 0 ? (res.r1 / res.r0 - 1) * 100 : 0;
+      if (changes.length && gain >= MIN_GAIN) out = { skill, credits: cr, changes, gain, sig: sigOf(cr, rows, res.pos) };
+    }
+    SA.set(skill, { key, out });
+    return out;
+  }
+  // "Seen": once a skill's page has shown the same advice for a few seconds, the alert about exactly that advice is answered (it returns if credits or advice change).
+  let curView = null, viewSince = 0, seen = {};
+  try { seen = JSON.parse(localStorage.getItem(LS_SEEN) || '{}') || {}; } catch (e) { seen = {}; }
+  function seenTick() {
+    if (!curView || !curView.sig || document.hidden || !tabEl()) { viewSince = 0; return; }
+    if (!viewSince) { viewSince = Date.now(); return; }
+    if (Date.now() - viewSince >= 4000 && seen[curView.skill] !== curView.sig) {
+      seen[curView.skill] = curView.sig;
+      try { localStorage.setItem(LS_SEEN, JSON.stringify(seen)); } catch (e) { /* storage blocked */ }
+    }
+  }
+  const skillSeen = (skill) => seen[skill] || '';
 
   // The master picker: every master the game has, with its level band, whether you can use it and how many of its mobs you can roll.
   function renderMaster() {
@@ -514,6 +563,6 @@
     if (window[NS] && window[NS].teardown === teardown) delete window[NS];
     return 'cc lever-advisor torn down';
   }
-  window[NS] = { version: 1, teardown, render, get last() { return lastOut; }, get debug() { return dbg; }, optimise };
+  window[NS] = { version: 1, teardown, render, get last() { return lastOut; }, get debug() { return dbg; }, optimise, skillAdvice, skillSeen, sigOf };
   return 'cc lever-advisor loaded';
 })();

@@ -31,6 +31,7 @@ const DEFAULTS = {
   ttlMs: 90000,            // heartbeat counter unchanged this long => the leader is gone
   fenceMs: 45000,          // leader without a confirmed heartbeat this long stops posting
   heartbeatMs: 15000,
+  preemptRetryMs: 20000,   // a preferred host that lost a takeover try (the leader's own heartbeat can overwrite it) waits this long before the next one
   pollMs: 15000,           // followers / unsure instances read the lease this often
   takeoverJitterMs: 2500,
   verifyDelayMs: 2500,     // wait before reading back after a write
@@ -73,6 +74,7 @@ function createLease(o) {
   const sleep = o.sleep || sleepReal;
   const random = o.random || Math.random;
   const label = () => (typeof o.label === 'function' ? o.label() : o.label) || '';
+  const prefer = () => { try { return !!(typeof o.prefer === 'function' ? o.prefer() : o.prefer); } catch (e) { return false; } };   // this PC wants to be the host whenever it can
   const myVer = () => { const v = typeof o.version === 'function' ? o.version() : o.version; return goodVer(v) ? v : ''; };
   const rank = (parseInt(me.slice(0, 4), 16) % 1000) / 1000 * opt.takeoverJitterMs * 0.5;   // deterministic tie-break: instances do not all jitter alike
 
@@ -82,7 +84,7 @@ function createLease(o) {
     state: null,               // last parsed lease
     lastKey: '', lastChangeAt: 0, lastOkAt: 0, lastConfirmedAt: 0, lastBeatAt: 0, lastPollAt: 0, nextDiscoverAt: 0,
     myEpoch: 0, pendingKeys: [], pendingShared: {}, errors: 0, lastError: '', busy: false, released: false,
-    since: now(), takeovers: 0, orphans: [], created: new Set(), pointerSwitches: 0, newest: '', verPushAt: 0,
+    since: now(), lastPreemptAt: 0, takeovers: 0, orphans: [], created: new Set(), pointerSwitches: 0, newest: '', verPushAt: 0,
   };
 
   const req = (feature, payload, opts) => send(feature, url, payload, opts);
@@ -119,7 +121,9 @@ function createLease(o) {
   }
 
   function stateFor(base, patch) {
-    return Object.assign({ v: 1, id: '', n: '', e: 0, s: 0, t: now(), lk: [], dg: 0, cl: {} }, base, patch);
+    const st = Object.assign({ v: 1, id: '', n: '', e: 0, s: 0, t: now(), lk: [], dg: 0, cl: {} }, base, patch);
+    st.t = now();   // every write says when it was made (the "last written" time in the message header)
+    return st;
   }
 
   async function writeMessage(st) {
@@ -196,9 +200,9 @@ function createLease(o) {
   }
 
   // ---- taking over ----
-  async function takeover(seen, why) {
+  async function takeover(seen, why, soft) {
     S.takeovers++;
-    const seenKey = `${seen.id}:${seen.e}:${seen.s}`;
+    const seenKey = soft ? `${seen.id}:${seen.e}` : `${seen.id}:${seen.e}:${seen.s}`;   // soft = taking over from a leader that is alive (preferred host): its heartbeat moving on is no sign of a rival
     await sleep(random() * opt.takeoverJitterMs + rank);
     const r = await readMessage();
     if (r.gone) { S.deadId = S.messageId; S.messageId = null; return; }
@@ -206,9 +210,9 @@ function createLease(o) {
     const cur = r.state;                                 // null = the content is damaged: overwrite it below
     if (cur) {
       if (cur.id === me) { observe(cur); return; }       // picked up by the next poll
-      if (`${cur.id}:${cur.e}:${cur.s}` !== seenKey) { observe(cur); becomeRole('follower', 'someone else moved first'); return; }
+      if ((soft ? `${cur.id}:${cur.e}` : `${cur.id}:${cur.e}:${cur.s}`) !== seenKey) { observe(cur); becomeRole('follower', 'someone else moved first'); return; }
     }
-    const next = stateFor(cur || {}, { id: me, n: label(), e: ((cur && cur.e) || 0) + 1, s: 0, mv: maxVer(cur && cur.mv, myVer()) });   // keeps lk: the old leader's last posts, so the standby replay does not repeat them
+    const next = stateFor(cur || {}, { id: me, n: label(), e: ((cur && cur.e) || 0) + 1, s: 0, pf: prefer() ? 1 : 0, mv: maxVer(cur && cur.mv, myVer()) });   // keeps lk: the old leader's last posts, so the standby replay does not repeat them
     const w = await writeMessage(next);
     if (!w.ok) return;
     S.myEpoch = next.e;
@@ -236,7 +240,7 @@ function createLease(o) {
     if (cur && cur.id !== me) { observe(cur); becomeRole(cur.id ? 'follower' : 'unsure', cur.id ? 'another instance holds the lease' : 'lease released'); return; }
     const sentKeys = S.pendingKeys.slice(), sentShared = Object.assign({}, S.pendingShared);   // anything noted while the write is in flight stays for the next beat
     const lk = (cur && cur.lk || []).concat(sentKeys).slice(-opt.keepKeys);
-    const next = stateFor(cur || {}, { id: me, n: label(), e: (cur && cur.e) || S.myEpoch || 1, s: ((cur && cur.s) || 0) + 1, lk, mv: maxVer(cur && cur.mv, myVer()) });
+    const next = stateFor(cur || {}, { id: me, n: label(), e: (cur && cur.e) || S.myEpoch || 1, s: ((cur && cur.s) || 0) + 1, lk, pf: prefer() ? 1 : 0, mv: maxVer(cur && cur.mv, myVer()) });
     Object.assign(next, sentShared);
     const w = await writeMessage(next);
     if (w.ok) { S.pendingKeys = S.pendingKeys.slice(sentKeys.length); Object.keys(sentShared).forEach((k) => { if (S.pendingShared[k] === sentShared[k]) delete S.pendingShared[k]; }); S.lastConfirmedAt = S.lastBeatAt = now(); observe(next); }
@@ -309,6 +313,8 @@ function createLease(o) {
     }
     if (!st.id) { await takeover(st, 'lease was released'); return; }
     if (now() - S.lastChangeAt > opt.ttlMs) { await takeover(st, 'leader silent for ' + Math.round((now() - S.lastChangeAt) / 1000) + ' s'); return; }
+    // A PC set to "prefer to be host" takes the lead from a healthy leader that does not prefer it (never from another preferred PC: nobody fights over it)
+    if (prefer() && !st.pf && now() - S.lastPreemptAt > opt.preemptRetryMs) { S.lastPreemptAt = now(); await takeover(st, 'this PC is the preferred host', true); return; }
     becomeRole('follower', st.n ? 'leader is ' + st.n : '');
   }
 

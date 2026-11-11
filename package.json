@@ -1,6 +1,6 @@
 {
   "name": "scapelite",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "ScapeLite - a plugin-based overlay and planner for Scapewatch: Idle MMO (display-only, RuneLite-style plugin marketplace).",
   "private": true,
   "main": "app/main.js",
@@ -17,6 +17,7 @@
     "dist": "npm run test:package && electron-builder --win",
     "pack": "npm run test:package && electron-builder --win --dir",
     "test:route": "node scripts/test-route-advisor.js",
+    "test:skilllever": "node scripts/test-skill-lever-alert.js",
     "test:log": "node scripts/test-log.js",
     "test:discord": "node scripts/test-discord.js",
     "test:board": "node scripts/test-clan-board.js",
